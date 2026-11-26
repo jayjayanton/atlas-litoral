@@ -18,7 +18,7 @@ function cell(row, value, detail) {
   }
 }
 
-export function initSectorProfiles({map, index, parishCatalog, cantons, state, selectArea, editFinance, changeTheme, isPicking}) {
+export function initSectorProfiles({map, index, parishCatalog, cantons, state, selectArea, useForCampaign, editFinance, changeTheme, isPicking}) {
   const canton = $('sector-canton'), parish = $('sector-parish'), zone = $('sector-zone'), sector = $('sector-id');
   const results = $('sector-results'), status = $('sector-status'), cache = new Map();
   const zones = Object.keys(index.zones).sort();
@@ -55,6 +55,8 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
   }
   const overlay = L.featureGroup(), layers = new Map(), placeMarker=L.layerGroup();
   const zoneCasing=L.layerGroup(), selectedBorder=L.layerGroup();
+  let adCircle;
+  function clearRadius(){if(adCircle){adCircle.remove();adCircle=null;}}
   const outline={fill:false,interactive:false,opacity:1,lineJoin:'round'};
   const casing={...outline,color:'#ffffff'};
   const sectorInk={color:'#075862',weight:2.8,opacity:1};
@@ -220,7 +222,14 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     }
     const link=document.createElement('a');link.href='#sectores';
     link.textContent=selectedRow?'Ver hogares e ingresos':'Buscar por lugar o código';
-    items.push(link);$('legend').replaceChildren(...items);
+    items.push(link);
+    if(selectedRow) {
+      const campaignButton=document.createElement('button');
+      campaignButton.type='button';campaignButton.className='linkbutton sector-campaign-action';campaignButton.textContent='Usar en campaña';
+      campaignButton.onclick=()=>useForCampaign(currentZone+selectedRow[0]);items.push(campaignButton);
+    }
+    if(adCircle) key('Radio de referencia · '+(adCircle.getRadius()/1000).toLocaleString('es-EC')+' km','campaign-radius-key');
+    $('legend').replaceChildren(...items);
   }
   function profile() {
     if (!selectedRow) return;
@@ -262,6 +271,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     $('sector-caution').textContent = notes.join(' ');
   }
   function pickRow(id, zoom = false, place) {
+    clearRadius();
     matchedPlace = place;
     selectedRow = rows.find(row => row[0] === id);
     if (!selectedRow) return;
@@ -273,6 +283,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
   }
   async function openZone(z, desired, zoom = false, place) {
     const version = ++generation;
+    clearRadius();
     currentZone = z; zone.value = z; selectedRow = undefined; rows = [];
     results.hidden = true; sector.disabled = true; sector.replaceChildren(new Option('Seleccionar sector',''));
     matchedPlace=undefined; placeMarker.clearLayers(); selectedBorder.clearLayers(); zoneCasing.clearLayers(); $('sector-map').textContent='Elegir en el mapa';
@@ -350,6 +361,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
   }
   function refresh() {
     const {canton, parish:p, finance, theme, project} = state();
+    if(theme!=='sectors') clearRadius();
     if (buildingList!==state().buildings) buildPointIndex();
     $('sector-building').hidden = !project;
     if(project) $('sector-building').textContent='Ubicar '+project.name;
@@ -374,11 +386,21 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
   $('sector-map').onclick=()=>showMap(true,true);
   $('sector-building').onclick=()=>{const p=state().project;if(p)locate(p.lat,p.lon,true,{...p,kind:'Edificio'});};
   $('sector-finance').onclick=editFinance;
+  $('sector-to-campaign').onclick=()=>{if(selectedRow) useForCampaign(currentZone+selectedRow[0]);};
   $('sector-controls').hidden=false; $('sector-option').disabled=false;
   const coverage = index.coverage;
   $('sector-coverage').textContent = number.format(coverage.mapped)+' sectores con perfiles en Guayas y Santa Elena. El INEC agrupa '+number.format(coverage.pooledResidents)+' personas y '+number.format(coverage.pooledHouseholds)+' hogares bajo códigos sin ubicación sectorial publicable. Se conservan en los totales territoriales del censo. La cartografía incluye '+number.format(coverage.shapes-coverage.mapped)+' polígonos adicionales sin conteo de edades vinculado.';
   refresh();
-  return {refresh, openCode, locate, frame:()=>showMap(true,false), legend, setFacilities(schools,hospitals) {
+  async function previewRadius(code,lat,lon,km) {
+    const pending=openCode(code,true);
+    const version=generation;
+    await pending;
+    if(version!==generation || currentZone+selectedRow?.[0]!==code || state().theme!=='sectors') return;
+    clearRadius();
+    adCircle=L.circle([lat,lon],{pane:'sector-place',radius:km*1000,color:'#2351ae',weight:3,dashArray:'8 5',fill:false,interactive:false}).addTo(map);
+    legend();fit(adCircle.getBounds().extend(layers.get(sector.value).getBounds()));
+  }
+  return {refresh, openCode, locate, previewRadius, frame:()=>showMap(true,false), legend, setFacilities(schools,hospitals) {
     facilities = [[schools,'Escuela'],[hospitals,'Hospital']].flatMap(([list,kind])=>(list||[])
       .filter(p=>cantonNames.has(p.code)).map(p=>({...p,kind})));
     buildPointIndex();

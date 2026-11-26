@@ -1,0 +1,255 @@
+{
+  "date": "2026-10-06",
+  "source": "https://developers.google.com/static/google-ads/api/data/geo/geotargets-2026-10-06.csv.zip",
+  "provinces": {
+    "09": [
+      [
+        "092301",
+        "Postal Code",
+        "9226670"
+      ],
+      [
+        "Abel Gilbert",
+        "Neighborhood",
+        "9077240"
+      ],
+      [
+        "Alborada",
+        "Neighborhood",
+        "9232393"
+      ],
+      [
+        "Alborada Este",
+        "District",
+        "9077230"
+      ],
+      [
+        "Alfredo Baquerizo Moreno",
+        "City",
+        "9076566"
+      ],
+      [
+        "Bastion Popular",
+        "District",
+        "9077223"
+      ],
+      [
+        "Bastion Popular",
+        "Neighborhood",
+        "9077222"
+      ],
+      [
+        "Batallon del Suburbio",
+        "Neighborhood",
+        "9077241"
+      ],
+      [
+        "Bellavista",
+        "District",
+        "9077235"
+      ],
+      [
+        "Coronel Marcelino Mariduena",
+        "City",
+        "9226797"
+      ],
+      [
+        "Duran",
+        "City",
+        "9076384"
+      ],
+      [
+        "Febres Cordero",
+        "City Region",
+        "9077242"
+      ],
+      [
+        "Guasmo Este",
+        "District",
+        "9077226"
+      ],
+      [
+        "Guasmo Oeste",
+        "District",
+        "9077238"
+      ],
+      [
+        "Guayaquil",
+        "City",
+        "9197939"
+      ],
+      [
+        "Guayas",
+        "Province",
+        "20261"
+      ],
+      [
+        "Guayas River",
+        "District",
+        "9077236"
+      ],
+      [
+        "Isidro Ayora",
+        "City",
+        "9250414"
+      ],
+      [
+        "Isla Trinitaria",
+        "Neighborhood",
+        "9077239"
+      ],
+      [
+        "Kennedy",
+        "City Region",
+        "9077233"
+      ],
+      [
+        "La Florida",
+        "Neighborhood",
+        "9077246"
+      ],
+      [
+        "La Fuerza Aerea Ecuatoriana",
+        "District",
+        "9077234"
+      ],
+      [
+        "La Puntilla",
+        "Municipality",
+        "9208655"
+      ],
+      [
+        "Las Orquideas Este",
+        "District",
+        "9077225"
+      ],
+      [
+        "Letamendi",
+        "District",
+        "9245389"
+      ],
+      [
+        "Lomas de Prosperina",
+        "District",
+        "9077245"
+      ],
+      [
+        "Lomas de Sargentillo",
+        "City",
+        "9076453"
+      ],
+      [
+        "Los Ceibos",
+        "District",
+        "9077244"
+      ],
+      [
+        "Los Sauces",
+        "District",
+        "9077228"
+      ],
+      [
+        "Luz del Guayas",
+        "District",
+        "9077237"
+      ],
+      [
+        "Mapasingue",
+        "Neighborhood",
+        "9077231"
+      ],
+      [
+        "Milagro",
+        "City",
+        "9231571"
+      ],
+      [
+        "Naranjito",
+        "City",
+        "9233524"
+      ],
+      [
+        "Pascuales",
+        "Neighborhood",
+        "9077224"
+      ],
+      [
+        "Pedro Carbo",
+        "City",
+        "9245580"
+      ],
+      [
+        "Puerto Lisa",
+        "District",
+        "9229928"
+      ],
+      [
+        "Quinto Guayas Oeste",
+        "District",
+        "9077221"
+      ],
+      [
+        "Salitre",
+        "City",
+        "9223503"
+      ],
+      [
+        "Samanes",
+        "District",
+        "9077229"
+      ],
+      [
+        "San Eduardo",
+        "Neighborhood",
+        "9077243"
+      ],
+      [
+        "Union",
+        "District",
+        "9077227"
+      ],
+      [
+        "Urdesa",
+        "District",
+        "9077232"
+      ],
+      [
+        "Ximena",
+        "Municipality",
+        "9211896"
+      ]
+    ],
+    "24": [
+      [
+        "Anconcito",
+        "City",
+        "9232640"
+      ],
+      [
+        "Monteverde",
+        "City",
+        "9244841"
+      ],
+      [
+        "Salinas",
+        "City",
+        "9244278"
+      ],
+      [
+        "San Pablo",
+        "City",
+        "9076023"
+      ],
+      [
+        "Santa Elena",
+        "Province",
+        "9069562"
+      ],
+      [
+        "Simon Bolivar",
+        "City",
+        "9076128"
+      ]
+    ]
+  }
+}

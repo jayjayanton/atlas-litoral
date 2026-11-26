@@ -122,5 +122,11 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 #campaign-status:empty{display:none}
 #campana td small{display:block;color:var(--dim)}
 #campaign-rows .linkbutton{text-align:left}
-#campaign-reference{padding-left:1.25rem}
+#campaign-code{width:14em}
+#campana .age-controls+.age-controls,#campaign-code-form,#campaign-near{margin-top:12px}
+#campana [hidden]{display:none}
 #campana .table-scroll{max-width:100%;overflow-x:auto}
+
+.sw.campaign-radius-key{width:22px;height:0;border:0;border-top:3px dashed #2351ae;border-radius:0}
+
+.maplegend .sector-campaign-action{pointer-events:auto;font-size:inherit;margin:0}

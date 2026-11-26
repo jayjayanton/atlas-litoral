@@ -31,28 +31,37 @@
 <div class="metric"><div><h3>Mediana del préstamo</h3><small id="loan-note"></small></div><strong id="loan">—</strong></div>
 <div class="detail-bottom" id="active-project" hidden><div class="kicker">PROYECTO ACTIVO</div><button id="p-link" class="project-link"><span class="pin-glyph" aria-hidden="true">●</span><span><b id="project-name"></b><small id="project-where"></small></span></button></div></aside></section>
 <section id="campana" class="panel age-panel credit-panel">
-<div class="sectionbar"><h2>¿Dónde probar la campaña?</h2><button id="campaign-export" class="button subtle" disabled>Descargar comparación</button></div>
-<p>Elige un edificio para comparar posibles zonas de origen y preparar un mensaje sobre el inmueble.</p>
+<div class="sectionbar"><h2>Campaña por sector y edad</h2><button id="campaign-export" class="button subtle" disabled>Descargar CSV</button></div>
+<p>Consulta cuántas personas de una edad vivían en un sector censal de Guayas o Santa Elena. También puedes comparar los sectores próximos a un edificio.</p>
 <div class="age-controls">
+<label>Área de estudio<select id="campaign-mode"><option value="sector">Un sector específico</option><option value="near">Sectores cerca de un edificio</option></select></label>
+<label>Edad de los residentes<select id="campaign-age" disabled><option>45–54 años</option></select></label>
+</div>
+<div id="campaign-specific">
+<form id="campaign-code-form" class="age-controls"><label>Código censal de 12 dígitos<input type="text" inputmode="numeric" id="campaign-code" placeholder="Ej. 090150224002" maxlength="12" pattern="[0-9]{12}" required></label><button type="submit" class="button subtle">Consultar sector</button><button type="button" id="campaign-pick" class="linkbutton">Elegir en el mapa</button><a href="#sectores">Buscar por lugar o parroquia</a></form>
+</div>
+<div id="campaign-near" class="age-controls" hidden>
 <label>Edificio<select id="campaign-building" disabled><option value="">Seleccionar edificio</option></select></label>
-<label>Radio desde el edificio (km)<input type="number" id="campaign-radius" min="0.1" max="250" step="any" value="10" required></label>
-<label>Edad del representante del hogar<select id="campaign-age" disabled><option value="">45–60 años</option></select></label>
-<label>Ingreso mensual del hogar<select id="campaign-floor"><option value="price">Según precio y financiamiento</option><option value="1000">Desde $1.000</option><option value="2000">Desde $2.000</option><option value="3000">Desde $3.000</option><option value="4000">Desde $4.000</option><option value="5000">Desde $5.000</option></select></label>
-<label>Priorizar sectores por<select id="campaign-rank"><option value="homes">Mayor número de hogares</option><option value="near">Menor distancia</option><option value="demand" disabled>Consultas compatibles del cantón de origen</option></select></label>
+<label>Radio de comparación (km)<input type="number" id="campaign-radius" min="0.1" max="250" step="any" value="10" required></label>
+<label>Ordenar sectores por<select id="campaign-rank"><option value="cohort">Más residentes de la edad elegida</option><option value="population">Más residentes totales</option><option value="near">Menor distancia</option><option value="demand" disabled>Consultas compatibles del cantón de origen</option></select></label>
 </div>
 <p id="campaign-status" role="status"></p><button id="campaign-retry" class="linkbutton" hidden>Reintentar carga</button>
-<div id="campaign-results" hidden>
-<h3>Primeros sectores para una prueba</h3><p id="campaign-summary"></p>
-<div class="table-scroll"><table><thead><tr><th>Sector de origen</th><th>Distancia</th><th>Hogares censados</th><th>Hogares del grupo de edad</th><th>Consultas del cantón en 90 días</th></tr></thead><tbody id="campaign-rows"></tbody></table></div>
-<h3>¿Qué sabemos del ingreso de ese grupo?</h3><p id="campaign-finance"></p><ul id="campaign-reference"></ul><button id="campaign-edit" class="linkbutton">Ajustar financiamiento</button>
-<h3>Mensaje sobre el proyecto</h3><p id="campaign-hospital"></p>
+<div id="campaign-results" hidden><h3 id="campaign-result-title"></h3><p id="campaign-summary"></p>
+<div id="campaign-single" hidden>
+<div class="age-numbers"><div><span>Residentes del sector en 2022</span><strong id="campaign-pop"></strong></div><div><span id="campaign-age-label"></span><strong id="campaign-count"></strong><small id="campaign-share"></small></div></div>
+<h3>Ubicación para Google Ads</h3><p id="campaign-location"></p>
+<details id="campaign-catalog" class="infra-method"><summary>Ver ubicaciones publicadas por Google en esta provincia</summary>
+<label>Ubicación disponible <select id="campaign-google-place" disabled></select></label><p class="mini" id="campaign-place-note" role="status"></p><button id="campaign-catalog-retry" class="linkbutton" hidden>Reintentar</button></details>
+<div class="age-controls"><label>Radio de referencia (km)<input type="number" id="campaign-ad-radius" value="1" min="1" max="250" step="any" required></label><button id="campaign-preview" class="button subtle">Ver polígono y radio en el mapa</button></div>
 </div>
-<details class="infra-method"><summary>Cómo interpretar la prueba y llevarla a Google Ads</summary>
-<p>El radio incluye sectores cuyo punto interior representativo cae dentro del círculo. Las distancias son en línea recta. El atlas muestra hasta cinco sectores con hogares y deja abrir cada polígono. La edad y el umbral de ingreso describen los sectores propuestos. El orden utiliza la distancia, el total de hogares o las consultas, según la prioridad elegida. Los hogares se cuentan una vez por la edad de su representante. Las consultas importadas se conocen por cantón de origen y un mismo conteo puede aparecer en varios sectores. En empates se priorizan los hogares y luego la cercanía.</p>
-<p>El ingreso mensual proviene de la ENIGHUR 2024–2025 y se pondera con el factor de expansión. Se aplica la proporción provincial al grupo censado de 2022 en el radio. Las diferencias entre barrios, el ahorro para la entrada y la intención de compra requieren evidencia adicional. Con menos de 30 hogares encuestados o menos de diez en alguno de los dos tramos de ingreso se muestra el tamaño de muestra y se omite la estimación.</p>
-<p>En Google Ads, comprueba las ciudades disponibles o configura un radio de al menos 1 km, sujeto al volumen mínimo de usuarios. Para una prueba local de búsqueda, la opción de presencia incluye a personas que están o suelen estar en el área. Google usa intervalos como 45–54 y 55–64 y publica una lista de países con segmentación por ingresos. Ecuador queda fuera de esa lista. La edad y el ingreso de esta ficha describen hogares de forma agregada.</p>
-<p>Compara un anuncio que mencione el hospital con otro que destaque el departamento en la misma zona. Registra el gasto, las consultas compatibles y las visitas agendadas por zona y anuncio.</p>
-<p><a href="https://support.google.com/google-ads/answer/2580383?hl=es">Opciones demográficas</a> · <a href="https://support.google.com/google-ads/answer/1722043?hl=es">Opciones geográficas</a> · <a href="https://support.google.com/adspolicy/answer/143465?hl=es">Política de publicidad personalizada</a></p>
+<div id="campaign-list" hidden><div class="table-scroll"><table><thead><tr><th>Sector censal</th><th>Distancia</th><th>Residentes totales</th><th>Residentes del grupo</th><th>% del sector</th><th>Consultas del cantón en 90 días</th></tr></thead><tbody id="campaign-rows"></tbody></table></div>
+<h3>Mensaje sobre el proyecto</h3><p id="campaign-hospital"></p></div>
+<p id="campaign-google-age" class="mini"></p></div>
+<details class="infra-method"><summary>Del sector censal a una campaña de Google Ads</summary>
+<p>Las edades corresponden a todos los residentes con ubicación sectorial en el Censo 2022. Los porcentajes se calculan sobre la población total de cada sector. Google estima la edad de sus usuarios e incluye una categoría de edad desconocida. El alcance actual de un anuncio depende de Google Ads.</p>
+<p>Usa una ubicación disponible en Google Ads o un radio alrededor del punto de referencia. Google exige un mínimo de 1 km y un volumen suficiente de usuarios. El círculo puede incluir partes de otros sectores o dejar fuera partes del elegido. En campañas de búsqueda, la opción de presencia cubre a personas que están o suelen estar en el área.</p>
+<p>En la comparación por edificio se incluyen sectores con punto interior dentro del radio. La distancia es en línea recta. Las consultas importadas corresponden al cantón de origen completo. Para evaluar el mensaje sobre el hospital, compara las consultas compatibles y las visitas agendadas por zona y anuncio.</p>
+<p><a href="https://support.google.com/google-ads/answer/2580383?hl=es">Edades en Google Ads</a> · <a href="https://support.google.com/google-ads/answer/1722043?hl=es">Ubicaciones y radios</a> · <a href="https://support.google.com/adspolicy/answer/143465?hl=es">Política de anuncios de vivienda</a></p>
 </details></section>
 <section id="demografia" class="panel age-panel">
 <div class="sectionbar"><h2>Edad de la población</h2><button class="button subtle" id="age-map" disabled>Ver porcentajes en el mapa</button></div>
@@ -89,7 +98,7 @@
 <button class="linkbutton" id="sector-zone-map" disabled>Ver zona completa</button>
 </div></details></div>
 <div id="sector-results" hidden>
-<div class="sector-location"><h3 id="sector-title"></h3><p id="sector-path"></p><p id="sector-landmarks" class="mini"></p></div>
+<div class="sector-location"><h3 id="sector-title"></h3><p id="sector-path"></p><p id="sector-landmarks" class="mini"></p><button id="sector-to-campaign" class="linkbutton">Usar este sector en campaña</button></div>
 <div class="age-numbers"><div><span>Residentes en 2022</span><strong id="sector-pop"></strong></div><div><span>Hogares particulares censados</span><strong id="sector-homes"></strong></div></div>
 <h3>Distribución estimada del ingreso mensual del hogar</h3>
 <p class="mini" id="sector-ref"></p><ul id="sector-bands"></ul>

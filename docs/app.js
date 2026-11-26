@@ -352,13 +352,14 @@ async function main(){
    sectors=initSectorProfiles({map,index:sectorIndex,parishCatalog,cantons:features,
      state:()=>({theme:$('layer').value,province:$('province').value,canton:selected,parish:$('parish-select').value,finance,project,buildings}),
      selectArea:code=>{setSelection(code.slice(0,4));parishes.highlight(parishCatalog.features.find(f=>f.properties.code===code.slice(0,6)));},
-     editFinance:scenario,changeTheme:()=>{$('layer').value='sectors';colorize();},isPicking:()=>picking});
+     useForCampaign:code=>campaign?.useSector(code),editFinance:scenario,changeTheme:()=>{$('layer').value='sectors';colorize();},isPicking:()=>picking});
  }else $('sector-status').textContent='No se pudieron cargar los sectores. Recarga para reintentar.';
  campaign=initCampaign({cantons:features,parishes:parishCatalog?.features,
-   state:()=>({project,buildings,finance,matches:hasDemand()?matches:null}),
+   state:()=>({project,buildings,matches:hasDemand()?matches:null}),
    selectBuilding:id=>{const b=buildings.find(item=>item.id===id);if(b){activateBuilding(b);$('campana').scrollIntoView({block:'start'});}},
-   selectSector:code=>{if(sectors){sectors.openCode(code);$('explorar').scrollIntoView({block:'start'});}else say('Los límites sectoriales no están disponibles.');},
-   editFinance:scenario,download});
+   pickOnMap:()=>{if(sectors){sectors.frame();$('map').scrollIntoView({block:'center'});}else say('Los límites sectoriales no están disponibles.');},
+   previewRadius:(code,lat,lon,km)=>{if(sectors){sectors.previewRadius(code,lat,lon,km);$('map').scrollIntoView({block:'center'});}else say('Los límites sectoriales no están disponibles.');},
+   download});
  creditMap=initCreditMap({map,features,parishes,parishCatalog,bankRow:observedLoans,state:()=>({theme:$('layer').value,province:$('province').value,project,projectCanton:dest?.code,down:finance.down}),redraw:colorize,fitRegion,selectCanton:setSelection,download});
  const initialTheme=new URL(location.href).searchParams.get('capa');
  if(initialTheme==='credit'||(initialTheme==='sectors'&&sectors)||(initialTheme==='ages'&&demographics))$('layer').value=initialTheme;
