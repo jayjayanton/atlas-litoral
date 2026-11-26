@@ -41,7 +41,7 @@ export function initEarnings(location,residentCount){
       local.textContent='Consultando el Censo 2022…';
       Promise.resolve(residentCount(area.code,lo,hi)).then(count=>{
         if(ticket!==revision)return;
-        local.textContent=area.label+' · '+(count==null?'Sin desglose censal para estas edades.':number.format(count)+' residentes de '+lo+'–'+hi+' años en el Censo 2022.');
+        local.textContent=area.label+' · '+(count==null?'Sin desglose censal para estas edades.':number.format(count)+' residentes de '+lo+'–'+hi+' años · Censo 2022.');
       }).catch(()=>{if(ticket===revision)local.textContent='No se pudo cargar el conteo del Censo 2022.';});
     }else local.textContent=area.pending?'Buscando el sector del edificio…':'Sin sector censal identificado para el pin.';
     if(!task)task=readCompressedJSON('./data/earnings-2025.json.gz').catch(error=>{task=null;throw error;});

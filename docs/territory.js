@@ -27,7 +27,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     $('sector-income-card').hidden=!visible;
     if(!visible)return;
     const share=estimatedShare(current.homes,index.provinces[current.code.slice(0,2)],Number(incomeBand.value));
-    $('sector-profile-estimate').textContent=share===null?'Sin hogares con edad del representante publicada.':percent.format(share)+' de los hogares con edad del representante publicada se estima en este tramo.';
+    $('sector-profile-estimate').textContent=share===null?'Sin hogares con edad del representante publicada.':percent.format(share)+' de los hogares con edad del representante publicada · '+incomeBand.options[incomeBand.selectedIndex].text+'.';
   }
   incomeBand.onchange=incomeEstimate;
   const group=L.layerGroup().addTo(map), boundaries=L.layerGroup().addTo(map);

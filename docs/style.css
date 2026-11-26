@@ -297,6 +297,14 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 #earn-local{border-top:1px solid var(--outline);padding-top:8px}
 #earnings-card details summary{font-size:.8rem}
 #earnings-card details p{margin:6px 0}
+.income-scope{font-size:10px;font-weight:800;letter-spacing:.07em;color:#1d625b}
+.earnings-geography{background:#f4f8f6}
+.earnings-geography .income-scope{background:#e3eee9;border-radius:4px;padding:6px 8px;width:max-content;max-width:100%}
+.income-explainer{border-left:3px solid #4f8173;padding:7px 9px;background:#f3f7f4;color:#334f4b;font-size:12px!important;line-height:1.45}
+.local-census{border-top:1px solid var(--outline);padding-top:8px}
+.local-census>b{font-size:10px;letter-spacing:.07em;color:var(--dim)}
+.local-census p{margin:3px 0}
+.household-estimate{background:#f3f6ed}
 
 #building-matches:not(:empty){display:grid;gap:3px;margin:4px 0 9px}
 #building-matches button{background:#f3f8f6;border:1px solid var(--outline);border-radius:5px;color:var(--teal);padding:6px 9px;text-align:left}
