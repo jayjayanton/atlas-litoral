@@ -61,3 +61,43 @@ test('reproduces the published 2022 reference example at ten kilometers', () => 
   assert.equal(result.pairs.reduce((sum, pair) => sum + pair.reference.residents, 0), 3014);
   assert.deepEqual(result.shortlist.map(row => row.code), ['090150235005', '090150225001', '090150411001']);
 });
+
+test('published sector income estimates use their household ages and an applied band', () => {
+  const dataDir = new URL('../docs/data/', import.meta.url);
+  const read = path => {
+    const bytes = readFileSync(new URL(path, dataDir));
+    return JSON.parse(path.endsWith('.gz') ? gunzipSync(bytes) : bytes);
+  };
+  const households = read('campaign-households.json.gz');
+  const census = read('campaign-residents.json.gz');
+  const velin = read('buildings.json')[0];
+  const {provinces,zones} = read('sectors/index.json');
+  const codes = census.sectors.map(s => s[0]);
+  assert.deepEqual(Object.keys(households).sort(), codes.sort());
+  const run = (rank,band) => rankSectors(census.sectors,velin,10,rank,3,null,households,{provinces,band});
+  const cheap = run('population',1), high = run('population',4);
+  assert.deepEqual(cheap.shortlist.map(s=>s.code), high.shortlist.map(s=>s.code));
+  const total = rows => Math.round(rows.reduce((sum,row)=>sum+row.income.estimated,0));
+  assert.equal(total(cheap.shortlist), 504);
+  assert.equal(total(high.shortlist), 98);
+  assert.equal(high.shortlist.reduce((sum,row)=>sum+row.income.eligible,0), 1440);
+  const byIncome = run('income',4).shortlist;
+  assert.equal(byIncome[2].code, '090150160001');
+  assert.equal(total(byIncome), 101);
+  for(const row of byIncome) {
+    const zone = row.code.slice(0,9);
+    const sector = read('sectors/'+zones[zone][0])[zone].find(([suffix])=>suffix===row.code.slice(9));
+    assert.deepEqual(households[row.code],sector[1].slice(4));
+  }
+});
+
+test('the income ranking excludes missing estimates and bands with no estimated households', () => {
+  const records = [['090001',0,0,300,[20]], ['090002',0,0,200,[20]], ['240003',0,0,250,[10]]];
+  const groups = prob => Array.from({length:4},()=>({shares:[prob]}));
+  const provinces = {'09':groups(0),'24':groups(.5)};
+  const households = {'090001':[0,0,0,0], '090002':[10,0,0,0], '240003':[2,4,6,8]};
+  const plan = rankSectors(records,project,5,'income',3,null,households,{band:0,provinces});
+  assert.equal(plan.rows.length,3);
+  assert.deepEqual(plan.shortlist.map(r=>r.code),['240003']);
+  assert.deepEqual(plan.shortlist[0].income,{eligible:20,estimated:10,share:.5});
+});

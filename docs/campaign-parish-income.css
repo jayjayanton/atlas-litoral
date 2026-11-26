@@ -50,3 +50,16 @@
 #parish-score-reference b { color:#234f53; font-variant-numeric:tabular-nums; }
 .parish-reference-key { display:inline-block; width:15px; height:9px; margin-right:5px; border:2px dashed #234f53; background:#c8ddda; }
 #parish-income-list .parish-score-difference { font-weight:630; color:#523447; }
+
+.parish-apply-row { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; margin:16px 0; }
+#parish-pending { color:#663347; }
+#parish-applied { padding:12px 14px; background:#eef4f2; border-left:3px solid #527d77; border-radius:3px; }
+#parish-applied h3 { margin:0 0 4px; font-size:1.02rem; }
+#parish-applied p { margin:3px 0; line-height:1.4; }
+#parish-household-total { font-weight:650; color:#284c49; }
+#parish-income-list .parish-row-income { color:#45333c; font-weight:650; }
+
+#parish-map-income-key { display:flex; flex-wrap:wrap; gap:3px 9px; margin-top:7px; color:var(--dim); font-size:.78rem; }
+#parish-map-income-key b { flex-basis:100%; }
+#parish-map-income-key span { display:inline-flex; gap:3px; align-items:center; }
+#parish-map-income-key i { width:10px; height:10px; border:1px solid #82536e; border-radius:2px; }

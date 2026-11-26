@@ -1,5 +1,6 @@
 import {showAnalysis} from './explorer-ui.js';
-import {rankSectors} from './campaign-model.js';
+import {rankSectors,sectorIncome} from './campaign-model.js';
+import {incomeBandLabels} from './income-map.js';
 import {initCampaignParishIncome} from './campaign-parish-income.js';
 import {initCampaignOutcomes} from './campaign-outcomes.js';
 import {nearestFacility} from './access-model.js';
@@ -28,7 +29,8 @@ const columns = [
   'sectores_en_seleccion','sectores_en_radio','residentes_en_seleccion','residentes_en_radio',
   'proporcion_grupo_en_seleccion','proporcion_grupo_en_radio','criterio_de_medicion',
   'localidad_del_punto_interior','consultas_compatibles_canton_origen_90d_una_fila_por_canton',
-  'sector_piloto_asociado','diferencia_residentes_referencia_menos_piloto'
+  'sector_piloto_asociado','diferencia_residentes_referencia_menos_piloto',
+  'ingreso_mensual_del_hogar_usd','hogares_con_edad_del_representante','hogares_estimados_en_tramo','proporcion_estimada_de_hogares_en_tramo'
 ];
 
 const metric = 'Gasto publicitario en USD dividido por visitas agendadas en el mismo período';
@@ -40,7 +42,10 @@ export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,
   const mode=$('campaign-mode'), rank=$('campaign-rank'), status=$('campaign-status'), limit=$('campaign-limit');
   const codeInput=$('campaign-code'), adRadius=$('campaign-ad-radius');
   const outcomes = initCampaignOutcomes($('campaign-outcomes'));
-  const parishIncome=initCampaignParishIncome({cantons,parishes,sectorIndex,shareQuery});
+  let appliedIncome=sectorIndex?{label:incomeBandLabels(sectorIndex.incomeCuts)[1],band:1,provinces:sectorIndex.provinces}:null;
+  let households, householdRequest, householdError=false;
+  let applied={mode:mode.value,radius:radius.value,age:cohort.value,rank:rank.value,limit:limit.value};
+  let pendingBuilding;
   const names=new Map([...cantons,...(parishes||[])].map(f=>[f.properties.code,f.properties.name]));
   const areaName=code=>names.get(code.slice(0,6)) || names.get(code.slice(0,4)) || code.slice(0,4);
   const locality=row=>localityFor?.(row) || areaName(row.code);
@@ -51,7 +56,57 @@ export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,
   if (matchMedia('(max-width:570px)').matches && !initial.has('sectorCampana')) $('campaign-settings-panel').open = false;
   if(initial.has('sectorCampana')) {
     selectedCode=codeInput.value=initial.get('sectorCampana').trim();
-    mode.value='sector';
+    applied.mode=mode.value='sector';
+  }
+
+  let parishIncome;
+  parishIncome=initCampaignParishIncome({cantons,parishes,sectorIndex,shareQuery,onApplyIncome});
+  function onApplyIncome(next) {
+    // Custom ranges carry new provincial weights. The label identifies their actual bounds.
+    if(next?.label===appliedIncome?.label && next?.band===appliedIncome?.band) return;
+    appliedIncome=next;
+    if(!next && applied.rank==='income') applied={...applied,rank:'population'};
+    if(!next && rank.value==='income') rank.value='population';
+    if(parishIncome)refresh();
+  }
+
+  function loadHouseholds() {
+    if(householdRequest || households || !sectorIndex) return;
+    householdError=false;
+    householdRequest=readCompressedJSON('./data/campaign-households.json.gz')
+      .then(value=>{households=value;}).catch(()=>{householdError=true;})
+      .finally(()=>{householdRequest=null;refresh();});
+  }
+
+  function syncForm() {
+    const single=mode.value==='sector';
+    $('campaign-specific').hidden=!single;
+    $('campaign-near').hidden=single;
+    radius.disabled=single;
+    codeInput.disabled=!single;
+    codeInput.required=single;
+    $('campaign-apply').textContent=single?'Consultar sector':'Calcular sectores';
+    rank.querySelector('[value="cohort"]').disabled=cohort.value==='all';
+    rank.querySelector('[value="income"]').disabled=!appliedIncome||!households;
+    if(cohort.value==='all' && rank.value==='cohort') rank.value='population';
+    const changed=mode.value!==applied.mode || cohort.value!==applied.age ||
+      (single?codeInput.value.trim()!==selectedCode:
+        pendingBuilding!==undefined || radius.value!==applied.radius || limit.value!==applied.limit || rank.value!==applied.rank);
+    $('campaign-pending').hidden=!changed;
+    $('campaign-income-band').textContent=appliedIncome?.label||'Todos los tramos';
+    $('campaign-income-load-retry').hidden=!householdError;
+  }
+
+  function submitSettings(event) {
+    event.preventDefault();
+    const single=mode.value==='sector';
+    applied={mode:mode.value,age:cohort.value,radius:single?applied.radius:radius.value,
+      rank:single?applied.rank:rank.value,limit:single?applied.limit:limit.value};
+    if(single)selectedCode=codeInput.value.trim();
+    const newBuilding=pendingBuilding;
+    pendingBuilding=undefined;
+    if(!single && newBuilding)selectBuilding(newBuilding);
+    refresh();
   }
 
   const catalogDetails=$('campaign-catalog'), places=$('campaign-google-place'), placeNote=$('campaign-place-note');
@@ -94,13 +149,13 @@ export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,
       byCode=new Map(json.sectors.map(row=>[row[0],row]));
       cohort.replaceChildren(new Option('Todas las edades','all'),...json.cohorts.map((range,i)=>new Option(ageLabel(range),String(i))));
       const index=json.cohorts.findIndex(range=>range.join('-')===initial.get('edad'));
-      cohort.value=index<0?'all':String(index);
+      applied.age=cohort.value=index<0?'all':String(index);
       cohort.disabled=false;data=json;
     } catch {failed=true;}
     finally {loading=false;refresh();}
   }
   function useSector(code,scroll=true) {
-    selectedCode=codeInput.value=code.trim();mode.value='sector';refresh();
+    selectedCode=codeInput.value=code.trim();applied.mode=mode.value='sector';refresh();
     if(scroll)showAnalysis('campana',true);
   }
   function writeExport() {
@@ -122,7 +177,8 @@ export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,
         plan?index+1:null,project?.lat,project?.lon,project?locationType(project):null,pilotSize||null,
         plan?.rows.length,plan?.pilot,plan?.total,plan?plan.pilotGroup/plan.pilot:null,
         plan?plan.group/plan.total:null,plan?metric:null,locality(row),queries,partner?.code,
-        partner?row.residents-partner.residents:null
+        partner?row.residents-partner.residents:null,appliedIncome?.label,
+        row.income?.eligible,row.income?Math.round(row.income.estimated):null,row.income?.share
       ];
     });
     download(plan?'atlas_litoral_plan_de_campana.csv':'atlas_litoral_sector.csv',[columns,...lines]);
@@ -135,7 +191,7 @@ export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,
       mapKey=key;
       updatePlanMap?.(plan?{project,radius:radiusKm,shortlist:plan.shortlist,references}:null);
     }
-    outcomes.setPlan(references.length?JSON.stringify([key,rank.value,limit.value,cohort.value,project.price,project.rooms,project.sector]):null);
+    outcomes.setPlan(references.length?JSON.stringify([key,applied.rank,applied.limit,applied.age,...(applied.rank==='income'?[appliedIncome?.label]:[]),project.price,project.rooms,project.sector]):null);
   }
 
   function unavailable(message) {
@@ -164,12 +220,31 @@ export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,
     if(age) $('campaign-google-age').textContent=adsAgeNote(data.cohorts[ageIndex]);
     showCatalog();
     updateGeographies(null,null,null);
-    exportPlan={age,order:'Sector elegido',rows:[{code,lat,lon,residents,count}]};
+    const detail={code,lat,lon,residents,count,income:sectorIncome(code,households,appliedIncome)};
+    showIncome([detail],true);
+    exportPlan={age,order:'Sector elegido',rows:[detail]};
+  }
+
+  function showIncome(rows,single) {
+    const card=$('campaign-income-result');
+    card.hidden=!appliedIncome;
+    if(!appliedIncome)return;
+    $('campaign-income-heading').textContent='Ingreso mensual del hogar · '+appliedIncome.label+' · '+(single?'sector consultado':'sectores seleccionados');
+    const available=rows.filter(row=>row.income);
+    const eligible=available.reduce((sum,row)=>sum+row.income.eligible,0);
+    const estimated=available.reduce((sum,row)=>sum+row.income.estimated,0);
+    $('campaign-income-estimate').textContent=eligible?'≈ '+number.format(Math.round(estimated))+' hogares':'Sin estimación';
+    $('campaign-income-base').textContent=eligible?percent.format(estimated/eligible)+' de '+number.format(eligible)+
+      ' hogares con edad conocida de su representante. Censo 2022 y ENIGHUR 2024–2025.':
+      !households?(householdError?'No se pudieron cargar los conteos de hogares.':'Cargando los conteos de hogares…'):
+      'Sin hogares con edad conocida del representante.';
+    if(eligible && applied.age!=='all')$('campaign-income-base').textContent+=' El filtro de edad describe residentes. El ingreso abarca los hogares con edad del representante conocida.';
   }
 
   function renderRows(rows, age) {
     const body=$('campaign-rows');
     body.replaceChildren();
+    $('campaign-income-column').hidden=!appliedIncome;
     $('campaign-age-column').hidden=!age;
     if(age) $('campaign-age-column').textContent=age;
     for(const row of rows) {
@@ -181,6 +256,8 @@ export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,
       tr.insertCell().textContent=km(row.distance);
       tr.insertCell().textContent=number.format(row.residents);
       if(age) tr.insertCell().textContent=number.format(row.count)+' ('+percent.format(row.count/row.residents)+')';
+      if(appliedIncome)tr.insertCell().textContent=row.income?'≈ '+number.format(Math.round(row.income.estimated))+
+        ' de '+number.format(row.income.eligible):'Sin estimación';
     }
   }
 
@@ -231,15 +308,15 @@ export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,
 
   function drawPlan(project,age,ageIndex,matches) {
     if(!project) return unavailable('Elige un proyecto o marca un punto en el mapa para comparar los sectores cercanos.');
-    if(!radius.validity.valid) return unavailable('Ingresa un radio entre 0,1 y 250 km.');
-    const radiusKm=radius.valueAsNumber;
-    const plan=rankSectors(data.sectors,project,radiusKm,rank.value,Number(limit.value),ageIndex);
+    const radiusKm=Number(applied.radius);
+    const plan=rankSectors(data.sectors,project,radiusKm,applied.rank,Number(applied.limit),ageIndex,households,appliedIncome);
     if(!plan.rows.length) return unavailable('No hay sectores censados dentro de este radio. Amplía el radio o elige otro proyecto.');
 
     const {rows,shortlist,total,pilot,group,pilotGroup}=plan;
-    const order=rank.selectedOptions[0].textContent;
+    if(!shortlist.length) return unavailable('Ningún sector de este radio tiene hogares estimados en el tramo. Ajusta el radio o el tramo de ingreso.');
+    const order=Array.from(rank.options).find(option=>option.value===applied.rank).textContent;
     const paired=plan.pairs.length;
-    $('campaign-result-title').textContent='Selección para '+project.name;
+    $('campaign-result-title').textContent='Sectores de prueba para '+project.name;
     $('campaign-summary').textContent=km(radiusKm)+' desde el '+locationType(project).toLowerCase()+' · '+order+'.';
     $('campaign-announcement').textContent=countLabel(shortlist.length,'sector seleccionado','sectores seleccionados')+' de '+number.format(rows.length)+'. '+countLabel(pilot,'residente en la selección','residentes en la selección')+'.';
     $('campaign-pilot-size').textContent=number.format(shortlist.length);
@@ -251,6 +328,7 @@ export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,
     $('campaign-age-benchmark').hidden=!age;
     if(age) $('campaign-age-benchmark').textContent=age+' · '+number.format(pilotGroup)+' residentes en la selección ('+percent.format(pilotGroup/pilot)+') y '+number.format(group)+' en todo el radio ('+percent.format(group/total)+').';
     $('campaign-google-age').hidden=true;
+    showIncome(shortlist,false);
     renderRows(shortlist,age);
 
     renderReferences(plan);
@@ -277,18 +355,16 @@ export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,
       placeholder.disabled=true;building.add(placeholder,0);
       building.disabled=!buildings.length;
     }
-    building.value=project?.id||'';
-    const single=mode.value==='sector';
+    if(pendingBuilding!==undefined && (!buildings.some(b=>b.id===pendingBuilding) || pendingBuilding===project?.id))pendingBuilding=undefined;
+    building.value=pendingBuilding??project?.id??'';
+    const single=applied.mode==='sector';
     const sectorPoint=single && byCode?.get(selectedCode);
     parishIncome.setPoint(single
       ? (sectorPoint ? {lat:sectorPoint[1],lon:sectorPoint[2],name:'Sector '+selectedCode} : null)
       : project, single);
-    $('campaign-specific').hidden=!single;
-    $('campaign-near').hidden=single;
-    const ageIndex=cohort.value==='all'?null:Number(cohort.value);
-    rank.querySelector('[value="cohort"]').disabled=ageIndex===null;
-    if(ageIndex===null && rank.value==='cohort') rank.value='population';
-    const key=[single,selectedCode,project,matches,sample,localities,rank.value,radius.value,limit.value,cohort.value,data,failed,hospitals,facilitiesReady];
+    syncForm();
+    const ageIndex=applied.age==='all'?null:Number(applied.age);
+    const key=[single,selectedCode,project,matches,sample,localities,applied.rank,applied.radius,applied.limit,applied.age,data,failed,hospitals,facilitiesReady,households,householdError,appliedIncome];
     if(lastView && key.every((v,i)=>v===lastView[i])) return;
     lastView=key;
     $('campaign-retry').hidden=!failed;
@@ -307,10 +383,17 @@ export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,
     $('campaign-results').hidden=!exportPlan;
     $('campaign-export').disabled=!exportPlan;
   }
-  building.onchange=()=>selectBuilding(building.value);
-  radius.oninput=mode.onchange=cohort.onchange=rank.onchange=limit.onchange=refresh;
-  $('campaign-back').onclick=()=>{mode.value='near';refresh(); mode.focus();};
-  $('campaign-code-form').onsubmit=e=>{e.preventDefault();useSector(codeInput.value,false);};
+  building.onchange=()=>{
+    const {project,buildings,selectionStarted}=state();
+    const current=project??(selectionStarted?null:buildings[0]);
+    pendingBuilding=building.value===current?.id?undefined:building.value;
+    syncForm();
+  };
+  radius.oninput=mode.onchange=cohort.onchange=rank.onchange=limit.onchange=codeInput.oninput=syncForm;
+  $('campaign-back').onclick=()=>{applied.mode=mode.value='near';refresh();mode.focus();};
+  $('campaign-params').onsubmit=submitSettings;
+  $('campaign-income-link').onclick=()=>{ $('ingresos-parroquiales').open=true; };
+  $('campaign-income-load-retry').onclick=loadHouseholds;
   $('campaign-pick').onclick=pickOnMap;
   $('campaign-preview').onclick=()=>{
     if(!adRadius.reportValidity()) return;
@@ -320,6 +403,6 @@ export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,
   $('campaign-retry').onclick=()=>{failed=false;lastView=null;refresh();};
   $('campaign-export').onclick=writeExport;
   $('campaign-all-origins').onclick=()=>showOrigins(exportPlan.project);
-  refresh();
-  return {refresh,useSector,compareParish:parishIncome.compareParish,setScoreScenario:parishIncome.setScoreScenario,showParishIncomeBand:parishIncome.showBand,useProject(){mode.value='near';refresh();},setHospitals(items){facilitiesReady=true;hospitals=items;refresh();}};
+  loadHouseholds();refresh();
+  return {refresh,useSector,compareParish:parishIncome.compareParish,setScoreScenario:parishIncome.setScoreScenario,showParishIncomeBand:parishIncome.showBand,useProject(){pendingBuilding=undefined;applied.mode=mode.value='near';refresh();},setHospitals(items){facilitiesReady=true;hospitals=items;refresh();}};
 }

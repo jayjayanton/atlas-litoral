@@ -6,6 +6,7 @@
 """
 
 import argparse
+import csv
 import json
 import mimetypes
 import re
@@ -235,8 +236,41 @@ def check_campaign_parishes(page, base):
     panel = page.locator("#ingresos-parroquiales")
     if not panel.evaluate("element => element.open"):
         panel.locator("summary").first.click()
-    page.locator("#parish-income-band").select_option("2")
     buttons = page.locator("#parish-income-list button")
+    apply = page.locator("#parish-apply")
+    pending = page.locator("#parish-pending")
+    band = page.locator("#parish-income-band")
+    settings = page.locator("#campaign-settings-panel")
+    if not settings.evaluate("el => el.open"):
+        settings.locator("summary").first.click()
+    pilot = page.locator("#campaign-pilot-size")
+    homes = page.locator("#campaign-income-estimate")
+    expect(pilot).to_have_text("3")
+    page.locator("#campaign-limit").select_option("5")
+    expect(page.locator("#campaign-pending")).to_be_visible()
+    expect(pilot).to_have_text("3")
+    page.locator("#campaign-radius").press("Enter")
+    expect(pilot).to_have_text("5")
+    expect(page.locator("#campaign-pilot-pop")).to_have_text("6.943")
+
+    band.select_option("1")
+    apply.click()
+    expect(buttons.first).to_contain_text("34,3")
+    expect(homes).to_contain_text("699")
+    expect(page.locator("#campaign-income-heading")).to_contain_text("$500")
+    band.select_option("2")
+    expect(pending).to_be_visible()
+    expect(buttons.first).to_contain_text("34,3")
+    expect(homes).to_contain_text("699")
+    # Opening or closing the comparison must not silently apply an unfinished form.
+    panel.locator("summary").first.click()
+    panel.locator("summary").first.click()
+    expect(buttons.first).to_contain_text("34,3")
+    expect(homes).to_contain_text("699")
+    page.locator("#parish-income-min").press("Enter")
+    expect(homes).to_contain_text("265")
+    expect(page.locator("#parish-applied-filters")).to_contain_text("$1.500")
+    expect(page.locator("#campaign-income-heading")).to_contain_text("$1.500")
     expect(buttons).to_have_count(5)
     expect(page.locator("#parish-income-group")).to_have_value("urban")
     expect(buttons.locator("strong")).to_have_text([
@@ -252,24 +286,64 @@ def check_campaign_parishes(page, base):
 
     minimum = page.locator("#parish-income-min")
     minimum.fill("13.3")
+    apply.click()
     expect(buttons.first).to_contain_text("Febres Cordero")
     minimum.fill("100")
+    apply.click()
     expect(page.locator("#parish-income-results")).to_be_hidden()
     expect(page.locator("#parish-income-status")).to_contain_text("Ninguna")
     minimum.fill("")
     page.locator("#parish-income-group").select_option("census")
+    apply.click()
     expect(buttons.first).to_contain_text("Guayaquil")
     expect(buttons.first).to_contain_text("Cabecera cantonal")
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
 
+    # A new household-income band updates both geographies. Population totals
+    # still describe those same five sectors when the ranking is by population.
+    band.select_option("4")
+    expect(homes).to_contain_text("265")
+    apply.click()
+    expect(homes).to_contain_text("137")
+    expect(page.locator("#campaign-pilot-pop")).to_have_text("6.943")
+    sector_rows = page.locator("#campaign-rows tr")
+    original = sector_rows.locator("button").all_inner_texts()
+    page.locator("#campaign-rank").select_option("income")
+    expect(sector_rows.locator("button")).to_have_text(original)
+    page.locator("#campaign-apply").click()
+    expect(sector_rows.nth(3)).to_contain_text("090150183006")
+    assert sector_rows.locator("button").all_inner_texts() != original
+    # The exported plan must match the last calculated band while a different
+    # income is pending on screen.
+    band.select_option("0")
+    with page.expect_download() as exported:
+        page.locator("#campaign-export").click()
+    with exported.value.path().open(encoding="utf-8-sig", newline="") as data:
+        first = next(csv.DictReader(data))
+    assert first["codigo_sector"] == "090150235005"
+    assert "2.000" in first["ingreso_mensual_del_hogar_usd"]
+    assert first["hogares_estimados_en_tramo"] == "53"
+
     # A sector card carries the exact area and chosen income bracket into the plan.
     page.goto(base + "?area=090150224002#ficha", wait_until="domcontentloaded")
+    page.locator("#sector-profile-band").select_option("2")
+    # This reproduces scrolling from the sector profile to the comparison,
+    # without using the shortcut that applies a sector and a band immediately.
+    panel.locator("summary").first.click()
+    expect(band).to_have_value("2")
+    expect(pending).to_be_visible()
+    apply.click()
+    expect(page.locator("#parish-applied-filters")).to_contain_text("$1.500")
     page.locator("#sector-profile-band").select_option("4")
+    expect(band).to_have_value("4")
+    expect(page.locator("#parish-applied-filters")).to_contain_text("$1.500")
     page.locator("#sector-parish-income").click()
     expect(page.locator("#parish-income-band")).to_have_value("4")
     expect(page.locator("#parish-income-origin")).to_contain_text("090150224002")
     expect(buttons.first).to_contain_text("Tarqui")
     expect(buttons.first).to_contain_text("6,9")
+    expect(page.locator("#campaign-income-heading")).to_contain_text("$2.000")
+    expect(homes).to_contain_text("8")  # 7.0% of 116 households in the selected sector.
 
     # A shared single-sector campaign centers the comparison on the sector itself.
     page.goto(base + "?sectorCampana=240154001002#ingresos-parroquiales", wait_until="domcontentloaded")
@@ -295,10 +369,16 @@ def check_campaign_scores(page, base):
     names = buttons.locator("strong")
     status = page.locator("#parish-income-status")
 
+    apply = page.locator("#parish-apply")
+    pending = page.locator("#parish-pending")
+
     # Mean scores were checked directly against the original 500 m grid cells.
     group.select_option("urban")
+    band.select_option("2")
     mode.select_option("similar")
+    expect(band).to_have_value("2")
     band.select_option("")
+    apply.click()
     expect(reference).to_contain_text(re.compile("Tarqui", re.IGNORECASE))
     expect(reference).to_contain_text("42,16")
     expect(names).to_have_text([
@@ -315,17 +395,24 @@ def check_campaign_scores(page, base):
     band.select_option("4")
     share = page.locator("#parish-income-min")
     share.fill("")
+    apply.click()
     expect(names).to_have_text(["1. Urdaneta", "2. Sucre", "3. García Moreno", "4. Letamendi"])
     share.fill("7")
+    expect(names).to_have_count(4)
+    apply.click()
     expect(names).to_have_text(["1. Urdaneta", "2. García Moreno"])
     minimum.fill("101")
+    apply.click()
     expect(minimum).to_have_attribute("aria-invalid", "true")
-    expect(results).to_be_hidden()
+    expect(results).to_be_visible()
+    expect(names).to_have_text(["1. Urdaneta", "2. García Moreno"])
     minimum.fill("100")
+    apply.click()
     expect(minimum).to_have_attribute("aria-invalid", "false")
     expect(results).to_be_hidden()
     expect(status).to_contain_text(re.compile("ningun|ningún", re.IGNORECASE))
     minimum.fill("80")
+    apply.click()
     expect(buttons).to_have_count(2)
 
     # Custom dollar bands and the integral score scale have separate limits.
@@ -335,9 +422,12 @@ def check_campaign_scores(page, base):
     lower.fill("1800")
     upper.fill("2200")
     share.fill("")
+    apply.click()
     expect(buttons).to_have_count(4)
     upper.fill("1700")
-    expect(results).to_be_hidden()
+    apply.click()
+    expect(results).to_be_visible()
+    expect(buttons).to_have_count(4)
     upper.fill("2200")
     expect(results).to_be_visible()
 
@@ -345,18 +435,29 @@ def check_campaign_scores(page, base):
     mode.select_option("similar")
     band.select_option("")
     page.locator("#parish-suit-preset").select_option("tourism")
+    expect(page.locator("#suit-preset")).to_have_value("balanced")
+    expect(buttons).to_have_count(4)
+    apply.click()
     expect(page.locator("#suit-preset")).to_have_value("tourism")
     page.locator('#tool-menu a[href="#aptitud"]').click()
+    expect(reference).to_be_visible()
+    before_radius = reference.inner_text()
     page.locator("#suit-radius").select_option("10")
     expect(page.locator("#parish-suit-radius")).to_have_value("10")
+    expect(reference).to_have_text(before_radius, use_inner_text=True)
+    expect(pending).to_be_visible()
+    apply.click()
     expect(reference).to_contain_text("77,61")
     expect(names.first).to_contain_text("Febres Cordero")
     page.locator("#suit-radius").select_option("2")
+    apply.click()
     expect(reference).to_contain_text("20,26")
     page.locator("#suit-preset").select_option("balanced")
     page.locator("#suit-radius").select_option("5")
+    apply.click()
     expect(reference).to_contain_text("42,16")
     group.select_option("census")
+    apply.click()
     expect(reference).to_contain_text(re.compile("Guayaquil", re.IGNORECASE))
     assert all("Tarqui" not in name for name in names.all_text_contents())
 
@@ -365,20 +466,25 @@ def check_campaign_scores(page, base):
     page.locator("#plan-selected-project").click()
     group.select_option("urban")
     mode.select_option("similar")
+    apply.click()
     expect(reference).to_contain_text(re.compile("Roca", re.IGNORECASE))
     expect(results).to_be_hidden()
     page.locator("#parish-score-source").select_option("gye-TARQUI")
+    apply.click()
     expect(reference).to_contain_text("42,16")
     expect(buttons).to_have_count(5)
     page.locator("#selection-clear").click()
     page.locator("#parish-score-source").select_option("")
+    apply.click()
     expect(results).to_be_hidden()
     page.locator("#parish-score-source").select_option("gye-TARQUI")
+    apply.click()
     expect(reference).to_contain_text("42,16")
     expect(buttons).to_have_count(5)
     mode.select_option("minimum")
     minimum.fill("80")
     band.select_option("")
+    apply.click()
     expect(buttons).to_have_count(4)
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
 
@@ -388,6 +494,7 @@ def check_campaign_scores(page, base):
     page.locator("#parish-suit-adjust > summary").click()
     preset.select_option("tourism")
     radius.select_option("2")
+    apply.click()
     stored_scenario = "JSON.parse(localStorage.getItem('atlasLitoral.suitability.v2'))"
     before_link = page.evaluate(stored_scenario)
     assert before_link["radius"] == 2
@@ -405,16 +512,21 @@ def check_campaign_scores(page, base):
     expect(names).to_have_text(["1. Urdaneta", "2. Sucre", "3. García Moreno", "4. Letamendi"])
     expect(buttons.first).to_contain_text("253 de 6.030")
     share.fill("4.19")
+    expect(names).to_have_count(4)
+    apply.click()
     expect(names).to_have_text(["1. Urdaneta", "2. García Moreno"])
     assert page.evaluate(stored_scenario) == before_link
     page.locator("#parish-suit-adjust > summary").click()
     radius.select_option("10")
+    assert page.evaluate(stored_scenario) == before_link
+    apply.click()
     page.wait_for_function(stored_scenario + ".radius === 10")
     assert page.evaluate(stored_scenario)["weights"] != before_link["weights"]
     page.locator("#parish-suit-w-0").fill("75")
     expect(preset).to_have_value("custom")
     minimum.fill("0")
     share.fill("3.75")
+    apply.click()
     expect(buttons).to_have_count(5)
     expected_names = names.all_inner_texts()
     page.locator("#parish-share-query").click()

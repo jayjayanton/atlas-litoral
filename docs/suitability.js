@@ -22,6 +22,12 @@ const densityDisplay = (n,area) => Number.isFinite(n) ? show(n / area) : 'Sin da
 const escape = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const inRange = value => Number.isFinite(value) && value >= 0 && value <= 100;
 const validArray = (values, length) => Array.isArray(values) && values.length === length && values.every(inRange);
+const validRoadLimit = km => Number.isFinite(km) && km >= .1 && km <= 200;
+
+function sameSettings(a, b) {
+  return a && b && a.radius === b.radius && a.scope === b.scope && Object.is(a.limit,b.limit)
+    && a.weights.every((value,i) => Object.is(value,b.weights[i]));
+}
 
 function readStore(key) {
   try { return JSON.parse(localStorage.getItem(key)) || {}; }
@@ -88,7 +94,7 @@ export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRe
   let radius, scope, roadLimit, ri, hcol, shares, valid, area;
   const countsAtPin = new Map();
 
-  const weightControls = ['suit','site','parish-suit'].map(prefix => {
+  function makeWeightControls(prefix) {
     $(prefix+'-weights').innerHTML = labels.map((label,i) => {
       const key = criterionKeys[i], base = prefix+'-';
       const siteAttribute = prefix==='site' ? ' data-site-criterion="'+key+'"' : '';
@@ -102,7 +108,11 @@ export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRe
       toggle:$(prefix+'-toggle-'+i), slider:$(prefix+'-slide-'+i),
       field:$(prefix+'-w-'+i), share:$(prefix+'-share-'+i)
     }));
-  });
+  }
+  const weightControls = ['suit','site'].map(makeWeightControls);
+  const comparisonControls = makeWeightControls('parish-suit');
+  const comparisonLastPositive = [...lastPositive];
+  let currentScenario, comparisonEdited = false;
 
   function synchronizeArea(province) {
     if (areaProvince === province) return;
@@ -115,16 +125,78 @@ export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRe
     if (fs.some(f => f.properties.code === previous)) zone.value = previous;
   }
 
+  function setWeightInput({field,slider,toggle}, value, source) {
+    if (source !== field) field.value = Number.isFinite(value) ? value : '';
+    if (inRange(value)) slider.value = value;
+    toggle.checked = inRange(value) && value > 0;
+  }
+
   function changeWeight(i, value, source) {
     weights[i] = value;
     if (inRange(value) && value > 0) lastPositive[i] = value;
-    for (const controls of weightControls) {
-      const {field,slider,toggle} = controls[i];
-      if (source !== field) field.value = Number.isFinite(value) ? value : '';
-      if (inRange(value)) slider.value = value;
-      toggle.checked = Number.isFinite(value) && value > 0;
-    }
+    for (const controls of weightControls) setWeightInput(controls[i],value,source);
   }
+
+  function scenarioFor(values, radius, scope, limit) {
+    let message = '';
+    if (!values.every(inRange)) message = 'Ingresa un peso entre 0 y 100 para cada criterio.';
+    else if (!values.some(w => w > 0)) message = 'Activa al menos un criterio o aumenta uno de los pesos para calcular la aptitud.';
+    else if (values[2] && !validRoadLimit(limit)) message = 'Ajusta el límite vial entre 0,1 y 200 km.';
+    const valid = scale.radiiKm.includes(radius) && ['all','public','private'].includes(scope) && !message;
+    const preset = Object.keys(presets).find(key => presets[key].every((v,i) => values[i] === v)) || 'custom';
+    return {weights:[...values],radius,scope,limit,preset,valid,message};
+  }
+
+  function showShares(controls, scenario, portions) {
+    controls.forEach(({share,field,slider},i) => {
+      const weight = scenario.weights[i];
+      share.textContent = portions ? show(100 * portions[i])+' %' : '—';
+      slider.setAttribute('aria-valuetext',portions ? show(weight)+' de 100 · '+share.textContent+' del puntaje' : scenario.message);
+      field.setAttribute('aria-invalid', String(!inRange(weight)));
+    });
+  }
+
+  function readDraft() {
+    return scenarioFor(comparisonControls.map(({field}) => field.valueAsNumber),
+      Number(comparisonRadius.value),comparisonScope.value,comparisonLimit.valueAsNumber);
+  }
+
+  function previewDraft() {
+    const draft = readDraft();
+    comparisonEdited = !sameSettings(draft,currentScenario);
+    comparisonPreset.value = draft.preset;
+    showShares(comparisonControls,draft,weightShares(draft.weights));
+    comparisonLimit.setAttribute('aria-invalid',String(!!draft.weights[2] && !validRoadLimit(draft.limit)));
+  }
+
+  function syncDraft() {
+    weights.forEach((weight,i) => {
+      setWeightInput(comparisonControls[i],weight);
+      comparisonLastPositive[i] = lastPositive[i];
+    });
+    comparisonScope.value = scopeSelect.value;
+    comparisonRadius.value = radiusSelect.value;
+    comparisonLimit.value = limitInput.value;
+    previewDraft();
+  }
+
+  function applyDraft() {
+    const draft = readDraft();
+    if (!draft.valid) return draft;
+    comparisonEdited = false;
+    if (!sameSettings(draft,currentScenario)) {
+      draft.weights.forEach((weight,i) => {
+        changeWeight(i,weight);
+        lastPositive[i] = comparisonLastPositive[i];
+      });
+      radiusSelect.value = comparisonRadius.value;
+      scopeSelect.value = comparisonScope.value;
+      limitInput.value = comparisonLimit.value;
+      update();
+    }
+    return draft;
+  }
+  const comparisonEditor = {readDraft,applyDraft};
 
   function readControls(savePreferences) {
     radius = Number(radiusSelect.value);
@@ -134,25 +206,14 @@ export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRe
     hcol = col[scope];
     area = Math.PI * radius * radius;
     shares = weightShares(weights);
-    const validRoad = Number.isFinite(roadLimit) && roadLimit >= .1 && roadLimit <= 200;
-    let message = '';
-    if (!weights.every(inRange)) message = 'Ingresa un peso entre 0 y 100 para cada criterio.';
-    else if (!shares) message = 'Activa al menos un criterio o aumenta uno de los pesos para calcular la aptitud.';
-    else if (weights[2] && !validRoad) message = 'Ajusta el límite vial entre 0,1 y 200 km.';
-    valid = ri >= 0 && hcol !== undefined && !message;
-    for (const controls of weightControls) controls.forEach(({share,field,slider},i) => {
-      share.textContent = shares ? show(100 * shares[i])+' %' : '—';
-      slider.setAttribute('aria-valuetext',shares ? show(weights[i])+' de 100 · '+share.textContent+' del puntaje' : message);
-      field.setAttribute('aria-invalid', String(!inRange(weights[i])));
-    });
-    preset.value = Object.keys(presets).find(key => presets[key].every((v,i) => weights[i] === v)) || 'custom';
-    comparisonPreset.value = preset.value;
-    comparisonScope.value = scopeSelect.value;
-    comparisonRadius.value = radiusSelect.value;
-    if (comparisonLimit.value !== limitInput.value) comparisonLimit.value = limitInput.value;
-    onScenarioChange?.({weights:[...weights],radius,scope,limit:roadLimit,valid,message,preset:preset.value});
-    $('suit-message').textContent = $('site-weight-message').textContent = message;
-    if (savePreferences && weights.every(inRange) && validRoad) {
+    currentScenario = scenarioFor(weights,radius,scope,roadLimit);
+    valid = currentScenario.valid;
+    for (const controls of weightControls) showShares(controls,currentScenario,shares);
+    preset.value = currentScenario.preset;
+    if (!comparisonEdited || sameSettings(readDraft(),currentScenario)) syncDraft();
+    onScenarioChange?.(currentScenario,comparisonEditor);
+    $('suit-message').textContent = $('site-weight-message').textContent = currentScenario.message;
+    if (savePreferences && weights.every(inRange) && validRoadLimit(roadLimit)) {
       try { localStorage.setItem(storageKey, JSON.stringify({weights, lastPositive, scope, radius, limit:roadLimit})); }
       catch {}
     }
@@ -338,18 +399,26 @@ export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRe
     values.forEach((value,i) => changeWeight(i,value));
     update();
   };
+  function changeDraftWeight(i,value,source) {
+    if (inRange(value) && value > 0) comparisonLastPositive[i] = value;
+    setWeightInput(comparisonControls[i],value,source);
+  }
+  comparisonControls.forEach(({field,slider,toggle},i) => {
+    slider.oninput = () => { changeDraftWeight(i,Math.round(Number(slider.value))); previewDraft(); };
+    field.oninput = () => { changeDraftWeight(i,field.valueAsNumber,field); previewDraft(); };
+    toggle.onchange = () => { changeDraftWeight(i,toggle.checked ? comparisonLastPositive[i] : 0); previewDraft(); };
+  });
   comparisonPreset.onchange = () => {
-    if (comparisonPreset.value === 'custom') {
+    const values = presets[comparisonPreset.value];
+    if (values) {
+      values.forEach((value,i) => changeDraftWeight(i,value));
+      previewDraft();
+    } else {
       $('parish-suit-adjust').open = true;
       $('parish-suit-slide-0').focus();
-    } else {
-      preset.value = comparisonPreset.value;
-      preset.onchange();
     }
   };
-  comparisonRadius.onchange = () => { radiusSelect.value = comparisonRadius.value; update(); };
-  comparisonScope.onchange = () => { scopeSelect.value = comparisonScope.value; update(); };
-  comparisonLimit.oninput = () => { limitInput.value = comparisonLimit.value; update(); };
+  comparisonRadius.onchange = comparisonScope.onchange = comparisonLimit.oninput = previewDraft;
   scopeSelect.onchange = radiusSelect.onchange = update;
   zone.onchange = () => update(false);
   limitInput.oninput = update;

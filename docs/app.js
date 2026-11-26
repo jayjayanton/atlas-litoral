@@ -741,7 +741,7 @@ async function main(){
  if(!shared && initialTheme==='ages')demographics?.startLink();
  infrastructure=await import('./infrastructure.js').then(({initInfrastructure})=>initInfrastructure({
    map, land:context.features.filter(f=>f.properties.kind==='land'), state:()=>({theme:$('layer').value,province:$('province').value,code:selected,features,project,projectInCoverage:!!dest,site:project,siteCanton:dest}),
-   onScenarioChange:scenario=>campaign?.setScoreScenario(scenario),
+   onScenarioChange:(scenario,controls)=>campaign?.setScoreScenario(scenario,controls),
    changeTheme:theme=>{$('layer').value=theme;colorize();},isPicking:()=>picking,fitRegion,selectCanton:code=>setSelection(code),download
  })).catch(error=>{campaign?.setScoreScenario(null);console.warn('Capas de infraestructura:',error);$('hot-region').textContent=$('infra-status').textContent='No se pudo iniciar el análisis. Recarga para reintentar.';return null;});
  campaign?.setHospitals(infrastructure?.hospitals);
