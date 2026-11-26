@@ -154,8 +154,10 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
     }
     if(!grid||!validCriteria||!surface.covers(ll))return;
     let best=null,min=Infinity;
+    const {province,features}=state();
+    const allowed=new Set(features.filter(f=>!province||f.properties.province===province).map(f=>f.properties.code));
     for(const row of grid.cells){
-      if(state().province&&state().features.find(f=>f.properties.code===row[positions.code])?.properties.province!==state().province)continue;
+      if(!allowed.has(row[positions.code]))continue;
       const lon=row[positions.lon],lat=row[positions.lat];if(Math.abs(lon-ll.lng)>.03||Math.abs(lat-ll.lat)>.03)continue;
       const d=distanceKm(ll.lat,ll.lng,[lon,lat]);if(d<min){min=d;best=row;}
     }
@@ -189,7 +191,7 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
     if(!appThemes(theme))return false;
     if(theme==='fees'||theme==='regional-fees'){fees?.legend(theme);return true;}
     if(theme==='suitability'){suitability?.legend();return true;}
-    if(theme==='access'){surfaceLegend('Aptitud de proximidad · 0–100');return true;}
+    if(theme==='access'){surfaceLegend('Aptitud de proximidad · 0–100',grid.spacingKm);return true;}
     const items=Object.entries(clusterColors).map(([k,c])=>[c,clusterText[k]]);
     $('legend-title').textContent='Focos cantonales · '+(theme==='hot-school'?'escuelas':'hospitales');
     $('legend').innerHTML=items.map(([c,s])=>'<span class="key"><i class="sw" style="background:'+c+'"></i>'+s+'</span>').join('');

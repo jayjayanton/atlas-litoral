@@ -118,7 +118,7 @@ export function initSuitability({map,state,changeTheme,selectCanton,grid,density
     if(near)showPoint(near);
   }
   function legend(){
-    surfaceLegend('Aptitud ponderada · 0–100');
+    surfaceLegend('Aptitud ponderada · 0–100',grid.spacingKm);
   }
   function update(){
     if(pendingFrame){cancelAnimationFrame(pendingFrame);pendingFrame=0;}

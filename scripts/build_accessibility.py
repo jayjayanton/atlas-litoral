@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Build a 3 km coastal accessibility grid and canton-level permutation Gi* measures.
+"""Build a 500 m coastal accessibility grid and canton-level permutation Gi* measures.
 
 Requires GDAL, pyproj, scipy and numpy. Source coordinates are WGS84 lon/lat.
 Run python scripts/build_accessibility.py --help to supply an alternative source checkout and datasets.
@@ -19,7 +19,7 @@ from scipy.spatial import cKDTree
 
 FORWARD = Transformer.from_crs(4326, 32717, always_xy=True)
 REVERSE = Transformer.from_crs(32717, 4326, always_xy=True)
-STEP = 3000
+STEP = 500
 PERMUTATIONS = 19999
 SEED = 20261125
 K_NEIGHBORS = 4
@@ -114,15 +114,17 @@ def nearest_roads(grid,collection):
     length_sq=(delta*delta).sum(axis=1)
     max_half=math.sqrt(float(length_sq.max()))/2
     tree=cKDTree((a+b)/2)
-    nearest_mid,_=tree.query(grid)
-    candidates=tree.query_ball_point(grid,nearest_mid+max_half+0.000001)
     result=[]
-    for p,ids in zip(grid,candidates):
-        ii=np.asarray(ids)
-        ap=p-a[ii]
-        projection=np.clip((ap*delta[ii]).sum(axis=1)/length_sq[ii],0,1)
-        nearest=ap-projection[:,None]*delta[ii]
-        result.append(round(math.sqrt(float((nearest*nearest).sum(axis=1).min()))/1000,3))
+    for start in range(0,len(grid),2048):
+        batch=grid[start:start+2048]
+        nearest_mid,_=tree.query(batch)
+        candidates=tree.query_ball_point(batch,nearest_mid+max_half+0.000001)
+        for p,ids in zip(batch,candidates):
+            ii=np.asarray(ids)
+            ap=p-a[ii]
+            projection=np.clip((ap*delta[ii]).sum(axis=1)/length_sq[ii],0,1)
+            nearest=ap-projection[:,None]*delta[ii]
+            result.append(round(math.sqrt(float((nearest*nearest).sum(axis=1).min()))/1000,3))
     return result
 
 def grid_locations(cantons,land):
@@ -262,7 +264,7 @@ def main():
     audit['facilityCount']={'school':len(schools),'hospital':len(hospitals),'publicHospital':len(publics),'privateHospital':len(privates)}
     audit['schoolClusterCounts']=dict(Counter(v['school']['cluster'] for v in cant_data.values()))
     audit['hospitalClusterCounts']=dict(Counter(v['hospital']['cluster'] for v in cant_data.values()))
-    audit['distances']='EPSG:32717. Centros interiores cada 3 km con máscara terrestre Natural Earth. Distancia recta mínima a un punto o a segmentos viales disponibles; no mide tiempos ni acceso legal.'
+    audit['distances']='EPSG:32717. Centros interiores cada 500 m con máscara terrestre Natural Earth. Distancia recta mínima a un punto o a segmentos viales disponibles; no mide tiempos ni acceso legal.'
     dump(args.out/'analysis-meta.json',audit)
     print(json.dumps(audit,indent=2,ensure_ascii=False))
 if __name__=='__main__':

@@ -1,3 +1,4 @@
+import {initParishes} from './parishes.js';
 import {parseCoordinates, validBuilding, sameBuilding, buildingList, buildingURL, buildingFromURL} from './buildings.js';
 import {initInfrastructure} from './infrastructure.js';
 import {initialFinance,distanceKm,featureAt,maxPrice,median,normalize,parseSample,demandFields,loanFields,recentMatches} from './model.js';
@@ -11,7 +12,7 @@ function load(key,init){try{return JSON.parse(localStorage.getItem(store+key))??
 function save(key,value){try{localStorage.setItem(store+key,JSON.stringify(value));return true;}catch{say('No se pudo guardar en este navegador.');return false;}}
 let project,catalog,buildings,buildingState,otherMarkers;
 let finance=load('finance',initialFinance),requests=load('demand',[]),userLoans=load('loans',[]);
-let infrastructure;
+let infrastructure,parishes;
 let features,inc,observed,bank,polys,selected='0901',map,marker,labels,streets,selectedPopup,picking=false,pending=null,matches={},dest=null;
 const layers={},colors=['#d6e8dc','#9fcab7','#5fa592','#2b7c73','#155b56'],empty='#e3e7e3';
 const financingURL='https://www.superbancos.gob.ec/estadisticas/portalestudios/volumen-de-credito/';
@@ -95,6 +96,7 @@ function table(){
 }
 const numOrDash=n=>n==null?'—':num(n);
 function render(){
+ parishes?.refresh();
  const f=byCode(selected),p=f.properties,s=scope(f),v=inc[s],ln=observedLoans(f),custom=userLoans.filter(r=>r.canton_destino===p.code);
  $('detail-prov').textContent=p.province+' · DPA '+p.code;$('pop').textContent=num(p.population);$('income').textContent=money(v.median);$('income-scale').textContent=(p.code==='0901'?'Dominio urbano':'Referencia provincial')+' · '+s;
  $('loan').textContent=money(ln?.median_usd??(custom.length?median(custom.map(x=>x.monto_usd)):null));$('loan-note').textContent=ln?.median_usd!=null?'Banca privada · '+ln.operations+' operaciones':custom.length?'Muestra importada · '+num(custom.length)+' operaciones':ln?'Datos agrupados · ver promedio':'Sin mediana publicada';
@@ -103,6 +105,8 @@ function render(){
  $('evidence').innerHTML=evidenceHTML(f);colorize();table();refreshMarker();
 }
 function sourceHTML(){const urls=[
+ ['https://sgrportal.gestionderiesgos.gob.ec/server/rest/services/Hosted/OT_PARROQUIAL_17072026/FeatureServer/0','CONALI · Organización Territorial del Estado','Límites territoriales de la Organización Territorial del Estado interparroquiales, aprobados por el Directorio del CONALI en sesión ordinaria del 24 de marzo de 2022, 17 de enero de 2023 y 13 de marzo de 2026. Capa del 17 de julio de 2026, simplificada para el mapa. Incluye parroquias rurales y cabeceras cantonales.'],
+ ['https://www.arcgis.com/home/item.html?id=91c3a260949a48fa8ede07dfde9ed69c','Municipio de Guayaquil · Límites parroquiales urbanos','Servicio municipal consultado en línea para mostrar las subdivisiones urbanas de Guayaquil. El mapa y la selección de parroquias sirven para orientarse. Los focos y la ficha de indicadores corresponden al cantón.'],
  [incomeURL,'INEC · ENIGHUR 2024–2025','Mediana ponderada del ingreso corriente monetario mensual del hogar (ing_mon_cor, peso Fexp). Guayas, Santa Elena y dominio urbano de Guayaquil.'],
  [guideURL,'Diseño y alcance de la ENIGHUR','El ingreso mostrado para los demás cantones se refiere a su provincia. El escenario financiero aplica cuota fija con amortización mensual y entrada disponible.'],
  [financingURL,'Superintendencia de Bancos · Volumen de crédito','Corte enero–septiembre de 2026. Banca privada, operaciones originales de crédito inmobiliario, VIS y VIP. La mediana se informa solo cuando se puede reconstruir de los grupos. Los cantones sin fila se muestran sin dato.'],
@@ -246,6 +250,10 @@ async function main(){
  $('canton').onchange=e=>setSelection(e.target.value,true);$('all-map').onclick=()=>{fitRegion();};$('focus-project').onclick=projectFocus;$('p-link').onclick=projectFocus;
  $('rows').onclick=e=>{const b=e.target.closest('button[data-code]');if(b){setSelection(b.dataset.code,true);$('explorar').scrollIntoView({block:'start'});}};
  $('search').oninput=table;$('sort').onchange=table;$('edit').onclick=()=>settings();$('close').onclick=close;$('cancel-pick').onclick=cancelPick;$('finance-open').onclick=scenario;$('import-open').onclick=()=>imports();$('csv-out').onclick=exportData;
+ const cantonLink=new URL(location.href).searchParams.get('canton');
+ if(!shared && cantonLink && byCode(cantonLink))setSelection(cantonLink,true);
+ initParishes(map,()=>byCode(selected).properties,setSelection).then(result=>{parishes=result;parishes.refresh();})
+   .catch(()=>{$('parish-note').textContent='No se pudieron cargar los límites parroquiales.';});
  infrastructure=await initInfrastructure({
    map, land:context.features.filter(f=>f.properties.kind==='land'), state:()=>({theme:$('layer').value,province:$('province').value,code:selected,features,project,projectInCoverage:!!dest}),
    changeTheme:theme=>{$('layer').value=theme;colorize();},isPicking:()=>picking,fitRegion,selectCanton:code=>setSelection(code),download

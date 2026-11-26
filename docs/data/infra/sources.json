@@ -73,7 +73,7 @@
     }
   ],
   "method": [
-    "La malla tiene 2.060 centros terrestres espaciados cada 3 km en UTM 17S. El mapa interpola los puntajes cercanos mediante ponderación por distancia inversa, con un radio de 4,5 km. El color se limita a tierra dentro del área seleccionada y a la vecindad de las muestras. La cifra del proyecto se calcula en las coordenadas de su pin. Para las vías se mide al punto más cercano de un tramo.",
+    "La malla tiene 74.108 centros terrestres espaciados cada 500 m en UTM 17S. El mapa interpola los puntajes cercanos mediante ponderación por distancia inversa, con un radio de 750 m. El color se limita a tierra dentro del área seleccionada y a la vecindad de las muestras. La cifra del proyecto se calcula en las coordenadas de su pin. Para las vías se mide al punto más cercano de un tramo.",
     "Cada criterio aporta su peso completo a distancia cero. Su aporte disminuye linealmente hasta cero en el límite elegido. La suma se divide por los pesos activos y se escala de 0 a 100. El escenario inicial asigna 40 % a escuelas (3 km), 40 % a hospitales (10 km) y 20 % a vías (3 km).",
     "Los focos cantonales usan Gi* de Getis-Ord sobre tasas por 10.000 habitantes del Censo 2022. Se comparan el propio cantón y sus cuatro vecinos más cercanos dentro de las dos provincias. Se aplican 19.999 permutaciones y una corrección Benjamini–Yekutieli por indicador. Un foco cumple q ≤ 0,05. Los resultados dependen de la escala y de los vecinos disponibles en los bordes.",
     "La proximidad puede cruzar agua o cerramientos. Para valorar tiempos de viaje, cupos escolares, capacidad hospitalaria o demanda de compradores se requieren datos específicos de cada tema."

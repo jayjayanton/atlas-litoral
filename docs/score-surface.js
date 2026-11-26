@@ -7,11 +7,11 @@ const colors = Array.from({length: 256}, (_, i) => {
   return stops[k].map((v, j) => Math.round(v + (p - k) * (stops[k + 1][j] - v)));
 });
 
-export function surfaceLegend(title) {
+export function surfaceLegend(title, spacingKm) {
   document.getElementById('legend-title').textContent = title;
   document.getElementById('legend').innerHTML =
     '<span class="score-scale"><i style="background:linear-gradient(to right,' + palette.join(',') +
-    ')"></i><span><b>0</b><b>50</b><b>100</b></span></span><small class="score-note">Superficie estimada · malla de 3 km</small>';
+    ')"></i><span><b>0</b><b>50</b><b>100</b></span></span><small class="score-note">Superficie estimada · malla de ' + Math.round(spacingKm * 1000) + ' m</small>';
 }
 
 export function createScoreSurface(map, land, features, grid) {
@@ -20,24 +20,15 @@ export function createScoreSurface(map, land, features, grid) {
   const lonIndex = grid.columns.indexOf('lon'), latIndex = grid.columns.indexOf('lat');
   const points = grid.cells.map(row => crs.project(L.latLng(row[latIndex], row[lonIndex])));
   const extent = L.bounds(points);
-  const pixel = spacing / 8;
-  const x0 = extent.min.x - spacing, y0 = extent.max.y + spacing;
-  const width = Math.ceil((extent.max.x - x0 + spacing) / pixel);
-  const height = Math.ceil((y0 - extent.min.y + spacing) / pixel);
-  const bounds = L.latLngBounds(crs.unproject(L.point(x0, y0)), crs.unproject(L.point(x0 + width * pixel, y0 - height * pixel)));
   const canvas = document.createElement('canvas');
-  canvas.width = width; canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  const image = ctx.createImageData(width, height);
-  const sums = new Float32Array(width * height), weights = new Float32Array(sums.length);
-  const supported = new Uint8Array(sums.length);
-  const centers = points.map(p => [(p.x - x0) / pixel, (y0 - p.y) / pixel]);
+  const ctx = canvas.getContext('2d', {willReadFrequently: true});
+  let pixel = 0, x0 = 0, y0 = 0;
   function pathFor({geometry}) {
     const path = new Path2D();
     const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
     for (const polygon of polygons) for (const ring of polygon) {
       ring.forEach(([lon, lat], i) => {
-        const p = crs.project(L.latLng(lat, lon)), x = (p.x - x0) / pixel, y = (y0 - p.y) / pixel;
+        const {x, y} = crs.project(L.latLng(lat, lon));
         if (i === 0) path.moveTo(x, y); else path.lineTo(x, y);
       });
       path.closePath();
@@ -47,30 +38,55 @@ export function createScoreSurface(map, land, features, grid) {
   const landPaths = land.map(pathFor);
   const regions = features.map(f => ({code: f.properties.code, path: pathFor(f)}));
   const mask = document.createElement('canvas');
-  mask.width = width; mask.height = height;
   const maskCtx = mask.getContext('2d');
   function maskTo(paths) {
-    maskCtx.clearRect(0, 0, width, height);
+    maskCtx.resetTransform();
+    maskCtx.clearRect(0, 0, mask.width, mask.height);
+    maskCtx.setTransform(1 / pixel, 0, 0, -1 / pixel, -x0 / pixel, y0 / pixel);
     for (const path of paths) maskCtx.fill(path, 'evenodd');
     ctx.drawImage(mask, 0, 0);
   }
   const pane = map.createPane('score-surface');
   pane.style.zIndex = 355;
   pane.style.pointerEvents = 'none';
-  let overlay, active;
+  let overlay, active, scores, codes, frame = 0;
   function clear(theme) {
     if (active !== theme) return;
     if (overlay) overlay.remove();
-    overlay = null; active = null;
+    if (frame) cancelAnimationFrame(frame);
+    frame = 0; overlay = null; active = null; scores = null; codes = null;
   }
-  function draw(theme, scores, codes) {
-    sums.fill(0); weights.fill(0); supported.fill(0);
+  function draw(theme, values, allowed) {
+    active = theme; scores = values; codes = allowed;
+    renderView();
+  }
+  // Match the visible area and device scale. Limit bitmap size on phones while
+  // retaining smooth color transitions when a user zooms into one grid cell.
+  function renderView() {
+    if (!active) return;
+    const view = map.getBounds().pad(.12);
+    const sw = crs.project(view.getSouthWest()), ne = crs.project(view.getNorthEast());
+    const west = Math.max(sw.x, extent.min.x - spacing), east = Math.min(ne.x, extent.max.x + spacing);
+    const south = Math.max(sw.y, extent.min.y - spacing), north = Math.min(ne.y, extent.max.y + spacing);
+    if (west >= east || south >= north) {
+      if (overlay) overlay.remove();
+      overlay = null; return;
+    }
+    const screenMeters = (ne.x - sw.x) / Math.max(1, map.getSize().x * 1.24);
+    pixel = Math.max(spacing / 64, Math.min(spacing / 2, screenMeters / Math.min(2, window.devicePixelRatio || 1)), (east-west)/1200, (north-south)/1200);
+    x0 = Math.floor(west/pixel)*pixel; y0 = Math.ceil(north/pixel)*pixel;
+    const width = Math.ceil((east-x0)/pixel), height = Math.ceil((y0-south)/pixel);
+    canvas.width = mask.width = width; canvas.height = mask.height = height;
+    const bounds = L.latLngBounds(crs.unproject(L.point(x0, y0)), crs.unproject(L.point(x0 + width*pixel, y0 - height*pixel)));
+    const sums = new Float32Array(width * height), weights = new Float32Array(sums.length);
+    const supported = new Uint8Array(sums.length), image = ctx.createImageData(width, height);
     // Compact inverse-distance weights. No pixel is drawn farther than a
     // half-cell diagonal (rounded for projection) from a valid sample.
     const step = spacing / pixel, radius = 1.5 * step, support2 = (step * .72) ** 2;
     scores.forEach((score, i) => {
       if (!Number.isFinite(score)) return;
-      const [cx, cy] = centers[i];
+      const pt = points[i], cx = (pt.x-x0)/pixel, cy = (y0-pt.y)/pixel;
+      if (cx < -radius || cy < -radius || cx > width+radius || cy > height+radius) return;
       for (let y = Math.max(0, Math.floor(cy - radius)); y < Math.min(height, cy + radius); y++) {
         for (let x = Math.max(0, Math.floor(cx - radius)); x < Math.min(width, cx + radius); x++) {
           const d2 = (x + .5 - cx) ** 2 + (y + .5 - cy) ** 2;
@@ -96,15 +112,18 @@ export function createScoreSurface(map, land, features, grid) {
     maskTo(regions.filter(r => codes.has(r.code)).map(r => r.path));
     ctx.globalCompositeOperation = 'source-over';
     const url = canvas.toDataURL('image/png');
-    if (overlay) overlay.setUrl(url);
+    if (overlay) overlay.setBounds(bounds).setUrl(url);
     else overlay = L.imageOverlay(url, bounds, {pane: 'score-surface', opacity: .94, interactive: false, alt: '', className: 'atlas-score-surface'}).addTo(map);
-    active = theme;
   }
   function covers(latlng) {
     if (!overlay) return false;
     const p = crs.project(latlng);
     const x = Math.floor((p.x - x0) / pixel), y = Math.floor((y0 - p.y) / pixel);
-    return x >= 0 && x < width && y >= 0 && y < height && ctx.getImageData(x, y, 1, 1).data[3] > 0;
+    return x >= 0 && x < canvas.width && y >= 0 && y < canvas.height && ctx.getImageData(x, y, 1, 1).data[3] > 0;
   }
+  map.on('moveend resize', () => {
+    if (!active || frame) return;
+    frame = requestAnimationFrame(() => {frame = 0; renderView();});
+  });
   return {draw, clear, covers};
 }
