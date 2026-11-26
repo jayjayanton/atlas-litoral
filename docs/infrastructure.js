@@ -26,9 +26,11 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
     if(!response.ok)throw Error('No se pudo cargar '+name);
     return response.json();
   }
-  const catalog=['schools','hospitals','roads','hotspots','sources','school-fees','density-scale','attractions'];
+  const catalog=['schools','hospitals','roads','hotspots','sources','school-fees','density-scale','attractions','site-amenities'];
   const values=await Promise.all(catalog.map(k=>loadLayer(k).catch(e=>{console.warn('Atlas:',e);return null;})));
-  const [schools,hospitals,roads,hotspots,metadata,feeData,scale,attractions]=values;
+  const [schools,hospitals,roads,hotspots,metadata,feeData,scale,attractions,siteAmenityRows]=values;
+  const siteAmenities={shopping:[],city:[]};
+  for(const [kind,name,,lat,lon] of siteAmenityRows||[])siteAmenities[kind]?.push({name,lat,lon});
   let grid,surface,gridTask,positions={},accessLoading=false;
   function loadGrid(){
     if(!gridTask)gridTask=loadLayer('grid').then(data=>{
@@ -129,7 +131,7 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
   function pinDistances(proj,scope=$('health-scope').value){
     const key=[proj.lat,proj.lon,scope].join('|');
     if(nearestCache.has(key))return nearestCache.get(key);
-    const out={school:nearestFacility(proj.lat,proj.lon,schools??[]),hospital:nearestFacility(proj.lat,proj.lon,hospitals??[],scope==='all'?null:scope),road:nearestRoad(proj.lat,proj.lon,allRoadLines),tourism:nearestFacility(proj.lat,proj.lon,attractions??[])};
+    const out={school:nearestFacility(proj.lat,proj.lon,schools??[]),hospital:nearestFacility(proj.lat,proj.lon,hospitals??[],scope==='all'?null:scope),road:nearestRoad(proj.lat,proj.lon,allRoadLines),tourism:nearestFacility(proj.lat,proj.lon,attractions??[]),shopping:nearestFacility(proj.lat,proj.lon,siteAmenities.shopping),city:nearestFacility(proj.lat,proj.lon,siteAmenities.city)};
     if(nearestCache.size>=16)nearestCache.clear();nearestCache.set(key,out);return out;
   }
   function updatePin(){
@@ -294,7 +296,7 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
   if(hospitalScope){const note=document.createElement('p');note.className='mini';note.textContent='Focos hospitalarios: '+hospitalScope;document.querySelector('.hotspot-info').append(note);}
   fees=initSchoolFees({schools,data:feeData,map,state,changeTheme,selectCanton,fitRegion,download});
   try{
-    suitability=initSuitability({map,state,changeTheme,selectCanton,scale,loadRegional,schools,hospitals,download,pinDistances});
+    suitability=initSuitability({map,state,changeTheme,selectCanton,scale,loadRegional,schools,hospitals,siteAmenities,download,pinDistances});
   }catch(error){console.warn('Aptitud ponderada:',error);$('suit-status').textContent='No se pudo iniciar el análisis de densidad.';}
   updateCriteria();queuePoints();
   return {refresh,fill,legend,inspect,supports:appThemes,schools,hospitals};

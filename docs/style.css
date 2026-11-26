@@ -309,3 +309,11 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 #building-matches:not(:empty){display:grid;gap:3px;margin:4px 0 9px}
 #building-matches button{background:#f3f8f6;border:1px solid var(--outline);border-radius:5px;color:var(--teal);padding:6px 9px;text-align:left}
 #building-matches button:hover,#building-matches button:focus-visible{background:#deeee7}
+
+#tool-close{font-weight:700;background:#fff;border-color:#8eb3a5;color:#155b56}
+.site-criteria{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0;padding:8px 10px;border:1px solid var(--outline);border-radius:7px}
+.site-criteria legend{padding:0 5px;font-size:13px;font-weight:700}
+.site-criteria label{display:flex;align-items:center;gap:5px;font-size:13px}
+.site-criteria input{accent-color:var(--teal)}
+#site-explanation{font-size:13px;color:var(--dim)}
+@media(max-width:760px){.site-criteria{display:grid;grid-template-columns:1fr 1fr;gap:9px}}

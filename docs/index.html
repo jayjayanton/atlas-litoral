@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#132f39"><title>Atlas Litoral · Mercado de vivienda</title><link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./style.css?v=70da5e6df955"><script defer src="./vendor/leaflet.js"></script><style>.map-canvas{position:relative}#map-preview[hidden]{display:none}#map-preview{position:absolute;inset:0;z-index:495;display:grid;place-items:center;overflow:hidden;background:#e2ebe5;pointer-events:none}
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#132f39"><title>Atlas Litoral · Mercado de vivienda</title><link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./style.css?v=8a696acce434"><script defer src="./vendor/leaflet.js"></script><style>.map-canvas{position:relative}#map-preview[hidden]{display:none}#map-preview{position:absolute;inset:0;z-index:495;display:grid;place-items:center;overflow:hidden;background:#e2ebe5;pointer-events:none}
 #map-preview img{width:100%;height:100%;min-height:0;object-fit:contain}
 #map-preview span{position:absolute;bottom:10px;left:10px;padding:4px 8px;border-radius:4px;background:#fffffff0;color:#24484d;font-size:12px}
-</style><script type="importmap">{"imports":{"./access-model.js":"./access-model.js?v=0d26bf0d093c","./app.js":"./app.js?v=f59ba8a3525b","./building-search.js":"./building-search.js?v=f7c5400bb174","./buildings.js":"./buildings.js?v=dfbbae50db0a","./campaign.js":"./campaign.js?v=10b464ee1e92","./compressed-json.js":"./compressed-json.js?v=ebc8b9c2a627","./credit-map.js":"./credit-map.js?v=4b80fa04531c","./credit-model.js":"./credit-model.js?v=3eea3e7c20eb","./demographics.js":"./demographics.js?v=71a3aed9b0b9","./earnings.js":"./earnings.js?v=4fd5c73295c5","./explorer-ui.js":"./explorer-ui.js?v=61374692acfb","./income-map.js":"./income-map.js?v=cd5a1c04135d","./infrastructure.js":"./infrastructure.js?v=dcb29254aa16","./model.js":"./model.js?v=56b3640001bc","./parishes.js":"./parishes.js?v=2191e9efccf1","./school-fees.js":"./school-fees.js?v=badcbca5b104","./score-surface.js":"./score-surface.js?v=b9ce45494c9b","./sector-profiles.js":"./sector-profiles.js?v=dc261e5dc71e","./site-view.js":"./site-view.js?v=97f32d41d13d","./suitability-model.js":"./suitability-model.js?v=8beec3351968","./suitability.js":"./suitability.js?v=ff91fb36dc05","./territory.js":"./territory.js?v=7e5cb11e2825"}}</script></head>
+</style><script type="importmap">{"imports":{"./access-model.js":"./access-model.js?v=0d26bf0d093c","./app.js":"./app.js?v=f59ba8a3525b","./building-search.js":"./building-search.js?v=f7c5400bb174","./buildings.js":"./buildings.js?v=dfbbae50db0a","./campaign.js":"./campaign.js?v=10b464ee1e92","./compressed-json.js":"./compressed-json.js?v=ebc8b9c2a627","./credit-map.js":"./credit-map.js?v=4b80fa04531c","./credit-model.js":"./credit-model.js?v=3eea3e7c20eb","./demographics.js":"./demographics.js?v=71a3aed9b0b9","./earnings.js":"./earnings.js?v=4fd5c73295c5","./explorer-ui.js":"./explorer-ui.js?v=61374692acfb","./income-map.js":"./income-map.js?v=cd5a1c04135d","./infrastructure.js":"./infrastructure.js?v=f0f1c26afed6","./model.js":"./model.js?v=56b3640001bc","./parishes.js":"./parishes.js?v=2191e9efccf1","./school-fees.js":"./school-fees.js?v=badcbca5b104","./score-surface.js":"./score-surface.js?v=b9ce45494c9b","./sector-profiles.js":"./sector-profiles.js?v=dc261e5dc71e","./site-view.js":"./site-view.js?v=602100f6513f","./suitability-model.js":"./suitability-model.js?v=8beec3351968","./suitability.js":"./suitability.js?v=de7256f0f400","./territory.js":"./territory.js?v=7e5cb11e2825"}}</script></head>
 <body>
 <header class="mast"><div class="mast-in"><div class="brand"><svg viewBox="0 0 34 34" aria-hidden="true"><g fill="none" stroke="#9de3cb" stroke-width="1.8"><path d="M2 24 12 14l6 3L31 4M2 30l11-11 6 3L32 9M2 18l9-10 6 3L28 1"/></g></svg><span>Atlas <b>Litoral</b></span></div><nav aria-label="Secciones"><a href="#explorar">Mapa</a><a href="#herramientas">Análisis</a><a href="#datos">Fuentes</a></nav><button class="mast-button" id="import-open">Importar CSV</button></div></header>
 <main>
@@ -42,10 +42,13 @@
 <button class="textbtn" id="focus-project" hidden>Ver proyecto</button></details>
 <section class="site-card" id="site-card" hidden aria-labelledby="site-heading">
 <div class="sectionbar"><h3 id="site-heading">Aptitud en un punto</h3><a href="#aptitud">Ajustar pesos y radio</a></div>
-<p>Toca el mapa para colocar o mover el pin, o ingresa sus coordenadas.</p>
+<p>Elige qué servicios y lugares tomar en cuenta. El puntaje compara su cercanía y cantidad en el radio elegido. Puedes cambiar los criterios cuando quieras.</p>
+<fieldset class="site-criteria"><legend>Incluir en el puntaje</legend>
+<label><input type="checkbox" data-site-criterion="school" checked>Escuelas</label><label><input type="checkbox" data-site-criterion="hospital" checked>Hospitales</label><label><input type="checkbox" data-site-criterion="road" checked>Vías principales</label><label><input type="checkbox" data-site-criterion="shopping">Centros comerciales</label><label><input type="checkbox" data-site-criterion="city">Centros urbanos</label></fieldset>
+<p class="mini">Después, toca el mapa para colocar o mover el pin, selecciona un edificio o ingresa coordenadas.</p>
 <form id="site-form"><label for="site-coords">Latitud, longitud</label><div><input id="site-coords" type="text" placeholder="-2.20, -79.89" required><button class="button subtle" type="submit">Analizar coordenadas</button></div><small id="site-error" role="status"></small></form>
-<div id="site-result" hidden><p id="site-location"></p><strong id="site-summary" role="status"></strong><p id="site-counts"></p><details id="site-breakdown"><summary>Aportes al puntaje</summary><ul id="site-parts"></ul></details><ul id="site-nearest"></ul>
-<small id="site-distance-note">Distancias en línea recta a los registros disponibles. Turismo se mide hasta el punto registrado del atractivo y se muestra como referencia. <a href="https://www.iedg.gob.ec/servicios/descargas/" target="_blank" rel="noopener">Inventario turístico IEDG, 2026</a></small></div>
+<div id="site-result" hidden><p id="site-location"></p><strong id="site-summary" role="status"></strong><p id="site-explanation"></p><p id="site-counts"></p><details id="site-breakdown"><summary>Aportes al puntaje</summary><ul id="site-parts"></ul></details><ul id="site-nearest"></ul>
+<small id="site-distance-note">Distancias en línea recta. Centros urbanos y centros comerciales proceden de OpenStreetMap, extracto del 24 de noviembre de 2026. Turismo se muestra como referencia del inventario turístico IEDG 2026. <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a> · <a href="https://www.iedg.gob.ec/servicios/descargas/" target="_blank" rel="noopener">IEDG</a></small></div>
 </section></div>
 <aside class="detail" id="ficha" aria-label="Ficha del área"><section class="profile-block pin-address" id="active-project" hidden>
 <span class="eyebrow">UBICACIÓN DEL EDIFICIO</span>
@@ -80,7 +83,7 @@
   <h2 id="analysis-heading" tabindex="-1">Herramientas de análisis</h2>
   <div id="tool-actions" hidden>
     <label for="tool-choice">Cambiar herramienta<select id="tool-choice"></select></label>
-    <button id="tool-close" type="button" class="button subtle">Cerrar</button>
+    <button id="tool-close" type="button" class="button subtle">← Elegir otra herramienta</button>
   </div>
 </header>
 <nav id="tool-menu" aria-label="Elegir una herramienta">
@@ -206,16 +209,17 @@
 <details class="infra-method"><summary>Cómo leer los conteos</summary><p>Una cifra única indica un conteo exacto. Dos cifras indican el mínimo y el máximo compatibles con los grupos publicados, su número de créditos, su monto total y, cuando existe, el rango de montos. Un préstamo exactamente igual al umbral queda fuera. Los lugares sin registros se muestran en gris. Los conteos corresponden al período y a las entidades indicadas.</p></details></section>
 <section id="aptitud" class="panel suitability" data-analysis hidden>
 <div class="sectionbar"><h2>Aptitud del sitio</h2><button class="button subtle" id="suit-start" disabled>Analizar un punto en el mapa</button></div>
-<p>Coloca un pin o selecciona un edificio para calcular su aptitud. Ajusta el peso de las escuelas, los hospitales y las vías en el puntaje.</p>
+<p><b>Qué calcula:</b> un puntaje de 0 a 100 para el punto que elijas. Premia más escuelas y hospitales dentro del radio y menos distancia a las vías principales. Ajusta el peso de cada criterio para reflejar lo que importa en tu proyecto. El puntaje resume cercanía y acceso, no predice ventas ni demanda.</p>
+<p>Para conocer la aptitud de un lugar, selecciona el edificio o usa <b>Analizar un punto en el mapa</b>. El mapa regional de abajo compara celdas de la malla, no sustituye la evaluación exacta del pin.</p>
 <p id="suit-status" role="status">Cargando la malla de análisis…</p>
 <div id="suit-body" hidden>
 <div class="suit-layout"><div class="suit-controls">
 <label class="suit-field">Prioridad<select id="suit-preset"><option value="balanced">Equilibrada</option><option value="school">Priorizar escuelas</option><option value="hospital">Priorizar hospitales</option><option value="road">Priorizar vías</option><option value="custom">Personalizada</option></select></label>
 <p class="mini suit-weight-note">Ajusta los pesos de 0 a 100. El porcentaje muestra la participación de cada criterio en el resultado.</p><div class="suit-weights" id="suit-weights"></div>
 <div class="suit-settings">
-<label class="suit-field">Radio de conteo<select id="suit-radius"><option value="2">2 km</option><option value="5" selected>5 km</option><option value="10">10 km</option></select></label>
+<label class="suit-field">Radio para conteo y proximidad<select id="suit-radius"><option value="2">2 km</option><option value="5" selected>5 km</option><option value="10">10 km</option></select></label>
 <label class="suit-field">Red hospitalaria<select id="suit-scope"><option value="all">Todos los hospitales</option><option value="public">Hospitales públicos</option><option value="private">Hospitales privados</option></select></label>
-<label class="suit-field">Límite vial (km)<input type="number" min="0.1" max="200" step="any" value="3" id="suit-road-limit"></label>
+<label class="suit-field">Vías: distancia máxima (km)<input type="number" min="0.1" max="200" step="any" value="3" id="suit-road-limit"></label>
 </div><p class="mini" id="suit-message" role="status"></p></div>
 <article class="suit-pin" id="suit-pin" hidden><div class="kicker">PUNTO DE ANÁLISIS</div><h3 id="suit-pin-name"></h3><div class="scorebox"><strong id="suit-score">—</strong><span>de 100</span></div><div id="suit-pin-facts"></div></article></div>
 <details id="suit-regional" class="infra-method"><summary>Comparar la malla regional</summary><button class="button subtle" id="suit-map" disabled>Ver aptitud regional en el mapa</button><div class="suit-rank-heading"><h3>Puntos con mayor aptitud</h3><label class="suit-field">Área de comparación<select id="suit-area"></select></label></div>

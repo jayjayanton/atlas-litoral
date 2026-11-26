@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id);
 const number=new Intl.NumberFormat('es-EC',{maximumFractionDigits:2});
-const titles={school:'Escuela',hospital:'Hospital',road:'Vía principal',tourism:'Atractivo turístico'};
+const titles={school:'Escuela más cercana',hospital:'Hospital más cercano',road:'Vía principal más cercana',shopping:'Centro comercial o mercado más cercano',city:'Centro urbano más cercano',tourism:'Atractivo turístico'};
 const distance=km=>km<1?number.format(Math.round(km*1000))+' m':number.format(km)+' km';
 
 export function initSiteView(map){
@@ -20,11 +20,12 @@ export function initSiteView(map){
     current=data;overlay.clearLayers();connection.clearLayers();
     $('site-result').hidden=!data;$('site-nearest').replaceChildren();
     if(!data)return;
-    const {site,canton,score,counts,near,parts}=data;
+    const {site,canton,score,counts,near,parts,criteria=[]}=data;
     const ll=[site.lat,site.lon];
     if(site.temporary)L.marker(ll,{interactive:false,keyboard:false,title:'Punto de análisis',icon:L.divIcon({className:'',html:'<span class="pm">●</span>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(overlay);
     $('site-location').textContent=[site.name,canton?.name,canton?.province,site.lat.toFixed(5)+', '+site.lon.toFixed(5)].filter(Boolean).join(' · ');
-    $('site-summary').textContent=canton?'Aptitud del sitio · '+score+' / 100':'Fuera de la cobertura de Guayas y Santa Elena';
+    $('site-summary').textContent=canton?'Puntaje del punto · '+score+' / 100':'Fuera de la cobertura de Guayas y Santa Elena';
+    $('site-explanation').textContent=canton?'Escuelas y hospitales se cuentan dentro del radio. Vías y lugares seleccionados mejoran el puntaje cuanto más cerca están. Los pesos aparecen en “Aportes al puntaje”.':'El punto está fuera de la cobertura del cálculo.';
     $('site-counts').textContent=counts;
     $('site-breakdown').hidden=!parts.length;
     $('site-parts').replaceChildren(...parts.map(text=>{
@@ -33,6 +34,7 @@ export function initSiteView(map){
     $('site-distance-note').hidden=!canton;
     if(!canton)return;
     for(const [key,title] of Object.entries(titles)){
+      if(key!=='tourism'&&!criteria.includes(key))continue;
       const row=document.createElement('li'),record=near[key];
       if(record){
         const button=document.createElement('button'),item=record.item;
