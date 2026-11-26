@@ -82,6 +82,7 @@ function setSelection(code,move=false,keepArea=false){if(!byCode(code))return;
  if($('province').value&&!withinProvince(byCode(code))){$('province').value='';for(const option of $('canton').options)option.hidden=false;}$('canton').value=code;render();if(move)map.fitBounds(layers[code].getBounds(),{padding:[22,22],maxZoom:11});}
 const mapView=$('map-view'), allThemes=$('layer');
 const quickThemes=[...allThemes.querySelectorAll('[data-quick-map]')];
+let mapChoiceRevision=0;
 mapView.replaceChildren(...quickThemes.map(option=>new Option(option.text,option.value)));
 
 function syncMapView(){
@@ -100,7 +101,6 @@ function syncMapView(){
 
 function colorize(){if(markingPoint && markingTheme!==$('layer').value)setMarkingPoint(false);syncMapView();polys.setStyle(style);cantonCasing.setStyle(cantonHalo);cantonLines.setStyle(cantonLine);if(layers[selected])layers[selected].bringToFront();
  const theme=$('layer').value, provinceView=theme==='income', p=byCode(selected).properties;
- if(theme==='overview'){$('legend-title').textContent='Vista general';$('legend').textContent='Cantones de Guayas y Santa Elena';$('map-hint').textContent='Vista general · selecciona un cantón para consultar su ficha.';}
  const domain=p.province;
  $('income').textContent=inc[domain]?'$'+num(inc[domain].median):'Sin dato';
  $('income-scale').textContent='Referencia provincial · '+domain+' · ENIGHUR 2024–25';
@@ -113,15 +113,19 @@ function colorize(){if(markingPoint && markingTheme!==$('layer').value)setMarkin
  earnings?.refresh();creditMap?.refresh();demographics?.refresh();sectors?.refresh();
  provinceIncome?.refresh(provinceView,$('province').value);
  if(infrastructure){infrastructure.refresh();if(infrastructure.legend(theme))return;}
- if(theme==='population'&&territory&&territory.level!=='canton'){
+ const level=territory?.level||'canton';
+ if(theme==='overview'||(theme==='population'&&level!=='canton')){
    $('legend-title').textContent='Límites territoriales';
-   $('legend').textContent={parish:'Parroquias y cabeceras cantonales',zone:'Zonas censales · INEC 2022',sector:'Zonas censales y, al acercar, sectores censales · INEC 2022'}[territory.level];return;
+   $('legend').textContent={
+     canton:'Cantones de Guayas y Santa Elena',parish:'Parroquias de Guayas y Santa Elena',
+     zone:'Zonas censales · INEC 2022',sector:'Sectores censales al acercar el mapa · INEC 2022'
+   }[level];
+   return;
  }
  if(provinceView)return;
  if(sectors && isSectorTheme(theme)){sectors.legend();return;}
  if(demographics && $('layer').value==='ages'){demographics.legend();return;}
  if(creditMap && $('layer').value==='credit'){creditMap.legend();return;}
- if(theme==='overview')return;
  const choices=$('layer').value==='population'?['<50 mil','50 mil+','100 mil+','200 mil+','500 mil+']:$('layer').value==='loans'?['1–4','5–24','25–99','100–499','500+']:['0','1–4','5–9','10–24','25+'];
  $('legend-title').textContent=$('layer').value==='population'?'Habitantes · 2022':$('layer').value==='loans'?'Créditos por destino · ene–sep 2026':'Solicitudes de origen · 90 días';
  $('legend').innerHTML=choices.map((c,i)=>'<span class="key"><i class="sw" style="background:'+colors[i]+'"></i>'+c+'</span>').join('')+($('layer').value==='population'?'':'<span class="key"><i class="sw" style="background:'+empty+'"></i>S/d</span>');
@@ -520,7 +524,7 @@ async function main(){
  });
  const shared=buildingFromURL(location.href);
  const sharedRequest=new URL(location.href).searchParams.has('edificio');
- $('canton').innerHTML=features.slice().sort((a,b)=>a.properties.name.localeCompare(b.properties.name,'es')).map(f=>'<option value="'+f.properties.code+'">'+esc(f.properties.name)+'</option>').join('');$('canton').value=selected;
+ $('canton').innerHTML='<option value="" disabled>Elegir cantón</option>'+features.slice().sort((a,b)=>a.properties.name.localeCompare(b.properties.name,'es')).map(f=>'<option value="'+f.properties.code+'">'+esc(f.properties.name)+'</option>').join('');$('canton').value=selected;
  renderBuildings();
  if(provinces.features.length&&provinces.features.every(f=>incomes[f.properties.name])){
    provinceIncome=initProvinceIncome(map,provinces,incomes);
@@ -555,6 +559,13 @@ async function main(){
  }
  if(!navigation){render();mapNotice('Puedes consultar cantones. Reintenta para cargar los demás niveles.');return;}
  territory=navigation.initTerritory({map,cantons:new Map(features.map(f=>[f.properties.code,f])),parishes,parishCatalog,sectors,index:sectorIndex,ages:censusAges?.agesByDpa,
+   onLevelChoice:(kind,focusedProject)=>{
+     mapChoiceRevision++;
+     if(markingPoint)setMarkingPoint(false);
+     map.closePopup();
+     if(allThemes.value==='site'||(isSectorTheme(allThemes.value)&&kind!=='sector'))allThemes.value='overview';
+     return focusedProject && project ? {point:project,location:locate(project.lat,project.lon)} : null;
+   },
    cantonCode:()=>selected,setCanton:code=>setSelection(code,false,true),fitRegion,alignSector,updateLegend:colorize,
    share:(url,name)=>{demographics?.addFilters(url);shareMapLink(url,'Compartir área','El enlace abre la vista de '+name+'.');}});
  earnings=initEarnings(()=>{
@@ -570,7 +581,7 @@ async function main(){
  $('project-location-retry').onclick=resolveBuildingAddress;
  $('project-sector-open').onclick=()=>{
    if(!pinSector)return;
-   if($('layer').value==='site')$('layer').value='population';
+   if($('layer').value==='site')$('layer').value='overview';
    territory.open('sector',pinSector,false);
  };
  $('parish-select').onchange=()=>territory.parentParish($('parish-select').value);
@@ -648,13 +659,8 @@ async function main(){
  allThemes.onchange=chooseLayer;
  mapView.disabled=false;
  mapView.onchange=async()=>{
-   const theme=mapView.value;
+   const theme=mapView.value, revision=++mapChoiceRevision;
    allThemes.value=theme;
-   if(theme==='overview' && territory.level!=='canton'){
-     territory.overview();
-     parishes?.highlight(null);
-     if(project)territory.showPoint(project.name);
-   }
    chooseLayer();
    if(!isSectorTheme(theme)||!sectors)return;
    const point=project;
@@ -666,7 +672,7 @@ async function main(){
    }
    try{
      const code=area?.level==='sector'?area.code:await sectors.codeAt(point.lat,point.lon);
-     if(allThemes.value!==theme||point!==project||area!==territory.current)return;
+     if(revision!==mapChoiceRevision||allThemes.value!==theme||point!==project||area!==territory.current)return;
      if(code)await territory.open('sector',code,true);
      else {
        territory.browse('sector');
@@ -689,7 +695,7 @@ async function main(){
  $('province').onchange=()=>{
    const kind=territory.level;
    if(!withinProvince(byCode(selected)))selected=features.filter(withinProvince).sort((a,b)=>b.properties.population-a.properties.population)[0].properties.code;
-   for(const option of $('canton').options)option.hidden=!withinProvince(byCode(option.value));
+   for(const option of $('canton').options)option.hidden=!!option.value&&!withinProvince(byCode(option.value));
    highlighted=null;$('canton').value=selected;parishes?.refresh();parishes?.highlight(null);
    territory.browse(kind);fitRegion();render();
  };
@@ -718,7 +724,7 @@ async function main(){
  campaign?.setHospitals(infrastructure?.hospitals);
  if(infrastructure){
    sectors?.setFacilities(infrastructure.schools,infrastructure.hospitals);
-   if(linkedTheme && !linkedTheme.disabled && allThemes.value==='overview')allThemes.value=linkedTheme.value;
+   if(!mapChoiceRevision && linkedTheme && !linkedTheme.disabled && allThemes.value==='overview')allThemes.value=linkedTheme.value;
    colorize();
  }
  document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(picking){e.preventDefault();cancelPick();}else if(markingPoint){setMarkingPoint(false);$('site-start').focus();}});

@@ -11,7 +11,7 @@ const total = counts => counts.reduce((a,b) => a+b, 0);
 const ageLabels = ['0–24 años','25–45 años','46–59 años','60 años o más'];
 const ageBands = ages => ages && [ages.slice(0,25), ages.slice(25,46), ages.slice(46,60), ages.slice(60)].map(total);
 
-export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,ages,cantonCode,setCanton,fitRegion,updateLegend,share,alignSector}){
+export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,ages,cantonCode,setCanton,fitRegion,updateLegend,share,alignSector,onLevelChoice}){
   const level=$('geo-level'), parish=$('parish-select'), zones=$('geo-zone'), ids=$('geo-sector');
   const buttons=[...document.querySelectorAll('[data-level]')];
   const zoneCodes=Object.keys(index?.zones||{}).sort();
@@ -35,7 +35,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     const pane=map.createPane(name);pane.style.zIndex=z;pane.style.pointerEvents='none';
   }
   const canvas=L.canvas({pane:'territory-boundaries',padding:.1});
-  let pointName=null,current=null,shape,noMatch=false,revision=0,outlineRevision=0,zoneTask,pointsTask,lastBorders='';
+  let pointName=null,lastMapPoint=null,current=null,shape,noMatch=false,revision=0,outlineRevision=0,zoneTask,pointsTask,lastBorders='';
   const municipalSectors=new Map();
   function zoneOutlines(){
     zoneTask??=readCompressedJSON('./data/zone-outlines.json.gz').catch(e=>{zoneTask=null;throw e;});
@@ -84,6 +84,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     $('parish-field').hidden=kind==='canton';
     $('geo-children').hidden=!fine;$('geo-sector-field').hidden=kind!=='sector';
     const empty=!current&&(kind!=='canton'||noMatch);
+    $('canton').value=kind==='canton' && empty && !pointName ? '' : cantonCode();
     $('profile-empty').hidden=!!pointName||!empty;$('profile-stats').hidden=!!pointName||empty;
     $('geo-facts').hidden=!current||current.level==='canton';
     $('canton-facts').hidden=!!pointName||empty||!$('geo-facts').hidden;
@@ -118,12 +119,12 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     const children=Object.entries(ages||{}).filter(([id])=>id.startsWith(code));
     return children.length?children.reduce((sum,[,series])=>ageBands(series).map((n,i)=>n+sum[i]),[0,0,0,0]):null;
   }
-  function clear(kind='canton'){
-    revision++;pointName=null;noMatch=false;current=shape=null;group.clearLayers();level.value=names[kind]?kind:'canton';
+  function clear(kind='canton',awaitSelection=false){
+    revision++;pointName=null;lastMapPoint=null;noMatch=awaitSelection;current=shape=null;group.clearLayers();level.value=names[kind]?kind:'canton';
     $('geo-status').textContent='';controls();
     if(level.value==='canton')displayAges(cantonAges(cantonCode()));
   }
-  function overview(){clear('canton');noMatch=true;controls();}
+  function overview(){clear('canton',true);}
   function reset(zoom=false){
     browse(level.value);if(zoom)fitRegion();
   }
@@ -156,7 +157,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
   }
   function browse(kind){
     const previousZone=zones.value;
-    clear(kind);
+    clear(kind,true);
     if(kind==='canton')parishes?.highlight(null);
     if(kind==='zone'||kind==='sector'){
       const prefix=parish.value||cantonCode();
@@ -171,10 +172,11 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
   function missing(message){
     clear(level.value);noMatch=true;controls();$('geo-status').textContent=message;updateLegend();
   }
-  async function open(kind,code,zoom=true,municipal=''){
+  async function open(kind,code,zoom=true,municipal='',anchor=null){
     if(kind==='region'){reset(zoom);return;}
     if(!names[kind]||level.querySelector('[value="'+kind+'"]').disabled)return;
     if(!code){browse(kind);return;}
+    lastMapPoint=anchor;
     const ticket=++revision;
     const parent=code.startsWith('gye-')?'0901':code.slice(0,4), canton=cantons.get(parent);
     if(!canton){missing('El área está fuera de la cobertura del atlas.');return;}
@@ -215,22 +217,24 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
   }
   async function atPoint(kind,point,location,zoom=true){
     const ticket=++revision;
+    const anchor={point,location};
+    lastMapPoint=anchor;
     if(kind==='canton'){
-      if(location.canton)return open(kind,location.canton.code,zoom);
+      if(location.canton)return open(kind,location.canton.code,zoom,'',anchor);
     }else if(kind==='parish'){
       const census=$('layer').value==='ages';
-      let area=census?featureAt(parishCatalog.features,point.lat,point.lon):location.parish;
+      let area=census?featureAt(parishCatalog.features,point.lat,point.lon):parishes?.at(point.lat,point.lon);
       if(!census&&parishes?.needsUrban(area)){
         await parishes.loadUrban();if(ticket!==revision)return;
         area=parishes.at(point.lat,point.lon);
       }
-      if(area)return open(kind,area.properties.code,zoom);
+      if(area)return open(kind,area.properties.code,zoom,'',anchor);
     }else if(sectors){
       $('geo-status').textContent='Localizando el punto…';
       try{
         const id=await sectors.codeAt(point.lat,point.lon);
         if(ticket!==revision)return;
-        if(id)return open(kind,kind==='zone'?id.slice(0,9):id,zoom);
+        if(id)return open(kind,kind==='zone'?id.slice(0,9):id,zoom,'',anchor);
       }catch{if(ticket===revision)missing('No se pudo consultar este punto. Intenta de nuevo.');return;}
     }
     missing('Sin '+names[kind].toLowerCase()+' cartografiado en este punto. Elige otra ubicación.');
@@ -270,8 +274,12 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
   level.querySelector('[value="parish"]').disabled=!parishes;
   for(const kind of ['zone','sector'])level.querySelector('[value="'+kind+'"]').disabled=!sectors;
   level.onchange=()=>{
-    if($('layer').value==='site')$('layer').value='population';
-    browse(level.value);
+    const kind=level.value;
+    const anchor=onLevelChoice(kind,!!pointName)||lastMapPoint;
+    browse(kind);
+    if(anchor&&map.getBounds().contains([anchor.point.lat,anchor.point.lon])){
+      atPoint(kind,anchor.point,anchor.location,false);
+    }
   };
   buttons.forEach(b=>b.onclick=()=>{level.value=b.dataset.level;level.onchange();});
   zones.onchange=()=>prepareZone(zones.value);
