@@ -56,11 +56,17 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     canton.value = code;
     parish.replaceChildren(...parishes.filter(p=>p.startsWith(code)).map(p=>new Option(parishLabel(p),p)));
   }
-  const pane = map.createPane('census-sectors');
-  pane.style.zIndex = 412;
+  // Draw boundary casings above roads and below their ink. Only the sector fills receive clicks.
+  for (const [name,z] of [['neighbor-sectors',419],['sector-casing',420],['census-sectors',421],['selected-sector',422],['sector-place',423]]) {
+    const pane=map.createPane(name);
+    pane.style.zIndex=z;
+    if (name!=='census-sectors') pane.style.pointerEvents='none';
+  }
   const overlay = L.featureGroup(), layers = new Map(), placeMarker=L.layerGroup();
-  const neighborPane=map.createPane('neighbor-sectors');
-  neighborPane.style.zIndex=409; neighborPane.style.pointerEvents='none';
+  const zoneCasing=L.layerGroup(), selectedBorder=L.layerGroup();
+  const outline={fill:false,interactive:false,opacity:1,lineJoin:'round'};
+  const casing={...outline,color:'#ffffff'};
+  const sectorInk={color:'#075862',weight:2.8,opacity:1};
   const neighbors=L.layerGroup(), shapeBounds=new WeakMap();
   let neighborState='', neighborView='', neighborRevision=0;
   function updateNeighbors() {
@@ -89,7 +95,11 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
         if(bounds.intersects(extent)) polygons.push(rings);
         if(polygons.length>420){neighborState='zoom';legend();return;}
       }
-      for(const rings of polygons) L.polygon(rings,{pane:'neighbor-sectors',interactive:false,fill:false,color:'#535e68',weight:1.4,dashArray:'4 3',opacity:.9}).addTo(neighbors);
+      if(polygons.length) {
+        const rings=polygons.flat();
+        L.polygon(rings,{...casing,pane:'neighbor-sectors',weight:5}).addTo(neighbors);
+        L.polygon(rings,{...outline,pane:'neighbor-sectors',color:'#384554',weight:2.5,dashArray:'6 5',lineCap:'butt'}).addTo(neighbors);
+      }
       neighborState=polygons.length?'visible':'';legend();
     }
     draw().catch(()=>{if(version===neighborRevision){neighborState='unavailable';neighborView='';legend();}});
@@ -160,7 +170,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     placeMarker.clearLayers();
     const ref=matchedPlace || sites.find(p=>p.kind==='Edificio');
     if(ref){
-      const dot=L.circleMarker([ref.lat,ref.lon],{pane:'census-sectors',radius:5,color:'#fff',weight:2,fillColor:'#174a70',fillOpacity:1,interactive:false});
+      const dot=L.circleMarker([ref.lat,ref.lon],{pane:'sector-place',radius:5,color:'#fff',weight:2,fillColor:'#174a70',fillOpacity:1,interactive:false});
       const label=document.createElement('span'); label.textContent=ref.name;
       dot.bindTooltip(label,{permanent:true,direction:'top',offset:[0,-6],className:'sector-place-label'}).addTo(placeMarker);
     }
@@ -178,10 +188,15 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     zone.replaceChildren(...zones.filter(z => z.startsWith(code)).map(z => new Option('Zona '+z.slice(6),z)));
   }
   function paintSelection() {
+    selectedBorder.clearLayers();
     for (const [id, polygon] of layers) {
       const active = id === sector.value;
-      polygon.setStyle({color:active?'#194b47':'#477d77',weight:active?3:1,fillColor:active?'#e9a34d':'#b8dbd1',fillOpacity:active?.67:.45});
-      if (active) polygon.bringToFront();
+      polygon.setStyle({...sectorInk,fillColor:active?'#e9a34d':'#b8dbd1',fillOpacity:active?.4:.22});
+      if (active) {
+        const rings=polygon.getLatLngs();
+        L.polygon(rings,{...casing,pane:'selected-sector',weight:9}).addTo(selectedBorder);
+        L.polygon(rings,{...outline,pane:'selected-sector',weight:5,color:'#681d46'}).addTo(selectedBorder);
+      }
     }
   }
   function showMap(zoom, scroll) {
@@ -269,7 +284,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     const version = ++generation;
     currentZone = z; zone.value = z; selectedRow = undefined; rows = [];
     results.hidden = true; sector.disabled = true; sector.replaceChildren(new Option('Seleccionar sector',''));
-    matchedPlace=undefined; placeMarker.clearLayers(); $('sector-map').textContent='Elegir en el mapa';
+    matchedPlace=undefined; placeMarker.clearLayers(); selectedBorder.clearLayers(); zoneCasing.clearLayers(); $('sector-map').textContent='Elegir en el mapa';
     $('sector-map').disabled = false; $('sector-zone-map').disabled = true; overlay.clearLayers(); layers.clear();
     updateNeighbors();
     if (state().theme==='sectors') legend();
@@ -278,9 +293,11 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
       const block = await getBlock(z);
       if (version !== generation) return;
       rows = block[z];
+      const zoneRings=rows.flatMap(row=>row[2]);
+      L.polygon(zoneRings,{...casing,pane:'sector-casing',weight:5.6}).addTo(zoneCasing);
       for (const [id, , rings] of rows) {
         sector.add(new Option('Sector '+id,id));
-        const polygon = L.polygon(rings,{pane:'census-sectors',bubblingMouseEvents:false});
+        const polygon = L.polygon(rings,{...sectorInk,pane:'census-sectors',bubblingMouseEvents:false});
         polygon.bindTooltip(()=>{const label=document.createElement('span');label.textContent='Sector '+id+' · '+zoneNumber()+' · '+cantonNames.get(canton.value);return label;},{sticky:true});
         polygon.on('click', e => {
           if (isPicking()) { map.fire('click',{latlng:e.latlng}); return; }
@@ -345,7 +362,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     if (buildingList!==state().buildings) buildPointIndex();
     $('sector-building').hidden = !project;
     if(project) $('sector-building').textContent='Ubicar '+project.name;
-    for (const group of [overlay,placeMarker]) {
+    for (const group of [zoneCasing,overlay,selectedBorder,placeMarker]) {
       if (theme==='sectors' && !map.hasLayer(group)) group.addTo(map);
       if (theme!=='sectors' && map.hasLayer(group)) group.remove();
     }

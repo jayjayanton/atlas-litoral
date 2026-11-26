@@ -16,7 +16,7 @@ function save(key,value){try{localStorage.setItem(store+key,JSON.stringify(value
 let project=null,catalog,buildings,buildingState,otherMarkers;
 let finance=load('finance',initialFinance),requests=load('demand',[]),userLoans=load('loans',[]);
 let sectors,demographics,creditMap,infrastructure,parishes,projectParish,viewRevision=0;
-let features,inc,observed,bank,polys,selected='0901',map,marker,labels,streets,selectedPopup,picking=false,pending=null,matches={},dest=null;
+let features,inc,observed,bank,polys,cantonLines,cantonCasing,selected='0901',map,marker,labels,streets,selectedPopup,picking=false,pending=null,matches={},dest=null;
 const layers={},colors=['#d6e8dc','#9fcab7','#5fa592','#2b7c73','#155b56'],empty='#e3e7e3';
 const financingURL='https://www.superbancos.gob.ec/estadisticas/portalestudios/volumen-de-credito/';
 const incomeURL='https://www.ecuadorencifras.gob.ec/encuesta-nacional-de-ingresos-y-gastos-de-los-hogares-urbanos-y-rurales/';
@@ -53,9 +53,16 @@ function observedLoans(f){return bank.rows.find(r=>normalize(r.province)===norma
 function metricValue(f){const c=f.properties.code;switch($('layer').value){case'population':return f.properties.population;case'loans':return observedLoans(f)?.operations??null;default:return hasDemand()?matches[c]??0:null;}}
 function breaks(){return $('layer').value==='population'?[0,50000,100000,200000,500000]:$('layer').value==='loans'?[1,5,25,100,500]:[0,1,5,10,25];}
 function fill(f){if(['ages','sectors'].includes($('layer').value))return '#e5e9e8';if(creditMap && $('layer').value==='credit')return creditMap.fill(f.properties.code);if(infrastructure?.supports($('layer').value))return infrastructure.fill($('layer').value,f.properties.code);const v=metricValue(f);if(v==null)return empty;const ix=breaks().filter(x=>v>=x).length-1;return colors[Math.max(0,ix)];}
-function style(f){const active=f.properties.code===selected;return {color:active?'#134b45':'#509182',weight:active?2.7:1.2,fillColor:fill(f),fillOpacity:withinProvince(f)?(['access','suitability'].includes($('layer').value)?.24:.65):.16,opacity:withinProvince(f)?1:.35};}
+function style(f){return {stroke:false,fillColor:fill(f),fillOpacity:withinProvince(f)?(['access','suitability'].includes($('layer').value)?.24:.65):.16};}
+function cantonLine(f){
+ const active=f.properties.code===selected;
+ return {fill:false,color:active?'#113c55':'#34556a',weight:active?3.5:2.1,opacity:withinProvince(f)?1:.4};
+}
+function cantonHalo(f){
+ return {fill:false,color:'#fff',weight:f.properties.code===selected?6.5:4.4,opacity:withinProvince(f)?.95:.4};
+}
 function setSelection(code,move=false){if(!byCode(code))return;viewRevision++;selected=code;if($('province').value&&!withinProvince(byCode(code)))$('province').value='';$('canton').value=code;render();if(move)map.fitBounds(layers[code].getBounds(),{padding:[22,22],maxZoom:11});}
-function colorize(){polys.setStyle(style);if(layers[selected])layers[selected].bringToFront();
+function colorize(){polys.setStyle(style);cantonCasing.setStyle(cantonHalo);cantonLines.setStyle(cantonLine);if(layers[selected])layers[selected].bringToFront();
  $('map-heading').textContent=$('layer').value==='sectors'?'Mapa de sectores censales':'Mapa territorial';
  creditMap?.refresh();demographics?.refresh();sectors?.refresh();
  if(infrastructure){infrastructure.refresh();if(infrastructure.legend($('layer').value))return;}
@@ -119,7 +126,7 @@ function mapInit(context,streetGeo,provinces){
  map=L.map('map',{zoomAnimation:false,zoomSnap:.15,zoomDelta:.75,minZoom:4,maxZoom:19,scrollWheelZoom:false,zoomControl:false,attributionControl:false});
  L.control.zoom({position:'topright',zoomInTitle:'Acercar',zoomOutTitle:'Alejar'}).addTo(map);
  L.control.attribution({prefix:false,position:'bottomright'}).addTo(map).addAttribution('© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · <a href="#datos">Fuentes</a>');
- for(const [key,z] of [['land',250],['rivers',370],['province-outlines',418],['labels',420]]){map.createPane(key);map.getPane(key).style.zIndex=z;map.getPane(key).style.pointerEvents='none';}
+ for(const [key,z] of [['land',250],['rivers',370],['canton-outlines',413],['province-outlines',418],['labels',430]]){map.createPane(key);map.getPane(key).style.zIndex=z;map.getPane(key).style.pointerEvents='none';}
  L.geoJSON(context,{filter:f=>f.properties.kind==='land',pane:'land',interactive:false,style:{weight:1,color:'#9cb9b7',fillColor:'#eaf0e8',fillOpacity:1}}).addTo(map);
  L.geoJSON(context,{filter:f=>f.properties.kind==='river',pane:'rivers',interactive:false,style:f=>f.properties.kind==='river'?{weight:1.2,color:'#79b0c3',opacity:.84}:{weight:1.1,color:'#ba9660',opacity:.67}}).addTo(map);
  streets=L.geoJSON(streetGeo,{pane:'rivers',interactive:false,style:{weight:1.15,color:'#9f977f',opacity:.9}});
@@ -127,9 +134,12 @@ function mapInit(context,streetGeo,provinces){
   const p=f.properties;layers[p.code]=l;l.bindTooltip(esc(p.name)+' · '+esc(p.province),{sticky:true,direction:'top',offset:[0,-7]});
   l.on('click',e=>{if(picking){L.DomEvent.stopPropagation(e);pick(e.latlng);return;}if($('layer').value!=='sectors')setSelection(p.code);});
  }}).addTo(map);
+ const cantonBorders={pane:'canton-outlines',interactive:false};
+ cantonCasing=L.geoJSON(features,{...cantonBorders,style:cantonHalo}).addTo(map);
+ cantonLines=L.geoJSON(features,{...cantonBorders,style:cantonLine}).addTo(map);
  const provinceStyle={pane:'province-outlines',interactive:false,smoothFactor:0.7};
- L.geoJSON(provinces,{...provinceStyle,style:{fill:false,color:'#f7faf6',weight:4.8,opacity:.88}}).addTo(map);
- L.geoJSON(provinces,{...provinceStyle,style:{fill:false,color:'#243947',weight:2.9,opacity:1}}).addTo(map);
+ L.geoJSON(provinces,{...provinceStyle,style:{fill:false,color:'#fff',weight:7,opacity:1}}).addTo(map);
+ L.geoJSON(provinces,{...provinceStyle,style:{fill:false,color:'#202e3a',weight:4.2,opacity:1}}).addTo(map);
  map.on('movestart zoomstart',()=>{viewRevision++;});
  const staticLabels=[['Guayaquil',-2.205,-79.88],['Daule',-1.86,-79.98],['Milagro',-2.125,-79.59],['Santa Elena',-2.165,-80.81],['Balzar',-1.367,-79.91],['Playas',-2.63,-80.39],['El Triunfo',-2.34,-79.39]];
  labels=L.layerGroup(staticLabels.map(([s,lat,lon])=>L.marker([lat,lon],{interactive:false,keyboard:false,pane:'labels',icon:L.divIcon({className:'map-label',html:s,iconSize:[70,16],iconAnchor:[35,2]})}))).addTo(map);
