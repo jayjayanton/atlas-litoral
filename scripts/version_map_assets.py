@@ -19,8 +19,8 @@ def main():
     mapping = '<script type="importmap">' + json.dumps({"imports": imports}, separators=(",", ":")) + '</script>'
     html = re.sub(r'<script type="importmap">.*?</script>', '', html)
     html = html.replace('</head>', mapping + '</head>', 1)
-    for name in ("style.css", "app.js", "map-overview.png"):
-        attr = "href" if name == "style.css" else "src"
+    for name in (*sorted(p.name for p in DOCS.glob("*.css")), "app.js", "map-overview.png"):
+        attr = "href" if name.endswith(".css") else "src"
         pattern = attr + r'="\./' + re.escape(name) + r'(?:\?v=[a-f0-9]+)?"'
         html = re.sub(pattern, f'{attr}="{versioned(DOCS / name)}"', html, count=1)
     index.write_text(html)

@@ -1,0 +1,51 @@
+.project-selection { padding:0 20px 16px; }
+.project-selection-heading, .project-picker, #selection-actions, #project-manage > div {
+  display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px;
+}
+.project-selection-heading { justify-content:space-between; }
+.project-selection-heading h3 { margin:0; font-size:1.07rem; }
+.project-mode { display:inline-flex; min-width:0; padding:3px; margin:0; border:1px solid var(--outline,#dfd6ce); border-radius:8px; background:#f4efeb; }
+.project-mode label { position:relative; cursor:pointer; }
+.project-mode input { position:absolute; opacity:0; width:1px; height:1px; margin:0; }
+.project-mode span { display:block; border-radius:5px; padding:6px 11px; font-size:.875rem; font-weight:600; color:#594952; }
+.project-mode input:checked + span { color:white; background:#65364d; }
+.project-mode input:focus-visible + span { outline:3px solid #276c91; outline-offset:2px; }
+.project-selection p { color:var(--dim,#635761); margin:5px 0 10px; font-size:.9rem; }
+.project-picker { gap:8px 12px; }
+.project-picker label { min-width:0; max-width:100%; }
+.project-picker select { appearance:auto; font:inherit; font-size:.94rem; width:100%; max-width:19rem; padding:7px 30px 7px 9px; min-height:40px; background:white; color:inherit; border-radius:6px; border:1px solid var(--outline,#dfd6ce); }
+.project-picker button, #selection-actions button { min-height:40px; }
+#selected-projects { display:flex; flex-wrap:wrap; gap:7px; list-style:none; padding:0; margin:10px 0 0; }
+#selected-projects:empty { margin:0; }
+#selected-projects li { display:inline-flex; align-items:stretch; max-width:100%; border:1px solid #c0b5b8; border-radius:8px; background:white; }
+#selected-projects li.is-current { border-color:#79415a; background:#f6edf0; }
+#selected-projects button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-width:0; min-height:36px; padding:4px 8px; font:inherit; font-size:.875rem; color:inherit; background:transparent; text-align:left; }
+#selected-projects button span:nth-child(2) { overflow-wrap:anywhere; }
+#selected-projects button[data-remove-project] { min-width:36px; font-size:1.35rem; border-inline-start:1px solid #d7cbd0; border-radius:0 8px 8px 0; }
+#selected-projects button small { color:#6a344c; white-space:nowrap; }
+.project-key, .leaflet-marker-icon.project-map-pin { display:grid; place-items:center; font-family:system-ui,sans-serif; font-weight:700; color:white; background:#5c6476; border-radius:50%; line-height:1; }
+.project-key { width:21px; height:21px; flex:0 0 21px; font-size:.75rem; }
+.is-current .project-key, .leaflet-marker-icon.project-map-pin.is-current { background:#792e4d; }
+.leaflet-marker-icon.project-map-pin { font-size:14px; border:2px solid white; box-shadow:0 0 0 1px #372f39,0 2px 5px #241e292b; }
+.leaflet-marker-icon.project-map-pin.is-current { outline:2px solid #792e4d; }
+#selection-actions { margin-top:9px; }
+#selection-actions[hidden], #selection-actions [hidden] { display:none; }
+#project-manage { font-size:.875rem; }
+#project-manage summary { cursor:pointer; color:var(--wine,#782d48); }
+#project-manage > div { align-items:center; }
+@media(max-width:600px) {
+  .project-selection { padding:0 12px 12px; }
+  .project-selection-heading { gap:5px 8px; }
+  .project-mode span { padding:8px; }
+  .project-picker { gap:4px 8px; }
+  .project-picker select { max-width:100%; }
+  .project-picker label { flex:1 1 138px; }
+}
+#mark-point-tip { padding:8px 12px; margin:8px 0 0; border-inline-start:3px solid #79415a; background:#f8f3f3; }
+#mark-point-tip p { margin:0; color:inherit; }
+#mark-point-tip summary { cursor:pointer; font-size:.875rem; color:var(--wine,#782d48); }
+#mark-point-form { display:flex; align-items:end; flex-wrap:wrap; gap:6px 10px; margin:8px 0; }
+#mark-point-form label { display:grid; font-size:.875rem; }
+#map-marking-bar { position:absolute; top:58px; left:10px; z-index:530; max-width:calc(100% - 76px); display:flex; align-items:center; gap:8px; padding:3px 10px; border:1px solid #79415a; border-radius:6px; color:#3b2430; background:#fff8fa; box-shadow:0 1px 5px #43303d24; font-size:.875rem; }
+#map-marking-bar[hidden] { display:none; }
+#map-marking-bar button { min-height:38px; }

@@ -92,10 +92,13 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     if(current)$('geo-boundary-key').textContent='Área seleccionada';
     const hint=noMatch&&kind==='canton'?'Selecciona un cantón para ver su ficha.':'Toca '+articles[kind]+' para ver su ficha.';
     $('map-hint').textContent=hint+(kind==='sector'?' Acerca el mapa para distinguir los sectores.':'');
-    $('profile-prompt').textContent=hint;
+    const firstLook=kind==='canton' && empty && !pointName && $('layer').value==='overview';
+    $('profile-empty-heading').textContent=firstLook?'Elige una ubicación':'Selecciona '+articles[kind];
+    $('profile-prompt').textContent=firstLook?'Elige un proyecto para preparar su campaña, o toca un cantón para consultar su población.':hint;
+    $('try-project').hidden=!firstLook||!$('try-project').textContent;
     const title=current?(kind==='zone'||kind==='sector'?names[kind]+' '+current.code:names[kind]+' · '+current.name):('Cantón · '+cantons.get(cantonCode()).properties.name);
     const pop=current?current.population:cantons.get(cantonCode()).properties.population;
-    $('selection-label').textContent=pointName?'Edificio · '+pointName:empty?'Selecciona '+articles[kind]:title+(pop==null?'':' · '+fmt.format(pop)+' hab.');
+    $('selection-label').textContent=pointName?'Ubicación · '+pointName:empty?'':title+(pop==null?'':' · '+fmt.format(pop)+' hab.');
     $('profile-link').hidden=!pointName&&empty;
     incomeEstimate();paintBorders();
   }

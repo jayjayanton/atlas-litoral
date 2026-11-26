@@ -187,7 +187,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
     const named = matchedPlace ? [matchedPlace,...sites.filter(p=>p.name!==matchedPlace.name)] : sites;
     placeMarker.clearLayers();
     const ref=matchedPlace || sites.find(p=>p.kind==='Edificio');
-    if(ref){
+    if(ref && (matchedPlace || !state().project)){
       const dot=L.circleMarker([ref.lat,ref.lon],{pane:'sector-place',radius:5,color:'#fff',weight:2,fillColor:'#174a70',fillOpacity:1,interactive:false});
       const label=document.createElement('span'); label.textContent=ref.name;
       dot.bindTooltip(label,{permanent:true,direction:'top',offset:[0,-6],className:'sector-place-label'}).addTo(placeMarker);
@@ -351,9 +351,9 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
       status.textContent = '';
       sector.disabled = false; $('sector-zone-map').disabled = false;
       markPlaces();
-      if (desired && layers.has(desired)) pickRow(desired,zoom && previousFocus===buildingFocusVersion && state().theme===requestedTheme,place);
+      if (desired && layers.has(desired) && previousFocus===buildingFocusVersion) pickRow(desired,zoom && state().theme===requestedTheme,place);
       else {
-        status.textContent=desired?'Ese código de sector no figura en la zona. Elige un punto u otro código.':'Elige un lugar, toca el mapa o selecciona un sector por su código.';
+        status.textContent=desired && previousFocus===buildingFocusVersion?'Ese código de sector no figura en la zona. Elige un punto u otro código.':'Elige un lugar, toca el mapa o selecciona un sector por su código.';
         paintSelection();
         if (sectorMapActive()) legend();
         if (zoom && previousFocus===buildingFocusVersion && state().theme===requestedTheme) {changeTheme(incomeTheme()?'sector-income':'sectors');fit(overlay.getBounds());}
@@ -452,7 +452,24 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
     adCircle=L.circle([lat,lon],{pane:'sector-place',radius:km*1000,color:'#2351ae',weight:3,dashArray:'8 5',fill:false,interactive:false}).addTo(map);
     legend();fit(adCircle.getBounds().extend(layers.get(sector.value).getBounds()));
   }
-  return {refresh, openCode, locate, codeAt, focusPin(){buildingFocusVersion++;lookup++;clearRadius();placeMarker.clearLayers();}, selectedCode:()=>currentZone+(selectedRow?.[0]||''), readZone:async z=>(await getBlock(z))[z], previewRadius, frame:(theme='sectors')=>showMap(true,false,theme), legend, setFacilities(schools,hospitals) {
+  function focusPin() {
+    buildingFocusVersion++;lookup++;clearRadius();placeMarker.clearLayers();
+    matchedPlace=selectedRow=undefined;
+    sector.value='';results.hidden=true;
+    $('sector-map').textContent='Elegir en el mapa';
+    paintSelection();
+    if(sectorMapActive())legend();
+  }
+  function showPinSector(code) {
+    if (!sectorMapActive() || !code) return;
+    const z=code.slice(0,9),suffix=code.slice(9);
+    if (currentZone===z && layers.has(suffix)) {
+      pickRow(suffix);return;
+    }
+    setZones(code.slice(0,6));
+    return openZone(z,suffix);
+  }
+  return {refresh, openCode, locate, codeAt, focusPin, showPinSector, selectedCode:()=>currentZone+(selectedRow?.[0]||''), readZone:async z=>(await getBlock(z))[z], previewRadius, frame:(theme='sectors')=>showMap(true,false,theme), legend, setFacilities(schools,hospitals) {
     facilities = [[schools,'Escuela'],[hospitals,'Hospital']].flatMap(([list,kind])=>(list||[])
       .filter(p=>cantonNames.has(p.code)).map(p=>({...p,kind})));
     buildPointIndex();

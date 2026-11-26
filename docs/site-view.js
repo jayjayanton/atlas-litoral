@@ -22,7 +22,6 @@ export function initSiteView(map){
     if(!data)return;
     const {site,canton,score,counts,near,parts,criteria=[]}=data;
     const ll=[site.lat,site.lon];
-    if(site.temporary)L.marker(ll,{interactive:false,keyboard:false,title:'Punto de análisis',icon:L.divIcon({className:'',html:'<span class="pm">●</span>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(overlay);
     $('site-location').textContent=[site.name,canton?.name,canton?.province,site.lat.toFixed(5)+', '+site.lon.toFixed(5)].filter(Boolean).join(' · ');
     $('site-summary').textContent=canton?'Puntaje del punto · '+score+' / 100':'Fuera de la cobertura de Guayas y Santa Elena';
     $('site-explanation').textContent=canton?'Escuelas y hospitales se cuentan dentro del radio. Vías y lugares seleccionados mejoran el puntaje cuanto más cerca están. Los pesos aparecen en “Aportes al puntaje”.':'El punto está fuera de la cobertura del cálculo.';

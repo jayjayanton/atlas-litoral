@@ -31,7 +31,7 @@ const columns = [
 ];
 
 const metric = 'Gasto publicitario en USD dividido por visitas agendadas en el mismo período';
-const locationType = project => project.reference ? 'Acceso aproximado de referencia' : 'Punto registrado';
+const locationType = project => project.reference ? 'Acceso aproximado de referencia' : project.temporary ? 'Punto marcado en el mapa' : 'Punto registrado';
 const countLabel = (value, singular, plural) => number.format(value) + ' ' + (value === 1 ? singular : plural);
 
 export function initCampaign({state,cantons,parishes,selectBuilding,pickOnMap,previewRadius,updatePlanMap,matchesForProject,localityFor,showOrigins,download}) {
@@ -228,7 +228,7 @@ export function initCampaign({state,cantons,parishes,selectBuilding,pickOnMap,pr
   }
 
   function drawPlan(project,age,ageIndex,matches) {
-    if(!project) return unavailable('Agrega un proyecto para comparar los sectores cercanos.');
+    if(!project) return unavailable('Elige un proyecto o marca un punto en el mapa para comparar los sectores cercanos.');
     if(!radius.validity.valid) return unavailable('Ingresa un radio entre 0,1 y 250 km.');
     const radiusKm=radius.valueAsNumber;
     const plan=rankSectors(data.sectors,project,radiusKm,rank.value,Number(limit.value),ageIndex);
@@ -266,12 +266,13 @@ export function initCampaign({state,cantons,parishes,selectBuilding,pickOnMap,pr
   }
 
   function refresh() {
-    const {project:active,buildings,matches,sample,localities}=state();
-    const project=active ?? buildings[0];
+    const {project:active,buildings,matches,sample,localities,selectionStarted}=state();
+    const project=active ?? (selectionStarted?null:buildings[0]);
     if(optionsList!==buildings) {
       optionsList=buildings;
       building.replaceChildren(...buildings.map(b=>new Option(b.name+(b.reference?' · referencia':''),b.id)));
-      if(!buildings.length) building.add(new Option('Sin proyectos registrados',''));
+      const placeholder=new Option(buildings.length?'Elegir un proyecto':'Sin proyectos registrados','');
+      placeholder.disabled=true;building.add(placeholder,0);
       building.disabled=!buildings.length;
     }
     building.value=project?.id||'';
@@ -314,5 +315,5 @@ export function initCampaign({state,cantons,parishes,selectBuilding,pickOnMap,pr
   $('campaign-export').onclick=writeExport;
   $('campaign-all-origins').onclick=()=>showOrigins(exportPlan.project);
   refresh();
-  return {refresh,useSector,setHospitals(items){facilitiesReady=true;hospitals=items;refresh();}};
+  return {refresh,useSector,useProject(){mode.value='near';refresh();},setHospitals(items){facilitiesReady=true;hospitals=items;refresh();}};
 }

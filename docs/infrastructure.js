@@ -283,7 +283,7 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
   $('show-services').onclick=()=>{
     if(!state().project){
       const select=$('building-select');
-      select.closest('details').open=true;select.scrollIntoView({block:'center'});select.focus({preventScroll:true});return;
+      select.scrollIntoView({block:'center'});select.focus({preventScroll:true});return;
     }
     for(const key of Object.keys(symbols))if(available[key])$('ol-'+key).checked=true;
     const p=state().project;map.setView([p.lat,p.lon],13);queuePoints();$('explorar').scrollIntoView({block:'start'});

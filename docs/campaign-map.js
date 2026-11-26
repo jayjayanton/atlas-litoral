@@ -1,4 +1,4 @@
-// Reuse the sector profile cache and local basemap. Load only the selected zones on expansion.
+import {initBasemap, osmCredit} from './basemaps.js';
 export function initCampaignMap({cantons, context, streets, readZone}) {
   const panel = document.getElementById('campaign-map-panel');
   const container = document.getElementById('campaign-plan-map');
@@ -17,14 +17,18 @@ export function initCampaignMap({cantons, context, streets, readZone}) {
     map = L.map(container, {scrollWheelZoom:false, zoomControl:false, attributionControl:false});
     L.control.zoom({position:'topright', zoomInTitle:'Acercar', zoomOutTitle:'Alejar'}).addTo(map);
     L.control.attribution({prefix:false}).addTo(map)
-      .addAttribution('Límites censales: INEC · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap</a>');
-    const options = {interactive:false, smoothFactor:1};
+      .addAttribution(osmCredit).addAttribution('Límites censales: INEC');
+    const localPane = map.createPane('campaign-local');
+    localPane.style.zIndex = '250';
+    localPane.style.pointerEvents = 'none';
+    const options = {pane:'campaign-local', interactive:false, smoothFactor:1};
     L.geoJSON(context, {...options, filter:f => f.properties.kind === 'land',
       style:{color:'#baa58f', weight:1, fillColor:'#f5ecdf', fillOpacity:1}}).addTo(map);
-    L.geoJSON(cantons, {...options, style:{color:'#917f83', weight:1, fill:false}}).addTo(map);
+    L.geoJSON(cantons, {...options, pane:'overlayPane', style:{color:'#917f83', weight:1, fill:false}}).addTo(map);
     L.geoJSON(context, {...options, filter:f => f.properties.kind === 'river',
       style:{color:'#82a1b4', weight:1.4}}).addTo(map);
     L.geoJSON(streets, {...options, style:{color:'#ada092', weight:1}}).addTo(map);
+    initBasemap(map, container);
     overlay = L.featureGroup().addTo(map);
 
     const views = L.control({position:'topleft'});
