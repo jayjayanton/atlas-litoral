@@ -454,7 +454,7 @@ async function main(){
    parishes=parishTools.initParishes(map,parishCatalog.features,()=>byCode(selected).properties,setSelection,()=>{demographics?.refresh();sectors?.refresh();});
  }else $('parish-note').textContent='No se pudieron cargar los límites parroquiales.';
  if(censusAges&&parishes&&ageTools){
-   demographics=ageTools.initDemographics({map,data:censusAges,cantons:features,parishCatalog,index:sectorIndex,onAgesChanged:(lo,hi)=>earnings?.setAges(lo,hi),
+   demographics=ageTools.initDemographics({map,data:censusAges,cantons:features,parishCatalog,index:sectorIndex,
      state:()=>({theme:$('layer').value,province:$('province').value,code:selected,territory,sectors}),colorize});
    $('age-option').disabled=false;$('age-body').hidden=false;$('age-status').hidden=true;
  }else $('age-status').textContent='No se pudo cargar la demografía censal. Recarga para reintentar.';
@@ -489,7 +489,6 @@ async function main(){
    const code=area?.code||selected;
    return {province:(area?.canton||selected).slice(0,2),code,label:area?.name||byCode(selected).properties.name};
  },(code,lo,hi)=>demographics?.residentCount(code,lo,hi));
- if(demographics)earnings.setAges(...demographics.ageRange());
  $('project-location-retry').onclick=resolveBuildingAddress;
  $('project-sector-open').onclick=()=>{
    if(!pinSector)return;

@@ -23,22 +23,20 @@ export function earningsShare(rows,lo,hi,threshold,includeNonworkers){
 
 export function initEarnings(location,residentCount){
   const card=$('earnings-card'),result=$('earn-result'),local=$('earn-local'),note=$('earn-note');
-  const from=$('earn-from'),to=$('earn-to'),cut=$('earn-cut'),base=$('earn-base');
+  const age=$('earn-age'),cut=$('earn-cut'),base=$('earn-base');
   let task,last='',revision=0;
   function refresh(){
     const area=location();
     card.hidden=!area;
     if(!area){last='';revision++;return;}
-    const key=JSON.stringify([area,from.value,to.value,cut.value,base.value]);
+    const [lo,hi]=age.value.split('-').map(Number);
+    const key=JSON.stringify([area,lo,hi,cut.value,base.value]);
     if(key===last)return;
     last=key;
     const ticket=++revision;
-    const lo=from.valueAsNumber,hi=to.valueAsNumber,threshold=cut.valueAsNumber;
+    const threshold=cut.valueAsNumber;
     result.textContent='';local.textContent='';note.textContent='';$('earn-retry').hidden=true;
     $('earn-domain').textContent='Referencia provincial · '+provinces[area.province]+' · ENEMDU 2025';
-    if(!Number.isInteger(lo)||!Number.isInteger(hi)||lo<0||hi>120||lo>hi){
-      note.textContent='Revisa las edades. La edad inicial debe ser menor o igual a la final.';return;
-    }
     if(area.code){
       local.textContent='Consultando el Censo 2022…';
       Promise.resolve(residentCount(area.code,lo,hi)).then(count=>{
@@ -46,7 +44,6 @@ export function initEarnings(location,residentCount){
         local.textContent=area.label+' · '+(count==null?'Sin desglose censal para estas edades.':number.format(count)+' residentes de '+lo+'–'+hi+' años en el Censo 2022.');
       }).catch(()=>{if(ticket===revision)local.textContent='No se pudo cargar el conteo del Censo 2022.';});
     }else local.textContent=area.pending?'Buscando el sector del edificio…':'Sin sector censal identificado para el pin.';
-    if(lo<15){note.textContent='El ingreso laboral se consulta desde los 15 años. Ajusta la edad inicial.';return;}
     if(!Number.isFinite(threshold)||threshold<0){note.textContent='Ingresa un monto mensual de cero o más dólares.';return;}
     if(!task)task=readCompressedJSON('./data/earnings-2025.json.gz').catch(error=>{task=null;throw error;});
     note.textContent='Calculando el porcentaje provincial…';
@@ -66,8 +63,13 @@ export function initEarnings(location,residentCount){
       note.textContent='No se pudo cargar la encuesta provincial.';$('earn-retry').hidden=false;
     });
   }
-  for(const field of [from,to,cut])field.addEventListener('input',refresh);
+  age.addEventListener('change',refresh);
+  cut.addEventListener('input',refresh);
   base.addEventListener('change',refresh);
   $('earn-retry').onclick=()=>{last='';refresh();};
-  return {refresh,setAges(lo,hi){from.value=lo;to.value=hi;refresh();}};
+  return {refresh,setAges(lo,hi){
+    const value=lo+'-'+hi;
+    if([...age.options].some(option=>option.value===value))age.value=value;
+    refresh();
+  }};
 }
