@@ -87,3 +87,31 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 #sector-parish{width:min(22em,100%)}
 #sectores .table-scroll{max-width:100%;overflow-x:auto}
 #sector-rows td small{white-space:nowrap}
+
+#sector-place{width:min(100%,32rem);min-height:42px}
+.place-query{display:block;font-size:14px;font-weight:650;margin-bottom:5px}
+#sector-matches{padding:0;margin:4px 0;max-width:32rem;list-style:none;border:1px solid var(--outline);border-radius:6px;overflow:hidden}
+#sector-matches button{display:block;border:0;border-radius:0;background:white;width:100%;text-align:left;padding:8px 12px;color:var(--ink);font-weight:600}
+#sector-matches button:hover,#sector-matches button:focus-visible{background:var(--light)}
+#sector-matches small{display:block;font-weight:400;color:var(--dim)}
+#sector-matches li+li{border-top:1px solid var(--outline)}
+#sector-manual{margin:12px 0}#sector-manual summary{cursor:pointer;color:var(--teal);font-weight:650}
+#sector-manual .age-controls{margin-top:10px}
+#sector-id{max-width:min(100%,27rem)}
+.sector-location{border-left:4px solid #bb7622;padding:4px 14px;margin:18px 0;background:#fcf8ef}
+.sector-location h3,.sector-location p{margin:4px 0}
+#sector-path{font-weight:550}
+#place-status:empty,#sector-landmarks:empty{display:none}
+.sector-legend-area{flex-basis:100%;font-size:11px}
+.maplegend:has(.sector-legend-area){max-width:min(355px,78%)}
+.maplegend a{pointer-events:auto}
+.sw.selected-sector-key{background:#e9a34d;border:2px solid #194b47}
+.sw.zone-sectors-key{background:#b8dbd1;border:1px solid #477d77}
+.sw.neighbor-sectors-key{background:transparent;border:2px dashed #535e68}
+
+.sector-place-label{max-width:190px;white-space:normal;line-height:1.2;text-align:center;color:#174a70;font-weight:700;pointer-events:none}
+@media(max-width:760px){
+  .mapstage:has(.sector-legend-area){height:auto}
+  .mapstage:has(.sector-legend-area) #map{height:365px}
+  .mapstage:has(.sector-legend-area) .maplegend{position:static;max-width:none;border:0;border-bottom:1px solid var(--outline);border-radius:0;background:white;padding:8px 12px}
+}

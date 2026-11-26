@@ -56,6 +56,7 @@ function fill(f){if(['ages','sectors'].includes($('layer').value))return '#e5e9e
 function style(f){const active=f.properties.code===selected;return {color:active?'#134b45':'#509182',weight:active?2.7:1.2,fillColor:fill(f),fillOpacity:withinProvince(f)?(['access','suitability'].includes($('layer').value)?.24:.65):.16,opacity:withinProvince(f)?1:.35};}
 function setSelection(code,move=false){if(!byCode(code))return;viewRevision++;selected=code;if($('province').value&&!withinProvince(byCode(code)))$('province').value='';$('canton').value=code;render();if(move)map.fitBounds(layers[code].getBounds(),{padding:[22,22],maxZoom:11});}
 function colorize(){polys.setStyle(style);if(layers[selected])layers[selected].bringToFront();
+ $('map-heading').textContent=$('layer').value==='sectors'?'Mapa de sectores censales':'Mapa territorial';
  creditMap?.refresh();demographics?.refresh();sectors?.refresh();
  if(infrastructure){infrastructure.refresh();if(infrastructure.legend($('layer').value))return;}
  if(sectors && $('layer').value==='sectors'){sectors.legend();return;}
@@ -337,7 +338,7 @@ async function main(){
  }else $('age-status').textContent='No se pudo cargar la demografía censal. Recarga para reintentar.';
  if(sectorIndex && parishCatalog){
    sectors=initSectorProfiles({map,index:sectorIndex,parishCatalog,cantons:features,
-     state:()=>({theme:$('layer').value,canton:selected,parish:$('parish-select').value,finance,project}),
+     state:()=>({theme:$('layer').value,province:$('province').value,canton:selected,parish:$('parish-select').value,finance,project,buildings}),
      selectArea:code=>{setSelection(code.slice(0,4));parishes.highlight(parishCatalog.features.find(f=>f.properties.code===code.slice(0,6)));},
      editFinance:scenario,changeTheme:()=>{$('layer').value='sectors';colorize();},isPicking:()=>picking});
  }else $('sector-status').textContent='No se pudieron cargar los sectores. Recarga para reintentar.';
@@ -372,6 +373,7 @@ async function main(){
    changeTheme:theme=>{$('layer').value=theme;colorize();},isPicking:()=>picking,fitRegion,selectCanton:code=>setSelection(code),download
  }).catch(error=>{console.warn('Capas de infraestructura:',error);$('infra-status').textContent='No se pudo iniciar el análisis. Recarga para reintentar.';return null;});
  if(infrastructure){
+   sectors?.setFacilities(infrastructure.schools,infrastructure.hospitals);
    const requested=new URL(location.href).searchParams.get('capa');
    if(['access','suitability'].includes(requested) && !$('layer').querySelector('[value="'+requested+'"]').disabled)$('layer').value=requested;
    colorize();

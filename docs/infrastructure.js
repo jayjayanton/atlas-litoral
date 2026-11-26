@@ -223,5 +223,5 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
       roadDistance:p=>nearestRoad(p.lat,p.lon,allRoadLines)?.km??null});
   }catch(error){console.warn('Aptitud ponderada:',error);$('suit-status').textContent='No se pudo iniciar el análisis de densidad.';}
   updateCriteria();queuePoints();
-  return {refresh,fill,legend,inspect,supports:appThemes};
+  return {refresh,fill,legend,inspect,supports:appThemes,schools,hospitals};
 }
