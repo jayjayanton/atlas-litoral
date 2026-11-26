@@ -4,9 +4,15 @@
 
 Atlas de acceso a servicios y mercado de vivienda en Guayas y Santa Elena, Ecuador. Selecciona un cantón para consultar sus indicadores o combina escuelas, hospitales y vías en el panel **Aptitud territorial ponderada**. Puedes comparar cómo cambia el resultado al modificar los pesos de cada criterio. La puntuación describe el acceso a servicios. Para evaluar la demanda de vivienda, consulta la fuente, el período y la cobertura de los indicadores de mercado.
 
+## Demografía
+
+[Consulta las edades por parroquia](https://jayjayanton.github.io/atlas-litoral/?capa=ages#demografia). El rango incluye ambos extremos. Dejar vacío el máximo incluye todas las edades a partir del mínimo. La ficha presenta población total, conteo y porcentaje del rango elegido, y los cinco grupos quinquenales más numerosos. Las 65 unidades con datos en Guayas y Santa Elena son cabeceras cantonales y parroquias rurales del Censo 2022. Una parroquia urbana municipal sin código censal independiente muestra la cobertura disponible.
+
+Para reconstruir los conteos por edad cumplida, ejecuta `python scripts/build_census_ages.py BDD_CPV2022_SECT_CSV.zip docs/data/census-ages.json` con el archivo público nacional de población por sector del INEC.
+
 ## Comparar crédito de vivienda
 
-[Abre la comparación por umbral](https://jayjayanton.github.io/atlas-litoral/?capa=credit#credito) para consultar el número de créditos sobre un monto o las áreas cuyo préstamo promedio lo supera. El umbral inicial es USD 100.000. La opción **Usar precio menos entrada del proyecto** ajusta el umbral al escenario del edificio activo.
+[Abre la comparación por umbral](https://jayjayanton.github.io/atlas-litoral/?capa=credit#credito) para consultar el número de créditos sobre un monto o las áreas cuyo préstamo promedio lo supera. Escribe tu propio umbral en USD. El navegador recuerda el último monto válido, incluso con centavos. Al borrar el campo se elimina esa preferencia. La opción **Usar precio menos entrada del proyecto** ajusta el umbral al escenario del edificio activo.
 
 La comparación cantonal utiliza los créditos originales inmobiliarios, VIS y VIP de la banca privada entre enero y septiembre de 2026. El informe agrupa operaciones. Cuando el conteo exacto sobre el umbral es indeterminado, la tabla muestra los límites compatibles con los montos y conteos publicados.
 

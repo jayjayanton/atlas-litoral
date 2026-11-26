@@ -57,3 +57,23 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 #credit-data{padding:8px 14px;background:var(--light);margin:12px 0}
 #credit-data input{max-width:100%}
 #credit-import-status{display:block}
+
+.age-controls{display:flex;align-items:end;gap:10px 16px;flex-wrap:wrap}
+.age-controls label{display:grid;gap:4px;max-width:100%;font-size:14px;font-weight:650}
+.age-controls select,.age-controls input{min-height:38px;max-width:100%;min-width:0}
+.age-controls input{width:7em}
+.age-panel [hidden],#age-warning:empty{display:none}
+.age-numbers{display:flex;flex-wrap:wrap;gap:14px 34px;margin:18px 0}
+.age-numbers div{display:grid;align-content:start;gap:2px}
+.age-numbers span,.age-numbers small{font-size:14px;color:var(--dim)}
+.age-numbers strong{color:var(--teal);font-size:clamp(21px,3vw,28px)}
+#age-bars{list-style:none;padding:0;max-width:640px}
+#age-bars li{display:grid;align-items:center;grid-template-columns:6em minmax(18px,1fr) minmax(7em,auto);gap:10px;margin:6px 0;font-size:14px;font-variant-numeric:tabular-nums}
+#age-bars li>span:last-child{text-align:right}
+.age-track{display:block;height:9px;border-radius:3px;background:#e7efec}
+.age-track i{display:block;height:100%;border-radius:3px;background:#357e76}
+
+@media (min-width:761px) and (max-width:1160px){
+  .mast nav{min-width:0;overflow-x:auto;gap:14px;white-space:nowrap}
+  .mast nav a,.mast .brand,.mast-button{flex-shrink:0}
+}

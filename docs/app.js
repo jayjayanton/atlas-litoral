@@ -1,3 +1,4 @@
+import {initDemographics} from './demographics.js';
 import {initCreditMap} from './credit-map.js';
 import {initParishes} from './parishes.js';
 import {parseCoordinates, validBuilding, sameBuilding, buildingList, buildingURL, buildingFromURL} from './buildings.js';
@@ -13,7 +14,7 @@ function load(key,init){try{return JSON.parse(localStorage.getItem(store+key))??
 function save(key,value){try{localStorage.setItem(store+key,JSON.stringify(value));return true;}catch{say('No se pudo guardar en este navegador.');return false;}}
 let project=null,catalog,buildings,buildingState,otherMarkers;
 let finance=load('finance',initialFinance),requests=load('demand',[]),userLoans=load('loans',[]);
-let creditMap,infrastructure,parishes,projectParish,viewRevision=0;
+let demographics,creditMap,infrastructure,parishes,projectParish,viewRevision=0;
 let features,inc,observed,bank,polys,selected='0901',map,marker,labels,streets,selectedPopup,picking=false,pending=null,matches={},dest=null;
 const layers={},colors=['#d6e8dc','#9fcab7','#5fa592','#2b7c73','#155b56'],empty='#e3e7e3';
 const financingURL='https://www.superbancos.gob.ec/estadisticas/portalestudios/volumen-de-credito/';
@@ -50,12 +51,13 @@ function demandNote(){
 function observedLoans(f){return bank.rows.find(r=>normalize(r.province)===normalize(f.properties.province)&&(normalize(r.canton)===normalize(f.properties.name)||(r.canton.includes('BUCAY')&&f.properties.code==='0927')));}
 function metricValue(f){const c=f.properties.code;switch($('layer').value){case'population':return f.properties.population;case'loans':return observedLoans(f)?.operations??null;default:return hasDemand()?matches[c]??0:null;}}
 function breaks(){return $('layer').value==='population'?[0,50000,100000,200000,500000]:$('layer').value==='loans'?[1,5,25,100,500]:[0,1,5,10,25];}
-function fill(f){if(creditMap && $('layer').value==='credit')return creditMap.fill(f.properties.code);if(infrastructure?.supports($('layer').value))return infrastructure.fill($('layer').value,f.properties.code);const v=metricValue(f);if(v==null)return empty;const ix=breaks().filter(x=>v>=x).length-1;return colors[Math.max(0,ix)];}
+function fill(f){if($('layer').value==='ages')return '#e5e9e8';if(creditMap && $('layer').value==='credit')return creditMap.fill(f.properties.code);if(infrastructure?.supports($('layer').value))return infrastructure.fill($('layer').value,f.properties.code);const v=metricValue(f);if(v==null)return empty;const ix=breaks().filter(x=>v>=x).length-1;return colors[Math.max(0,ix)];}
 function style(f){const active=f.properties.code===selected;return {color:active?'#134b45':'#509182',weight:active?2.7:1.2,fillColor:fill(f),fillOpacity:withinProvince(f)?(['access','suitability'].includes($('layer').value)?.24:.65):.16,opacity:withinProvince(f)?1:.35};}
 function setSelection(code,move=false){if(!byCode(code))return;viewRevision++;selected=code;if($('province').value&&!withinProvince(byCode(code)))$('province').value='';$('canton').value=code;render();if(move)map.fitBounds(layers[code].getBounds(),{padding:[22,22],maxZoom:11});}
 function colorize(){polys.setStyle(style);if(layers[selected])layers[selected].bringToFront();
- creditMap?.refresh();
+ creditMap?.refresh();demographics?.refresh();
  if(infrastructure){infrastructure.refresh();if(infrastructure.legend($('layer').value))return;}
+ if(demographics && $('layer').value==='ages'){demographics.legend();return;}
  if(creditMap && $('layer').value==='credit'){creditMap.legend();return;}
  const choices=$('layer').value==='population'?['<50 mil','50 mil+','100 mil+','200 mil+','500 mil+']:$('layer').value==='loans'?['1–4','5–24','25–99','100–499','500+']:['0','1–4','5–9','10–24','25+'];
  $('legend-title').textContent=$('layer').value==='population'?'Habitantes · 2022':$('layer').value==='loans'?'Créditos por destino · ene–sep 2026':'Solicitudes de origen · 90 días';
@@ -295,14 +297,14 @@ function imports(type='demand'){
  if(current.length)$('clear-sample').onclick=()=>{if(!confirm('¿Quitar la muestra de este navegador?'))return;if(!save(type,[]))return;if(isDemand){requests=[];$('sort').value='population';}else userLoans=[];projectState();close();render();say('Muestra retirada.');};
 }
 async function main(){
- const names=['cantons','context','incomes','evidence','mortgages','streets','buildings','provinces','parishes'];
- const [geo,context,incomes,sales,mortgages,streetGeo,publishedBuildings,provinces,parishCatalog]=await Promise.all(names.map(async n=>{
+ const names=['cantons','context','incomes','evidence','mortgages','streets','buildings','provinces','parishes','census-ages'];
+ const [geo,context,incomes,sales,mortgages,streetGeo,publishedBuildings,provinces,parishCatalog,censusAges]=await Promise.all(names.map(async n=>{
    try{
      const r=await fetch('./data/'+n+'.json');
      if(!r.ok)throw Error(n);
      return await r.json();
    }catch(error){
-     if(n==='parishes')return null;
+     if(n==='parishes'||n==='census-ages')return null;
      throw error;
    }
  }));
@@ -324,10 +326,16 @@ async function main(){
  $('canton').innerHTML=features.slice().sort((a,b)=>a.properties.name.localeCompare(b.properties.name,'es')).map(f=>'<option value="'+f.properties.code+'">'+esc(f.properties.name)+'</option>').join('');$('canton').value=selected;
  mapInit(context,streetGeo,provinces);
  if(parishCatalog){
-   parishes=initParishes(map,parishCatalog.features,()=>byCode(selected).properties,setSelection);
+   parishes=initParishes(map,parishCatalog.features,()=>byCode(selected).properties,setSelection,()=>demographics?.refresh());
  }else $('parish-note').textContent='No se pudieron cargar los límites parroquiales.';
+ if(censusAges&&parishCatalog){
+   demographics=initDemographics({map,data:censusAges,cantons:features,parishCatalog,parishes,
+     state:()=>({theme:$('layer').value,province:$('province').value,code:selected}),selectCanton:setSelection,colorize,isPicking:()=>picking});
+   $('age-option').disabled=false;$('age-body').hidden=false;$('age-status').hidden=true;
+ }else $('age-status').textContent='No se pudo cargar la demografía censal. Recarga para reintentar.';
  creditMap=initCreditMap({map,features,parishes,parishCatalog,bankRow:observedLoans,state:()=>({theme:$('layer').value,province:$('province').value,project,projectCanton:dest?.code,down:finance.down}),redraw:colorize,fitRegion,selectCanton:setSelection,download});
- if(new URL(location.href).searchParams.get('capa')==='credit')$('layer').value='credit';
+ const initialTheme=new URL(location.href).searchParams.get('capa');
+ if(initialTheme==='credit'||(initialTheme==='ages'&&demographics))$('layer').value=initialTheme;
  $('source-items').innerHTML=sourceHTML()+'<p class="mini">Distancia de referencia: línea recta del pin a un punto interior de cada cantón; se usa para exploración geográfica. La distancia de viaje depende de la red vial.</p>';render();
  if(shared){
    const known=buildings.find(b=>sameBuilding(b,shared));
@@ -349,6 +357,7 @@ async function main(){
  $('search').oninput=table;$('sort').onchange=table;$('edit').onclick=()=>settings();$('close').onclick=close;$('cancel-pick').onclick=cancelPick;$('finance-open').onclick=scenario;$('import-open').onclick=()=>imports();$('csv-out').onclick=exportData;
  const cantonLink=new URL(location.href).searchParams.get('canton');
  if(!shared && cantonLink && byCode(cantonLink))setSelection(cantonLink,true);
+ if(!shared && initialTheme==='ages')demographics?.openParish(new URL(location.href).searchParams.get('parroquia'));
  infrastructure=await initInfrastructure({
    map, land:context.features.filter(f=>f.properties.kind==='land'), state:()=>({theme:$('layer').value,province:$('province').value,code:selected,features,project,projectInCoverage:!!dest}),
    changeTheme:theme=>{$('layer').value=theme;colorize();},isPicking:()=>picking,fitRegion,selectCanton:code=>setSelection(code),download

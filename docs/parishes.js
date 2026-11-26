@@ -21,7 +21,7 @@ async function municipalParishes() {
   }));
 }
 
-export function initParishes(map, catalog, getCanton, setCanton) {
+export function initParishes(map, catalog, getCanton, setCanton, onSelectionChange) {
   const select = document.getElementById('parish-select');
   const label = document.getElementById('parish-label');
   const toggle = document.getElementById('parish-outlines');
@@ -55,6 +55,7 @@ export function initParishes(map, catalog, getCanton, setCanton) {
   function paint() {
     layer.clearLayers();
     if (toggle.checked) layer.addData(visible);
+    onSelectionChange();
   }
   function zoom() {
     const picked = visible.find(f=>f.properties.code===select.value);

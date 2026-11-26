@@ -17,12 +17,14 @@ export function initCreditMap({map,features,parishCatalog,parishes,bankRow,state
   let seps;
   try{seps=JSON.parse(localStorage.getItem(localKey));}catch{}
   const mode=$('credit-level'),metric=$('credit-metric'),input=$('credit-limit');
+  const thresholdKey='atlasLitoral.v1.creditThreshold';
+  try{input.value=localStorage.getItem(thresholdKey)||'';}catch{}
   const pane=map.createPane('parish-credit');pane.style.zIndex=408;pane.style.pointerEvents='none';
   const strokes=L.geoJSON([],{pane:'parish-credit',interactive:false,style:f=>({
     color:'#6b8580',weight:.8,fillColor:palette[category(stats.get(f.properties.creditCode))],fillOpacity:.78
   })});
   const national=new Map((parishCatalog?.features||[]).map(f=>[f.properties.code,f]));
-  let urban=[],geometries=new Map(),stats=new Map(),records=[],threshold=100000,paintKey='',revision=0;
+  let urban=[],geometries=new Map(),stats=new Map(),records=[],threshold=NaN,paintKey='',revision=0;
   function category(s){
     if(!s)return 'missing';
     if(metric.value==='mean')return s.aboveMean?'yes':'no';
@@ -36,10 +38,10 @@ export function initCreditMap({map,features,parishCatalog,parishes,bankRow,state
   function dates(){return mode.value==='canton'?'ene–sep 2026':seps?.months.join(', ')||'';}
   function source(){return mode.value==='canton'?'Banca privada · SB':'Cooperativas y mutualistas · Archivo SEPS cargado';}
   function rebuild(){
-    revision++;threshold=input.valueAsNumber;
+    revision++;threshold=input.validity.valid?input.valueAsNumber:NaN;
     stats=new Map();geometries=new Map();
     const rows=mode.value==='canton'?bank:(seps?.rows||[]);
-    if(!input.validity.valid||!Number.isFinite(threshold)){records=[];return;}
+    if(!Number.isFinite(threshold)){records=[];return;}
     records=rows.filter(row=>location(row.code)).map(row=>{
       const s=summarize(row.groups,threshold);stats.set(row.code,s);
       if(mode.value==='parish'){
@@ -69,7 +71,7 @@ export function initCreditMap({map,features,parishCatalog,parishes,bankRow,state
     $('credit-map').disabled=!ready||!valid;
     $('credit-csv').disabled=!rows.length;
     $('credit-period').textContent=useParish?(seps?source()+' · '+seps.months.length+ (seps.months.length===1?' mes en el archivo · ':' meses en el archivo · ')+dates():'Sin cifras parroquiales cargadas.'):'Banca privada · Créditos originales inmobiliarios, VIS y VIP · Enero–septiembre de 2026.';
-    $('credit-count').textContent=!valid?'Ingresa un monto entre $1 y $20.000.000.':!ready?'Carga el archivo mensual para comparar parroquias.':rows.length+' de '+all.length+' áreas con datos en la provincia o región seleccionada.';
+    $('credit-count').textContent=!valid?'Escribe tu umbral en USD. Puedes usar hasta dos decimales.':!ready?'Carga el archivo mensual para comparar parroquias.':rows.length+' de '+all.length+' áreas con datos en la provincia o región seleccionada.';
     tbody.replaceChildren();
     for(const row of rows){
       const tr=tbody.insertRow(),geo=tr.insertCell(),p=location(row.code);
@@ -96,9 +98,9 @@ export function initCreditMap({map,features,parishCatalog,parishes,bankRow,state
     strokes.addData(shapes);strokes.addTo(map);
   }
   function legend(){
-    $('legend-title').textContent=(mode.value==='canton'?'Cantón':'Parroquia')+' · Crédito > '+(Number.isFinite(threshold)?usd(threshold):'—');
+    $('legend-title').textContent=Number.isFinite(threshold)?(mode.value==='canton'?'Cantón':'Parroquia')+' · Crédito > '+usd(threshold):'Define el umbral de crédito';
     $('legend').replaceChildren();
-    for(const [key,value] of Object.entries(label())){
+    for(const [key,value] of Object.entries(Number.isFinite(threshold)?label():{})){
       const span=document.createElement('span');span.className='key';const icon=document.createElement('i');
       icon.className='sw';icon.style.background=palette[key];span.append(icon,document.createTextNode(value));$('legend').append(span);
     }
@@ -106,8 +108,15 @@ export function initCreditMap({map,features,parishCatalog,parishes,bankRow,state
   }
   function refresh(){report();paint();}
   function apply(){rebuild();redraw();}
-  input.oninput=apply;metric.onchange=apply;mode.onchange=apply;$('credit-only').onchange=report;
-  $('credit-project').onclick=()=>{input.value=Math.round(state().project.price*(1-state().down/100));apply();};
+  function setThreshold(){
+    apply();
+    try{
+      if(Number.isFinite(threshold))localStorage.setItem(thresholdKey,input.value);
+      else localStorage.removeItem(thresholdKey);
+    }catch{}
+  }
+  input.oninput=setThreshold;metric.onchange=apply;mode.onchange=apply;$('credit-only').onchange=report;
+  $('credit-project').onclick=()=>{input.value=(state().project.price*(1-state().down/100)).toFixed(2);setThreshold();};
   $('credit-map').onclick=()=>{$('layer').value='credit';redraw();fitRegion();$('map').scrollIntoView({block:'center'});};
   $('credit-file').onchange=async e=>{
     const file=e.target,files=[...file.files];if(!files.length)return;
