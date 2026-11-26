@@ -239,3 +239,5 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 .mapstage:has(#selection-label:empty) .map-selection{display:none}
 .mapcard:has(#site-card:not([hidden])) .map-selection{display:none}
 @media(max-width:760px){.map-selection{font-size:12px;padding:7px 9px}.theme-label{width:100%}.map-options{gap:0}.map-options #geo-search summary{min-height:32px}}
+#map-load-notice{padding:8px 16px;background:#fff8e7;color:#614925;font-size:14px}
+#map-load-notice .linkbutton{font-size:inherit}

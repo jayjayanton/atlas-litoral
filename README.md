@@ -72,4 +72,6 @@ Desde la carpeta del repositorio, ejecuta `python -m http.server 8000 --director
 
 GitHub Pages sirve la carpeta `docs/` de la rama `main`. El atlas incluye los datos cartográficos y Leaflet, y se ejecuta en el navegador. Las importaciones personales se guardan en el navegador que las realizó.
 
+Después de editar el CSS, los módulos JavaScript o la imagen de vista regional, ejecuta `python scripts/version_map_assets.py` y publica también el `docs/index.html` actualizado. Así los navegadores cargan las versiones correspondientes a esa página.
+
 El panel de fuentes documenta la procedencia y cobertura de las capas. El [catálogo de infraestructura](docs/data/infra/sources.json) incluye los inventarios de escuelas, hospitales y vías. La red vial contiene datos de [© OpenStreetMap contributors](https://www.openstreetmap.org/copyright), distribuidos bajo ODbL. Leaflet conserva su [licencia](docs/vendor/LICENSE-Leaflet.txt). Los scripts de la carpeta `scripts/` permiten recalcular los indicadores de accesibilidad y densidad con los insumos correspondientes.

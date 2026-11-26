@@ -16,7 +16,7 @@ function revealHash(hash) {
   return panel;
 }
 
-$('tool-choice').addEventListener('change', event => {
+$('tool-choice')?.addEventListener('change', event => {
   const id = event.target.value;
   showAnalysis(id);
   const url = new URL(location.href);
