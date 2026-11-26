@@ -114,9 +114,10 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
   function updatePin(){
     const {project,projectInCoverage}=state();
     $('show-services').disabled=!projectInCoverage || !points.length;
+    $('access-score-box').hidden=!project;
     if(!projectInCoverage){
-      $('analysis-project').textContent=project.name;$('access-score').textContent='—';
-      $('access-summary').textContent='Edificio fuera de la cobertura de Guayas y Santa Elena.';
+      $('analysis-project').textContent=project?.name || 'Accesibilidad en el mapa';$('access-score').textContent='—';
+      $('access-summary').textContent=project?'Edificio fuera de la cobertura de Guayas y Santa Elena.':'Selecciona un edificio para consultar los servicios cercanos.';
       $('nearby-list').replaceChildren();return;
     }
     const near=pinDistances(project),d=Object.fromEntries(Object.entries(near).map(([k,v])=>[k,v?.km??null]));

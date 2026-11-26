@@ -106,16 +106,19 @@ export function initSchoolFees({schools,data,map,state,changeTheme,selectCanton,
     const r=bySite.get(selection);
     if(!r){$('fee-budget').textContent='Sin planteles con tarifa documentada para esta selección.';return;}
     const project=state().project;
+    $('fee-budget').innerHTML=facts(r);
+    if(!project)return;
     const km=distanceKm(project.lat,project.lon,[r.site.lon,r.site.lat]);
-    $('fee-budget').innerHTML=facts(r)+'<p class="mini">'+esc(new Intl.NumberFormat('es-EC',{maximumFractionDigits:2}).format(km))+' km en línea recta desde '+esc(project.name)+'.</p>';
+    $('fee-budget').insertAdjacentHTML('beforeend','<p class="mini">'+esc(new Intl.NumberFormat('es-EC',{maximumFractionDigits:2}).format(km))+' km en línea recta desde '+esc(project.name)+'.</p>');
   }
   function refresh(){
     refreshPins();
-    const {code,project}=state(),key=[code,project.lat,project.lon,project.name,filterKey].join('|');
+    const {code,project}=state(),key=[code,project?.lat,project?.lon,project?.name,filterKey].join('|');
     if(lastView===key)return;
     lastView=key;
     const rows=(byCanton.get(code)||[]).slice();
-    rows.sort((a,b)=>distanceKm(project.lat,project.lon,[a.site.lon,a.site.lat])-distanceKm(project.lat,project.lon,[b.site.lon,b.site.lat])||a.site.name.localeCompare(b.site.name,'es'));
+    const distanceToSite=({site})=>project?distanceKm(project.lat,project.lon,[site.lon,site.lat]):0;
+    rows.sort((a,b)=>distanceToSite(a)-distanceToSite(b)||a.site.name.localeCompare(b.site.name,'es'));
     const st=feeSummary(rows);
     const average=averages.get(code);
     $('fee-reference').textContent=region.get(code)+' · '+(Number.isFinite(average)?money(average)+' de pensión mensual promedio.':'sin promedio publicado.')+' Corte de mayo de 2026 · Ministerio de Educación, vía PRIMICIAS.';

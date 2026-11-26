@@ -6,7 +6,7 @@ Atlas de acceso a servicios y mercado de vivienda en Guayas y Santa Elena, Ecuad
 
 ## Agregar un edificio
 
-En **Agregar edificio**, escribe un nombre y pega la latitud y la longitud en grados decimales, por ejemplo `-2.18376, -79.97990`. En **Zoom al guardar**, elige **Parroquia** o **Cantón**. El formulario identifica el área y, al guardar, el mapa ajusta el encuadre a su límite y muestra el pin. Fuera de las dos provincias, el mapa se centra en las coordenadas. Usa **Edificio activo** para volver a otro punto o **Compartir ubicación** para abrir el mismo edificio en otro navegador. La aptitud y la accesibilidad se calculan dentro de Guayas y Santa Elena.
+En **Agregar edificio**, escribe un nombre y pega la latitud y la longitud en grados decimales, por ejemplo `-2.18376, -79.97990`. En **Zoom al guardar**, elige **Parroquia** o **Cantón**. El formulario identifica el área y, al guardar, el mapa ajusta el encuadre a su límite y muestra el pin. Fuera de las dos provincias, el mapa se centra en las coordenadas. Cada vez que recargas la página, el mapa vuelve a la vista regional sin un proyecto activo. Usa **Edificios** para volver a un punto guardado o **Compartir ubicación** para abrir el mismo edificio en otro navegador. La aptitud y la accesibilidad se calculan dentro de Guayas y Santa Elena.
 
 Los edificios que agregas desde el mapa se guardan en tu navegador. Para mostrar uno a todos los visitantes, agrega una entrada al [catálogo público de edificios](docs/data/buildings.json) con un `id` único, `name`, `lat` y `lon`, y guarda el cambio en la rama `main`.
 

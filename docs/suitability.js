@@ -98,8 +98,11 @@ export function initSuitability({map,state,changeTheme,selectCanton,grid,density
     if(seriesKey!==scenario){
       seriesKey=scenario;ranking=buildRanking(province);rankTable();
     }
-    const pinKey=[scenario,project.lat,project.lon,project.name,project.reference].join('|');
-    if(projectKey!==pinKey){projectKey=pinKey;projectSummary(project);}
+    $('suit-pin').hidden=!project;
+    if(project){
+      const pinKey=[scenario,project.lat,project.lon,project.name,project.reference].join('|');
+      if(projectKey!==pinKey){projectKey=pinKey;projectSummary(project);}
+    }
     const target=theme==='suitability'?scenario:'hidden';
     if(mapKey!==target){mapKey=target;draw();}
   }

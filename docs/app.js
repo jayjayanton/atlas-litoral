@@ -10,7 +10,7 @@ const money=n=>n==null?'—':'$'+num(Math.round(n));
 const store='atlasLitoral.v1.';
 function load(key,init){try{return JSON.parse(localStorage.getItem(store+key))??init;}catch{return init;}}
 function save(key,value){try{localStorage.setItem(store+key,JSON.stringify(value));return true;}catch{say('No se pudo guardar en este navegador.');return false;}}
-let project,catalog,buildings,buildingState,otherMarkers;
+let project=null,catalog,buildings,buildingState,otherMarkers;
 let finance=load('finance',initialFinance),requests=load('demand',[]),userLoans=load('loans',[]);
 let infrastructure,parishes,projectParish,viewRevision=0;
 let features,inc,observed,bank,polys,selected='0901',map,marker,labels,streets,selectedPopup,picking=false,pending=null,matches={},dest=null;
@@ -35,13 +35,14 @@ function areaLabel(canton,parish,level){
  return region+' · '+(parish ? parish.properties.kind+' '+parish.properties.name : 'Sin límite parroquial disponible. Se mostrará el cantón.');
 }
 function projectState(){
- const current=locate(project.lat,project.lon);
+ const current=project ? locate(project.lat,project.lon) : {};
  dest=current.canton;projectParish=current.parish;
  matches=hasDemand()?recentMatches(requests,project,dest.code):{};
 }
 function hasDemandInputs(){return !!(dest && project.sector && project.price>0 && project.rooms>0);}
 function hasDemand(){return requests.length>0 && hasDemandInputs();}
 function demandNote(){
+ if(!project)return 'Selecciona un edificio para comparar solicitudes de compra.';
  if(!hasDemandInputs())return 'Para comparar solicitudes, el edificio debe estar en Guayas o Santa Elena y tener sector, precio y dormitorios.';
  return 'Importa una muestra reciente con cantón de origen y destino para comparar solicitudes.';
 }
@@ -74,6 +75,7 @@ function frameBuilding(){
  map.fitBounds(bounds,{paddingTopLeft:[20,24],paddingBottomRight:[20,bottomPadding],maxZoom:parish?16:13,animate:false});
 }
 function projectFocus(){
+ if(!project)return;
  const building=project;
  if(dest)setSelection(dest.code);
  viewRevision++;
@@ -91,6 +93,11 @@ function projectFocus(){
  }
 }
 function refreshMarker(){
+ if(!project)return;
+ if(!marker){
+   marker=L.marker([project.lat,project.lon],{zIndexOffset:1000,title:'Proyecto activo',icon:L.divIcon({className:'',html:'<span class="pm">●</span>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
+   marker.on('click',()=>{if(picking)pick(marker.getLatLng());});
+ }
  marker.setLatLng([project.lat,project.lon]);const sub=project.reference?'Acceso aproximado a Torres del Salado':'Punto elegido por el usuario';
  const coords=project.lat.toFixed(5)+', '+project.lon.toFixed(5);
  const osm='https://www.openstreetmap.org/?mlat='+project.lat+'&mlon='+project.lon+'#map=17/'+project.lat+'/'+project.lon;
@@ -120,8 +127,6 @@ function mapInit(context,streetGeo,provinces){
  labels=L.layerGroup(staticLabels.map(([s,lat,lon])=>L.marker([lat,lon],{interactive:false,keyboard:false,pane:'labels',icon:L.divIcon({className:'map-label',html:s,iconSize:[70,16],iconAnchor:[35,2]})}))).addTo(map);
  L.marker([-2.54,-81.12],{interactive:false,keyboard:false,pane:'labels',icon:L.divIcon({className:'sea-label',html:'Océano Pacífico',iconSize:[135,22],iconAnchor:[70,15]})}).addTo(map);
  otherMarkers=L.layerGroup().addTo(map);
- marker=L.marker([project.lat,project.lon],{zIndexOffset:1000,title:'Proyecto activo',icon:L.divIcon({className:'',html:'<span class="pm">●</span>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
- marker.on('click',()=>{if(picking)pick(marker.getLatLng());});
  map.on('zoomend',()=>{if(map.getZoom()>=11&&!map.hasLayer(streets))streets.addTo(map);if(map.getZoom()<11&&map.hasLayer(streets))map.removeLayer(streets);});
  map.on('click',e=>{if(picking){pick(e.latlng);return;}infrastructure?.inspect(e.latlng);});fitRegion();renderBuildings();
 }
@@ -134,13 +139,15 @@ function evidenceHTML(f){
  if(userLoans.some(r=>r.canton_destino===c)){const ls=userLoans.filter(r=>r.canton_destino===c),ds=ls.map(r=>r.fecha).sort();result+='<div class="evidence-item"><b>Muestra de crédito importada</b><p>Mediana '+money(median(ls.map(r=>r.monto_usd)))+' · '+num(ls.length)+' operaciones · '+ds[0]+' a '+ds.at(-1)+'.</p></div>';}
  return result;
 }
+function referenceKm(f){return project?Math.round(distanceKm(project.lat,project.lon,f.properties.labelPoint)):null;}
 function filtered(){const term=normalize($('search').value),sort=$('sort').value;return features.filter(f=>withinProvince(f)&&normalize(f.properties.name+' '+f.properties.code).includes(term)).sort((a,b)=>{
  function val(f){return sort==='distance'?-distanceKm(project.lat,project.lon,f.properties.labelPoint):sort==='match'?matches[f.properties.code]??0:sort==='credit'?observedLoans(f)?.operations??-1:f.properties.population;}
  return (sort==='name'?0:val(b)-val(a))||a.properties.name.localeCompare(b.properties.name,'es');
 });}
 function table(){
- if(!hasDemand() && $('sort').value==='match')$('sort').value='population';
- const fs=filtered();$('rows').innerHTML=fs.map(f=>{const p=f.properties;return '<tr class="'+(p.code===selected?'active':'')+'"><td><button data-code="'+p.code+'">'+esc(p.name)+'</button></td><td>'+esc(p.province)+'</td><td>'+num(p.population)+'</td><td>'+num(Math.round(distanceKm(project.lat,project.lon,p.labelPoint)))+' km</td><td>'+(hasDemand()?num(matches[p.code]??0):'—')+'</td><td>'+numOrDash(observedLoans(f)?.operations)+'</td></tr>';}).join('')||'<tr><td colspan="6">Sin coincidencias. Prueba con otro nombre o código.</td></tr>';
+ $('sort').querySelector('[value="distance"]').disabled=!project;
+ if((!project && $('sort').value==='distance') || (!hasDemand() && $('sort').value==='match'))$('sort').value='population';
+ const fs=filtered();$('rows').innerHTML=fs.map(f=>{const p=f.properties;return '<tr class="'+(p.code===selected?'active':'')+'"><td><button data-code="'+p.code+'">'+esc(p.name)+'</button></td><td>'+esc(p.province)+'</td><td>'+num(p.population)+'</td><td>'+(project?num(referenceKm(f))+' km':'—')+'</td><td>'+(hasDemand()?num(matches[p.code]??0):'—')+'</td><td>'+numOrDash(observedLoans(f)?.operations)+'</td></tr>';}).join('')||'<tr><td colspan="6">Sin coincidencias. Prueba con otro nombre o código.</td></tr>';
  $('table-count').textContent=fs.length+' de '+features.length+' cantones';$('rank-note').textContent=hasDemand()?'Solicitudes compatibles de la muestra importada en los últimos 90 días. Un cero se refiere únicamente a esa muestra.':demandNote();
  $('sort').querySelector('[value="match"]').disabled=!hasDemand();
 }
@@ -151,7 +158,7 @@ function render(){
  $('detail-prov').textContent=p.province+' · DPA '+p.code;$('pop').textContent=num(p.population);$('income').textContent=money(v.median);$('income-scale').textContent=(p.code==='0901'?'Dominio urbano':'Referencia provincial')+' · '+s;
  $('loan').textContent=money(ln?.median_usd??(custom.length?median(custom.map(x=>x.monto_usd)):null));$('loan-note').textContent=ln?.median_usd!=null?'Banca privada · '+ln.operations+' operaciones':custom.length?'Muestra importada · '+num(custom.length)+' operaciones':ln?'Datos agrupados · ver promedio':'Sin mediana publicada';
  $('power').textContent=money(maxPrice(v.median,finance));$('scenario-note').textContent='Para el hogar mediano de '+s+', con '+finance.down+' % de entrada, '+finance.years+' años, interés anual del '+finance.rate+' % y cuota del '+finance.share+' % del ingreso. Excluye gastos y deudas. Referencia de escenario.';
- const required=project.price / maxPrice(1,finance);$('project-budget').textContent=!project.price?'Agrega el precio del edificio para calcular la entrada y el ingreso de referencia.':project.name+' · precio desde '+money(project.price)+'. Con estos supuestos, la entrada sería '+money(project.price*finance.down/100)+' y el ingreso mensual de referencia sería '+money(required)+'.';
+ $('project-budget').textContent=!project?'':!project.price?'Agrega el precio del edificio para calcular la entrada y el ingreso de referencia.':project.name+' · precio desde '+money(project.price)+'. Con estos supuestos, la entrada sería '+money(project.price*finance.down/100)+' y el ingreso mensual de referencia sería '+money(project.price/maxPrice(1,finance))+'.';
  $('evidence').innerHTML=evidenceHTML(f);colorize();table();refreshMarker();
 }
 function sourceHTML(){const urls=[
@@ -165,9 +172,9 @@ function sourceHTML(){const urls=[
  ['https://www.censoecuador.gob.ec/wp-content/uploads/2024/01/Info_Santa_Elena.pdf','INEC · Santa Elena','Población cantonal censada en 2022.'],
  ['https://www.geoboundaries.org/api/current/gbOpen/ECU/ADM2/','geoBoundaries · INEC / OCHA ROLAC','Límites cantonales de 2019 simplificados para la visualización. CC BY 3.0 IGO.'],
  ['https://www.naturalearthdata.com/','Natural Earth','Costa y contexto regional de dominio público.'],
- ['https://www.openstreetmap.org/copyright','© OpenStreetMap contributors · ODbL','Ríos vía WaterwayMap, red vial del entorno del proyecto y entrada a Torres del Salado. El pin inicial corresponde al acceso a la urbanización.'],
+ ['https://www.openstreetmap.org/copyright','© OpenStreetMap contributors · ODbL','Ríos vía WaterwayMap, red vial del entorno del proyecto y entrada a Torres del Salado. El edificio de referencia se ubica en el acceso a la urbanización.'],
  [publishedPrice,'Plusvalía · VELIN Tower','Modelo inicial de tres dormitorios desde USD 180.000. Confirmar ubicación y precios con el propietario.']];
- return '<ul>'+urls.map(([u,t,d])=>'<li>'+link(u,t)+' · '+esc(d)+'</li>').join('')+'</ul><p class="mini">Las muestras de ventas y sus enlaces constan en la ficha de cada cantón. Una venta identifica el lugar de la propiedad. La residencia del comprador requiere una fuente independiente. El escenario, el proyecto y las muestras CSV se guardan en este navegador.</p>';
+ return '<ul>'+urls.map(([u,t,d])=>'<li>'+link(u,t)+' · '+esc(d)+'</li>').join('')+'</ul><p class="mini">Las muestras de ventas y sus enlaces constan en la ficha de cada cantón. Una venta identifica el lugar de la propiedad. La residencia del comprador requiere una fuente independiente. Los edificios, el escenario y las muestras CSV se guardan en este navegador.</p>';
 }
 function dialog(title,body){$('modal-title').textContent=title;$('modal-body').innerHTML=body;if(!$('modal').open)$('modal').showModal();}
 function close(){if($('modal').open)$('modal').close();}
@@ -176,24 +183,28 @@ function field(id,title,value,attrs=''){return '<label for="'+id+'">'+title+'</l
 function renderBuildings() {
  otherMarkers.clearLayers();
  const select=$('building-select');
- select.replaceChildren();
+ const placeholder=new Option('Seleccionar edificio','');
+ placeholder.disabled=true;
+ select.replaceChildren(placeholder);
+ $('active-project').hidden=$('focus-project').hidden=$('project-budget').hidden=!project;
+ $('edit').disabled=$('share-building').disabled=!project;
  for(const b of buildings) {
    select.add(new Option(b.name,b.id));
-   if(b.id===project.id)continue;
+   if(!project || b.id===project.id)continue;
    const pin=L.marker([b.lat,b.lon],{title:b.name,alt:b.name,
      icon:L.divIcon({className:'',html:'<span class="saved-building-marker"></span>',iconSize:[17,17],iconAnchor:[8,8]})});
    pin.bindTooltip(esc(b.name),{direction:'top',offset:[0,-9]});
    pin.on('click',()=>{if(picking)pick(pin.getLatLng());else activateBuilding(b);});
    pin.addTo(otherMarkers);
  }
- select.value=project.id;
+ select.value=project?.id || '';
 }
 function activateBuilding(building, writeItem=false) {
  const stored=load('buildings',null);
  const current=stored || buildingState;
  const items=Array.isArray(current?.items)?current.items:[];
- const next={activeId:building.id,items:writeItem?[...items.filter(b=>b.id!==building.id),building]:items};
- if(!save('buildings',next))return false;
+ const next={items:writeItem?[...items.filter(b=>b.id!==building.id),building]:items};
+ if(writeItem && !save('buildings',next))return false;
  buildingState=next;
  buildings=buildingList(catalog,next);
  project=buildings.find(b=>b.id===building.id) || building;
@@ -272,7 +283,7 @@ function scenario(){dialog('Supuestos de compra','<form id="f-fin"><p>Escenario 
 }
 function download(name,lines){function safe(v){let s=String(v??'');if(/^[=+@\-]/.test(s)&&!/^[-+]?\d+(\.\d+)?$/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';}
  const data='\uFEFF'+lines.map(row=>row.map(safe).join(',')).join('\r\n')+'\r\n',u=URL.createObjectURL(new Blob([data],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),2000);}
-function exportData(){const header=['dpa','canton','provincia','poblacion_2022','distancia_referencia_recta_km','proyecto','latitud_proyecto','longitud_proyecto','dominio_ingreso','mediana_ingreso_mensual_usd_2024_2025','precio_escenario_usd','entrada_pct','tasa_nominal_pct','plazo_anios','cuota_sobre_ingreso_pct','solicitudes_compatibles_90d_en_muestra','operaciones_bancos_privados_ene_sep_2026','credito_medio_publico_usd','credito_mediano_publico_usd','operaciones_importadas','mediana_importada_usd'];const list=filtered().map(f=>{const p=f.properties,s=scope(f),m=observedLoans(f),v=inc[s].median,custom=userLoans.filter(x=>x.canton_destino===p.code);return [p.code,p.name,p.province,p.population,Math.round(distanceKm(project.lat,project.lon,p.labelPoint)),project.name,project.lat,project.lon,s,v,Math.round(maxPrice(v,finance)),finance.down,finance.rate,finance.years,finance.share,hasDemand()?matches[p.code]??0:null,m?.operations,m?.mean_usd,m?.median_usd,custom.length||null,median(custom.map(x=>x.monto_usd))];});download('atlas_litoral_cantones.csv',[header,...list]);}
+function exportData(){const header=['dpa','canton','provincia','poblacion_2022','distancia_referencia_recta_km','proyecto','latitud_proyecto','longitud_proyecto','dominio_ingreso','mediana_ingreso_mensual_usd_2024_2025','precio_escenario_usd','entrada_pct','tasa_nominal_pct','plazo_anios','cuota_sobre_ingreso_pct','solicitudes_compatibles_90d_en_muestra','operaciones_bancos_privados_ene_sep_2026','credito_medio_publico_usd','credito_mediano_publico_usd','operaciones_importadas','mediana_importada_usd'];const list=filtered().map(f=>{const p=f.properties,s=scope(f),m=observedLoans(f),v=inc[s].median,custom=userLoans.filter(x=>x.canton_destino===p.code);return [p.code,p.name,p.province,p.population,referenceKm(f),project?.name,project?.lat,project?.lon,s,v,Math.round(maxPrice(v,finance)),finance.down,finance.rate,finance.years,finance.share,hasDemand()?matches[p.code]??0:null,m?.operations,m?.mean_usd,m?.median_usd,custom.length||null,median(custom.map(x=>x.monto_usd))];});download('atlas_litoral_cantones.csv',[header,...list]);}
 function imports(type='demand'){
  const isDemand=type==='demand',current=isDemand?requests:userLoans,fields=isDemand?demandFields:loanFields;
  dialog('Importar una muestra','<label for="typ">Tipo de registros</label><select id="typ"><option value="demand">Solicitudes de compra</option><option value="loans">Operaciones de crédito</option></select><p>'+(isDemand?'Una fila por solicitud anónima, con su cantón de origen y el cantón y sector donde desea comprar. Se cuentan coincidencias de sector, dormitorios, presupuesto y fecha en los últimos 90 días.':'Una fila por préstamo original, con monto y cantón de destino. La ficha muestra la mediana y el período de tu muestra aparte del corte público.')+'</p><p>Usa códigos DPA de cuatro dígitos, fecha AAAA-MM-DD y montos sin separador de miles. El CSV del directorio incluye los códigos. Usa un identificador anónimo interno.</p><button id="template" class="linkbutton">Descargar plantilla CSV</button><label for="file">Archivo CSV</label><input type="file" id="file" accept=".csv,text/csv"><p>El archivo reemplaza la muestra de este tipo y se guarda en este navegador. Registros actuales: '+num(current.length)+'.</p><p id="form-msg" class="err" role="status"></p><div class="actions"><button id="read-sample" class="button primary">Cargar muestra</button>'+(current.length?'<button id="clear-sample" class="button subtle">Quitar muestra</button>':'')+'</div>');
@@ -298,19 +309,19 @@ async function main(){
  if(!buildingState){
    const legacy=load('project',null);
    const known=validBuilding(legacy) && catalog.find(b=>sameBuilding(b,legacy));
-   const first=validBuilding(legacy)?{...legacy,id:known?.id || crypto.randomUUID()}:catalog[0];
-   buildingState={activeId:first.id,items:validBuilding(legacy)?[first]:[]};
+   buildingState={items:[]};
+   if(validBuilding(legacy)){
+     buildingState.items.push({...legacy,id:known?.id || crypto.randomUUID()});
+     save('buildings',buildingState);
+   }
  }
  buildings=buildingList(catalog,buildingState);
- project=buildings.find(b=>b.id===buildingState.activeId) || buildings[0];
  const shared=buildingFromURL(location.href);
  const sharedRequest=new URL(location.href).searchParams.has('edificio');
- projectState();selected=dest?.code??'0901';
  $('canton').innerHTML=features.slice().sort((a,b)=>a.properties.name.localeCompare(b.properties.name,'es')).map(f=>'<option value="'+f.properties.code+'">'+esc(f.properties.name)+'</option>').join('');$('canton').value=selected;
  mapInit(context,streetGeo,provinces);
  if(parishCatalog){
    parishes=initParishes(map,parishCatalog.features,()=>byCode(selected).properties,setSelection);
-   projectState();selected=dest?.code??selected;$('canton').value=selected;
  }else $('parish-note').textContent='No se pudieron cargar los límites parroquiales.';
  $('source-items').innerHTML=sourceHTML()+'<p class="mini">Distancia de referencia: línea recta del pin a un punto interior de cada cantón; se usa para exploración geográfica. La distancia de viaje depende de la red vial.</p>';render();
  if(shared){
@@ -318,13 +329,12 @@ async function main(){
    const changed=!!known && !!shared.focusArea && shared.focusArea!==known.focusArea;
    activateBuilding(known?{...known,...shared}:{...shared,id:crypto.randomUUID()},!known || changed);
  }else if(sharedRequest)say('El enlace contiene coordenadas o un nombre no válidos.');
- else if(project.focusArea || project.id!==catalog[0].id || !project.reference)projectFocus();
  if(sharedRequest){
    const url=new URL(location.href);
    for(const key of ['edificio','lat','lon','nivel'])url.searchParams.delete(key);
    history.replaceState(null,'',url);
  }
- for(const id of ['add-building','building-select','edit','share-building'])$(id).disabled=false;
+ $('add-building').disabled=$('building-select').disabled=false;
  $('add-building').onclick=()=>settings({name:''});
  $('building-select').onchange=e=>activateBuilding(buildings.find(b=>b.id===e.target.value));
  $('share-building').onclick=shareBuilding;
