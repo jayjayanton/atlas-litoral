@@ -90,7 +90,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     $('geo-share').hidden=$('geo-zoom').hidden=!current;
     $('geo-boundary-key').hidden=!current;
     if(current)$('geo-boundary-key').textContent='Área seleccionada';
-    const hint='Toca '+articles[kind]+' para ver su ficha.';
+    const hint=noMatch&&kind==='canton'?'Selecciona un cantón para ver su ficha.':'Toca '+articles[kind]+' para ver su ficha.';
     $('map-hint').textContent=hint+(kind==='sector'?' Acerca el mapa para distinguir los sectores.':'');
     $('profile-prompt').textContent=hint;
     const title=current?(kind==='zone'||kind==='sector'?names[kind]+' '+current.code:names[kind]+' · '+current.name):('Cantón · '+cantons.get(cantonCode()).properties.name);
@@ -120,6 +120,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     $('geo-status').textContent='';controls();
     if(level.value==='canton')displayAges(cantonAges(cantonCode()));
   }
+  function overview(){clear('canton');noMatch=true;controls();}
   function reset(zoom=false){
     browse(level.value);if(zoom)fitRegion();
   }
@@ -280,7 +281,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     url.hash='explorar';share(url,current.name);
   };
   level.disabled=false;clear();
-  return {clear,reset,open,browse,atPoint,chooseCanton,parentParish,controls,zoneOutlines,
+  return {clear,reset,overview,open,browse,atPoint,chooseCanton,parentParish,controls,zoneOutlines,
     showPoint(name){clear(level.value);pointName=name;controls();},get isPoint(){return !!pointName;},
     get level(){return level.value;},get current(){return current;}};
 }
