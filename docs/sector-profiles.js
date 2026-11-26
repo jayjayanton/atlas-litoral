@@ -1,6 +1,6 @@
 import {showAnalysis} from './explorer-ui.js';
 import {readCompressedJSON} from './compressed-json.js';
-import {isSectorTheme, estimatedShare, shareColor, bandKeys} from './income-map.js';
+import {isSectorTheme, estimatedShare, shareColor, bandKeys, incomeBandLabels} from './income-map.js';
 import {featureAt, loanPrincipal, normalize} from './model.js';
 
 const $ = id => document.getElementById(id);
@@ -34,7 +34,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
   };
   const cantonNames = new Map(cantons.map(f => [f.properties.code, f.properties.name]));
   const labels = ['Menos de ' + index.ageCuts[0], ...index.ageCuts.slice(0,-1).map((lo,i) => lo+'–'+(index.ageCuts[i+1]-1)), index.ageCuts.at(-1)+' o más'];
-  const bands = ['Menos de '+dollars.format(index.incomeCuts[0]), ...index.incomeCuts.slice(0,-1).map((lo,i) => dollars.format(lo)+' a <'+dollars.format(index.incomeCuts[i+1])), dollars.format(index.incomeCuts.at(-1))+' o más'];
+  const bands = incomeBandLabels(index.incomeCuts);
   const bandSelect=$('income-band');
   bandSelect.replaceChildren(...bands.map((label,i)=>new Option(label,String(i))));
   const initialBand=new URLSearchParams(location.search).get('tramo');

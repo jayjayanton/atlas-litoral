@@ -1,5 +1,6 @@
 import {showAnalysis} from './explorer-ui.js';
 import {rankSectors} from './campaign-model.js';
+import {initCampaignParishIncome} from './campaign-parish-income.js';
 import {initCampaignOutcomes} from './campaign-outcomes.js';
 import {nearestFacility} from './access-model.js';
 import {readCompressedJSON} from './compressed-json.js';
@@ -34,11 +35,12 @@ const metric = 'Gasto publicitario en USD dividido por visitas agendadas en el m
 const locationType = project => project.reference ? 'Acceso aproximado de referencia' : project.temporary ? 'Punto marcado en el mapa' : 'Punto registrado';
 const countLabel = (value, singular, plural) => number.format(value) + ' ' + (value === 1 ? singular : plural);
 
-export function initCampaign({state,cantons,parishes,selectBuilding,pickOnMap,previewRadius,updatePlanMap,matchesForProject,localityFor,showOrigins,download}) {
+export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,pickOnMap,previewRadius,updatePlanMap,matchesForProject,localityFor,showOrigins,download}) {
   const building=$('campaign-building'), radius=$('campaign-radius'), cohort=$('campaign-age');
   const mode=$('campaign-mode'), rank=$('campaign-rank'), status=$('campaign-status'), limit=$('campaign-limit');
   const codeInput=$('campaign-code'), adRadius=$('campaign-ad-radius');
   const outcomes = initCampaignOutcomes($('campaign-outcomes'));
+  const parishIncome=initCampaignParishIncome({cantons,parishes,sectorIndex});
   const names=new Map([...cantons,...(parishes||[])].map(f=>[f.properties.code,f.properties.name]));
   const areaName=code=>names.get(code.slice(0,6)) || names.get(code.slice(0,4)) || code.slice(0,4);
   const locality=row=>localityFor?.(row) || areaName(row.code);
@@ -277,6 +279,10 @@ export function initCampaign({state,cantons,parishes,selectBuilding,pickOnMap,pr
     }
     building.value=project?.id||'';
     const single=mode.value==='sector';
+    const sectorPoint=single && byCode?.get(selectedCode);
+    parishIncome.setPoint(single
+      ? (sectorPoint ? {lat:sectorPoint[1],lon:sectorPoint[2],name:'Sector '+selectedCode} : null)
+      : project, single);
     $('campaign-specific').hidden=!single;
     $('campaign-near').hidden=single;
     const ageIndex=cohort.value==='all'?null:Number(cohort.value);
@@ -315,5 +321,5 @@ export function initCampaign({state,cantons,parishes,selectBuilding,pickOnMap,pr
   $('campaign-export').onclick=writeExport;
   $('campaign-all-origins').onclick=()=>showOrigins(exportPlan.project);
   refresh();
-  return {refresh,useSector,useProject(){mode.value='near';refresh();},setHospitals(items){facilitiesReady=true;hospitals=items;refresh();}};
+  return {refresh,useSector,showParishIncomeBand:parishIncome.showBand,useProject(){mode.value='near';refresh();},setHospitals(items){facilitiesReady=true;hospitals=items;refresh();}};
 }

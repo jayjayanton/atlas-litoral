@@ -602,7 +602,7 @@ async function main(){
    territory.open('sector',pinSector,false,'',{point:project,location:locate(project.lat,project.lon)});
  };
  $('parish-select').onchange=()=>territory.parentParish($('parish-select').value);
- if(campaignTools)campaign=campaignTools.initCampaign({cantons:features,parishes:parishCatalog?.features,
+ if(campaignTools)campaign=campaignTools.initCampaign({cantons:features,parishes:parishCatalog?.features,sectorIndex,
    state:()=>({project,buildings:selectionChoices,selectionStarted:selection.started,sample:requests,localities:parishes?.urbanFeatures(),matches:hasDemand()?matches:null}),
    localityFor:row=>{
      const parishCode=row.code.slice(0,6);
@@ -626,6 +626,16 @@ async function main(){
    previewRadius:(code,lat,lon,km)=>{if(sectors){sectors.previewRadius(code,lat,lon,km);$('map').scrollIntoView({block:'center'});}else say('Los límites sectoriales no están disponibles.');},
    download});
  else $('campaign-status').textContent='No se pudo cargar la herramienta de campaña.';
+ if(campaign){
+   const link=$('sector-parish-income');
+   link.hidden=false;
+   link.onclick=()=>{
+     if(territory.current?.level==='sector'){
+       campaign.useSector(territory.current.code,false);
+       campaign.showParishIncomeBand($('sector-profile-band').value);
+     }
+   };
+ }
  if(creditTools)creditMap=creditTools.initCreditMap({map,features,parishes,parishCatalog,bankRow:observedLoans,state:()=>({theme:$('layer').value,province:$('province').value,project,projectCanton:dest?.code,down:finance.down}),redraw:colorize,fitRegion,selectCanton:setSelection,download});
  if(!creditMap)$('layer').querySelector('[value="credit"]').disabled=true;
  const initialTheme=new URL(location.href).searchParams.get('capa');

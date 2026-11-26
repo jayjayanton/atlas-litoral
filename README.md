@@ -44,6 +44,16 @@ También puedes [consultar directamente el sector de VELIN Tower para edades 45�
 
 Para reconstruir los conteos, ejecuta `python scripts/build_campaign.py BDD_CPV2022_SECT_CSV.zip sectores_anonimizados.gpkg docs/data/campaign-residents.json.gz`. Para comprobar la selección, el orden y los totales del ejemplo publicado, ejecuta `node --test scripts/test_campaign_model.mjs`.
 
+### Comparar ingresos de parroquias cercanas
+
+En el [comparador de parroquias](https://jayjayanton.github.io/atlas-litoral/#ingresos-parroquiales), elige un tramo de ingreso monetario mensual del hogar. Puedes introducir un porcentaje mínimo y consultar hasta cinco parroquias que lo alcanzan. Cada fila indica el porcentaje estimado, el número aproximado de hogares en el tramo y la base de hogares con edad del representante conocida. La distancia se mide en línea recta desde el punto de campaña hasta el límite más cercano. Vale cero si el punto está dentro de la parroquia. En la consulta de un solo sector se utiliza su punto interior.
+
+Los cinco tramos en dólares son menos de 500, de 500 a menos de 1.000, de 1.000 a menos de 1.500, de 1.500 a menos de 2.000 y 2.000 o más. El modelo combina los hogares censados en 2022 por edad del representante con la proporción de hogares en cada tramo de la encuesta provincial ENIGHUR 2024–25. Dos parroquias con composiciones parecidas pueden dar estimaciones muy próximas. Los conteos de hogares corresponden a toda la parroquia representada.
+
+**División de Guayaquil** permite comparar las parroquias urbanas del municipio o la cabecera agrupada del INEC. En la primera opción, cada sector entra completo en la parroquia que contiene su punto interior. El cruce asigna 5.876 de los 6.413 sectores cartografiados de la cabecera, que representan 721.373 hogares. La cabecera completa del censo registra 787.542 hogares, incluidos los de sectores de ubicación reservada. El atlas utiliza una sola delimitación de Guayaquil en cada comparación.
+
+Para reproducir las tablas, ejecuta `python scripts/build_parish_income.py BDD_CPV2022_SECT_CSV.zip` y `node scripts/build_urban_parish_income.mjs`. Los límites que usa el desglose municipal corresponden a la copia de la capa de parroquias urbanas distribuida con el atlas. [Censo 2022](https://www.ecuadorencifras.gob.ec/base-de-datos-censo-de-poblacion-y-vivienda/) · [ENIGHUR 2024–2025](https://www.ecuadorencifras.gob.ec/encuesta-nacional-de-ingresos-y-gastos-de-los-hogares-urbanos-y-rurales/) · [Parroquias urbanas de Guayaquil](https://services7.arcgis.com/NWWHhu45fOJtCgG3/arcgis/rest/services/LIMITE_PARROQUIAS_URBANAS/FeatureServer/0)
+
 ## Demografía
 
 [Abrir el mapa de sectores con residentes de 25 a 45 años](https://jayjayanton.github.io/atlas-litoral/?capa=ages&nivel=sector&desde=25&hasta=45#explorar). Desde **Concentración por edad**, la opción **Ver mapa de concentración** abre el mapa con ambos extremos incluidos. Elige número de residentes o porcentaje de la población del área. Puedes comparar las dos provincias, una provincia o un cantón, fijar un mínimo de residentes del grupo y cambiar entre cantón, parroquia censal, zona y sector. La tabla ordena las áreas por la misma medida y abre la ficha del área elegida.
@@ -62,7 +72,7 @@ Para reconstruir los conteos, ejecuta `python scripts/build_census_ages.py BDD_C
 
 El [mapa provincial](https://jayjayanton.github.io/atlas-litoral/?capa=income#explorar) muestra la mediana ponderada del ingreso corriente monetario mensual por hogar en la ENIGHUR 2024–2025. El dominio urbano de Guayaquil tiene su propia cifra de referencia en la ficha cantonal.
 
-En el [mapa sectorial](https://jayjayanton.github.io/atlas-litoral/?capa=sector-income&sector=090150224002#explorar), elige un tramo de ingreso para comparar el porcentaje estimado de hogares. El modelo aplica las distribuciones provinciales por edad del representante a los conteos censales de 2022. La leyenda usa los mismos intervalos para ese tramo en ambas provincias. Gris indica que no hay hogares con edad del representante disponible. Los sectores fuera de la zona consultada se dibujan al acercar el mapa. El ingreso se utiliza como estadística descriptiva y queda fuera de los filtros, el ordenamiento y el CSV de campaña.
+En el [mapa sectorial](https://jayjayanton.github.io/atlas-litoral/?capa=sector-income&sector=090150224002#explorar), elige un tramo de ingreso para comparar el porcentaje estimado de hogares. El modelo aplica las distribuciones provinciales por edad del representante a los conteos censales de 2022. La leyenda usa los mismos intervalos para ese tramo en ambas provincias. Gris indica que no hay hogares con edad del representante disponible. Los sectores fuera de la zona consultada se dibujan al acercar el mapa. La ficha junto al mapa muestra los cinco tramos del sector elegido. **Comparar este tramo en parroquias cercanas** abre el plan desde el punto interior de ese sector y conserva el tramo seleccionado. En el plan de campaña, la comparación parroquial también permite consultar estas estimaciones por cercanía. Los sectores piloto del plan se eligen por población o distancia.
 
 ## Hogares e ingreso por sector censal
 

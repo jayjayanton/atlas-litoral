@@ -3,6 +3,11 @@ const usd = new Intl.NumberFormat('es-EC', {style:'currency', currency:'USD', ma
 const num = new Intl.NumberFormat('es-EC');
 export const isSectorTheme = theme => theme === 'sectors' || theme === 'sector-income';
 
+export function incomeBandLabels(cuts) {
+  const money = value => '$' + num.format(value);
+  return ['Menos de '+money(cuts[0]), ...cuts.slice(0,-1).map((low,i)=>money(low)+' a menos de '+money(cuts[i+1])), money(cuts.at(-1))+' o más'];
+}
+
 // Each bracket uses fixed percentage-point intervals in both provinces and at every zoom.
 const breaksByBand = [[36,39,40,43], [32,34,36,39], [9,12,13,14], [3,5,6,7], [3,5,6.5,7]];
 const palette = ['#f0edf7','#d4c6e5','#b09acb','#8465a4','#583876'];

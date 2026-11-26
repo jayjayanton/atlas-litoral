@@ -14,8 +14,12 @@ async function municipalParishes() {
   }
   const json=await read(guayaquilService+'/query?'+query,{signal:AbortSignal.timeout(8000)})
     .catch(()=>read('./data/guayaquil-urban.json'));
+  return groupMunicipalParishes(json.features);
+}
+
+export function groupMunicipalParishes(features) {
   const groups = new Map();
-  for (const f of json.features) {
+  for (const f of features) {
     const name = f.properties.Nam.trim();
     const rings = f.geometry.type==='Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
     if (!groups.has(name)) groups.set(name, []);

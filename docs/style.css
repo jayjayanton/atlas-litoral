@@ -308,6 +308,21 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 .local-census>b{font-size:10px;letter-spacing:.07em;color:var(--dim)}
 .local-census p{margin:3px 0}
 .household-estimate{background:#f8f5ef}
+.sector-income-table{width:100%;border-collapse:collapse;margin:.7rem 0 .5rem;font-size:13px;color:var(--ink)}
+.sector-income-table thead th{font-size:12px;color:var(--dim);font-weight:600}
+.sector-income-table th,.sector-income-table td{padding:.4rem .45rem;border-bottom:1px solid var(--outline);text-align:left}
+.sector-income-table tbody th{font-weight:500}
+.sector-income-table th:last-child,.sector-income-table td:last-child{text-align:right}
+.sector-income-table td{min-width:70px;font-variant-numeric:tabular-nums;font-weight:650}
+.sector-income-table [data-current]>th,.sector-income-table [data-current]>td{background:#f2e5e9}
+.income-share-track{display:block;height:4px;margin:.2rem 0 0 auto;width:100%;background:#e3d8d5;border-radius:3px;overflow:hidden}
+.income-share-track::before{content:"";display:block;width:var(--income-share);height:100%;background:var(--wine)}
+.income-share-track[hidden]{display:none}
+.sector-income-actions{display:flex;align-items:end;flex-wrap:wrap;gap:4px 10px}
+.sector-income-actions label{flex:1 1 155px;min-width:0}
+.sector-income-actions .linkbutton{min-height:35px}
+.sector-income-method{margin-top:.7rem;font-size:13px;color:var(--dim)}
+.sector-income-method summary{font-weight:600;color:var(--ink)}
 
 #building-matches:not(:empty){display:grid;gap:3px;margin:4px 0 9px}
 #building-matches button{background:#f8f5ef;border:1px solid var(--outline);border-radius:5px;color:var(--accent);padding:6px 9px;text-align:left}
@@ -737,3 +752,5 @@ input[type=checkbox],input[type=radio] { accent-color:var(--wine); }
 @media(max-width:760px) {
   .map-selection-help { margin-inline:12px; }
 }
+
+#sector-parish-income:not([hidden]) { display:inline-block; margin-top:6px; padding-block:5px; font-size:.85rem; font-weight:600; }

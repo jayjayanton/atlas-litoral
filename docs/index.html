@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#34212e"><meta name="description" content="Compara sectores censales cerca de tu proyecto en Guayas y Santa Elena y elige dónde probar una campaña inmobiliaria."><title>Atlas Litoral · Planificación de campañas inmobiliarias</title><link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./style.css?v=a9d35dd33bb5"><link rel="stylesheet" href="./project-selection.css?v=6c0bf7c925a7"><script defer src="./vendor/leaflet.js"></script><style>.map-canvas{position:relative}#map-preview[hidden]{display:none}#map-preview{position:absolute;inset:0;z-index:495;display:grid;place-items:center;overflow:hidden;background:#e2ebe5;pointer-events:none}
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#34212e"><meta name="description" content="Compara sectores censales cerca de tu proyecto en Guayas y Santa Elena y elige dónde probar una campaña inmobiliaria."><title>Atlas Litoral · Planificación de campañas inmobiliarias</title><link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./style.css?v=01a700f02a8e"><link rel="stylesheet" href="./project-selection.css?v=6c0bf7c925a7"><script defer src="./vendor/leaflet.js"></script><style>.map-canvas{position:relative}#map-preview[hidden]{display:none}#map-preview{position:absolute;inset:0;z-index:495;display:grid;place-items:center;overflow:hidden;background:#e2ebe5;pointer-events:none}
 #map-preview img{width:100%;height:100%;min-height:0;object-fit:contain}
 #map-preview span{position:absolute;bottom:10px;left:10px;padding:4px 8px;border-radius:4px;background:#fffffff0;color:#24484d;font-size:12px}
-</style><script type="importmap">{"imports":{"./access-model.js":"./access-model.js?v=0d26bf0d093c","./app.js":"./app.js?v=42f0f9024fb9","./basemaps.js":"./basemaps.js?v=f6730e4de25a","./building-search.js":"./building-search.js?v=f7c5400bb174","./buildings.js":"./buildings.js?v=dfbbae50db0a","./campaign-map.js":"./campaign-map.js?v=736c7fe3164c","./campaign-model.js":"./campaign-model.js?v=b00b8d9a98b4","./campaign-outcomes.js":"./campaign-outcomes.js?v=4f8df545dcd8","./campaign.js":"./campaign.js?v=d63a80d57481","./compressed-json.js":"./compressed-json.js?v=ebc8b9c2a627","./credit-map.js":"./credit-map.js?v=4b80fa04531c","./credit-model.js":"./credit-model.js?v=3eea3e7c20eb","./demographics.js":"./demographics.js?v=db0765052a83","./earnings.js":"./earnings.js?v=36c0e0d2552c","./explorer-ui.js":"./explorer-ui.js?v=02d986157c4c","./income-map.js":"./income-map.js?v=cd5a1c04135d","./infrastructure.js":"./infrastructure.js?v=c3f9a52cbb78","./model.js":"./model.js?v=56b3640001bc","./parishes.js":"./parishes.js?v=d8addf55a248","./project-selection.js":"./project-selection.js?v=90ad7e692fc4","./school-fees.js":"./school-fees.js?v=badcbca5b104","./score-surface.js":"./score-surface.js?v=b9ce45494c9b","./sector-profiles.js":"./sector-profiles.js?v=dd2fc0b511ce","./site-view.js":"./site-view.js?v=aaceb0290858","./suitability-model.js":"./suitability-model.js?v=278f1db60391","./suitability.js":"./suitability.js?v=467f7a31b80d","./territory.js":"./territory.js?v=3007c8ea4bc2"}}</script></head>
+</style><link rel="stylesheet" href="./campaign-parish-income.css?v=3bb1c38fa2f8"><script type="importmap">{"imports":{"./access-model.js":"./access-model.js?v=0d26bf0d093c","./app.js":"./app.js?v=d1d9cff213d7","./basemaps.js":"./basemaps.js?v=f6730e4de25a","./building-search.js":"./building-search.js?v=f7c5400bb174","./buildings.js":"./buildings.js?v=dfbbae50db0a","./campaign-map.js":"./campaign-map.js?v=736c7fe3164c","./campaign-model.js":"./campaign-model.js?v=b00b8d9a98b4","./campaign-outcomes.js":"./campaign-outcomes.js?v=4f8df545dcd8","./campaign-parish-income.js":"./campaign-parish-income.js?v=4bfd75535bff","./campaign.js":"./campaign.js?v=f5642740e076","./compressed-json.js":"./compressed-json.js?v=ebc8b9c2a627","./credit-map.js":"./credit-map.js?v=4b80fa04531c","./credit-model.js":"./credit-model.js?v=3eea3e7c20eb","./demographics.js":"./demographics.js?v=db0765052a83","./earnings.js":"./earnings.js?v=36c0e0d2552c","./explorer-ui.js":"./explorer-ui.js?v=02d986157c4c","./income-map.js":"./income-map.js?v=5e308330fdcc","./infrastructure.js":"./infrastructure.js?v=c3f9a52cbb78","./model.js":"./model.js?v=56b3640001bc","./parish-income.js":"./parish-income.js?v=5a6e124148f3","./parishes.js":"./parishes.js?v=df1da6bff5cf","./project-selection.js":"./project-selection.js?v=90ad7e692fc4","./school-fees.js":"./school-fees.js?v=badcbca5b104","./score-surface.js":"./score-surface.js?v=b9ce45494c9b","./sector-profiles.js":"./sector-profiles.js?v=8a1f656e3089","./site-view.js":"./site-view.js?v=aaceb0290858","./suitability-model.js":"./suitability-model.js?v=278f1db60391","./suitability.js":"./suitability.js?v=467f7a31b80d","./territory.js":"./territory.js?v=8b18e183c124"}}</script></head>
 <body>
 <header class="mast">
   <div class="mast-in">
@@ -88,18 +88,22 @@
 <div id="geo-facts" hidden><div class="detail-top"><span id="geo-kind" class="eyebrow"></span><h2 id="geo-name"></h2><div class="detail-prov" id="geo-path"></div></div>
 <div class="keymetric geo-metrics"><div><span>Población censada</span><strong id="geo-pop"></strong></div>
 <div id="geo-households" hidden><span>Hogares</span><strong id="geo-homes"></strong></div><small id="geo-source"></small></div></div>
+<section id="sector-income-card" class="profile-block household-estimate" aria-labelledby="sector-income-title" hidden>
+<h3 id="sector-income-title">Ingresos estimados de los hogares</h3><p class="mini" id="sector-income-base"></p>
+<table class="sector-income-table"><thead><tr><th scope="col">Ingreso mensual (USD)</th><th scope="col">Hogares (%)</th></tr></thead><tbody id="sector-income-ranges"></tbody></table>
+<div class="sector-income-actions"><label>Tramo para comparar<select id="sector-profile-band"></select></label><button type="button" id="sector-profile-map" class="linkbutton">Ver en el mapa</button></div>
+<a id="sector-parish-income" href="#ingresos-parroquiales" hidden>Comparar este tramo en parroquias cercanas</a>
+<output id="sector-profile-estimate" class="sr" for="sector-profile-band"></output>
+<details class="sector-income-method"><summary>Cómo se estima el ingreso</summary><p>El Censo 2022 indica cuántos hogares hay en el sector censal según la edad de su representante. Para estimar los porcentajes, el atlas aplica a cada grupo la distribución del ingreso mensual de su provincia en la ENIGHUR 2024–2025.</p></details></section>
 <section class="profile-block pin-address" id="active-project" hidden>
 <span class="eyebrow">PROYECTO O PUNTO ACTIVO</span>
 <button id="p-link" class="project-link" title="Centrar el mapa en el edificio"><span class="pin-glyph" aria-hidden="true">●</span><span><b id="project-name"></b><small id="project-where"></small></span></button>
 <dl><dt>Provincia</dt><dd id="project-province"></dd><dt>Cantón</dt><dd id="project-canton"></dd><dt>Parroquia</dt><dd id="project-parish"></dd><dt>Zona censal</dt><dd id="project-zone"></dd><dt>Sector censal</dt><dd id="project-sector"></dd></dl>
-<button type="button" class="linkbutton" id="project-sector-open" hidden>Ver ficha del sector</button>
+<button type="button" class="linkbutton" id="project-sector-open" hidden>Ver población e ingresos del sector</button>
 <button type="button" class="linkbutton" id="project-location-retry" hidden>Reintentar ubicación censal</button></section>
 <div id="profile-empty" class="detail-top" hidden><span class="eyebrow">FICHA DEL ÁREA</span><h2 id="profile-empty-heading">Elige una ubicación</h2><p id="profile-prompt"></p><button type="button" class="button subtle" id="try-project" hidden></button></div>
 <div id="canton-facts"><div class="detail-top"><span class="eyebrow">FICHA DE CANTÓN</span><h2 id="canton-name"></h2><div class="detail-prov" id="detail-prov"></div></div>
 <div class="keymetric"><span>Población censada</span><strong id="pop">—</strong><small>habitantes · Censo 2022</small></div></div>
-<section id="sector-income-card" class="profile-block household-estimate" hidden><div class="income-scope">ESTIMACIÓN PARA ESTE SECTOR · INGRESO DEL HOGAR</div><h3>Distribución estimada del ingreso del hogar</h3>
-<label>Ingreso mensual del hogar<select id="sector-profile-band"></select></label><p id="sector-profile-estimate"></p>
-<p class="income-explainer">Estimación, no medición directa: combina la distribución provincial de ENIGHUR 2024–25 por edad de la persona representante con la composición de hogares de este sector según el Censo 2022.</p></section>
 <div id="profile-stats"><section id="cohort-profile" class="profile-block" hidden><h3 id="cohort-profile-title"></h3><p id="cohort-profile-value"></p></section><section class="profile-block"><h3>Edad de los residentes</h3><ul id="profile-ages"></ul><small id="age-profile-note"></small></section>
 <details class="profile-block income-block"><summary>Ingreso mediano del hogar · contexto provincial</summary><strong id="income">—</strong><small id="income-scale"></small><button type="button" class="linkbutton" id="province-income-map">Ver mapa provincial</button></details>
 
@@ -135,6 +139,27 @@
 </div>
 </details>
 <p id="campaign-status" role="status">Cargando los conteos de residentes…</p><button id="campaign-retry" class="linkbutton" hidden>Reintentar carga</button></div>
+<div class="campaign-main">
+<details id="ingresos-parroquiales" class="parish-income-panel">
+<summary>Comparar ingresos de parroquias cercanas</summary>
+<div class="parish-income-body">
+<p id="parish-income-origin">Elige un proyecto o un sector para comparar sus parroquias cercanas.</p>
+<div class="parish-income-filters">
+<label>Ingreso mensual del hogar<select id="parish-income-band" disabled></select></label>
+<label>Mínimo en el tramo (%) <small>Opcional</small><input id="parish-income-min" type="number" inputmode="decimal" min="0" max="100" step="any" placeholder="Sin mínimo" aria-describedby="parish-income-status"></label>
+<label>División de Guayaquil<select id="parish-income-group"><option value="urban">Parroquias urbanas</option><option value="census">Cabecera cantonal del INEC</option></select></label>
+</div>
+<p id="parish-income-status" class="mini" role="status"></p><button id="parish-income-retry" type="button" class="linkbutton" hidden>Reintentar</button>
+<div id="parish-income-results" hidden>
+<ol id="parish-income-list" aria-label="Parroquias por distancia al punto de campaña"></ol>
+<figure class="parish-income-figure"><div id="parish-income-map" role="region" aria-label="Mapa de las parroquias y del punto de campaña"></div><figcaption><span><i class="parish-origin-key" aria-hidden="true"></i>Punto de campaña</span><span><i class="parish-area-key" aria-hidden="true"></i>Parroquias de la lista</span><button id="parish-income-reset" type="button" class="linkbutton" hidden>Ver todas</button></figcaption></figure>
+</div>
+<details class="parish-income-method"><summary>Cómo se estiman los ingresos y las distancias</summary>
+<p>La base de cada parroquia son los hogares censados con edad conocida de la persona que los representa. Se aplica a cada grupo de edad la distribución de ingreso mensual de su provincia. El porcentaje y el número aproximado de hogares en el tramo son estimaciones. Fuentes: INEC, Censo 2022 y ENIGHUR 2024–2025.</p>
+<p>Se consideran las parroquias rurales y cabeceras cantonales de Guayas y Santa Elena. La distancia es cero si el punto cae dentro de la parroquia. Para las demás se mide en línea recta al límite más cercano. El radio de la prueba de sectores se configura por separado.</p>
+<p id="parish-income-urban-note" hidden>En las parroquias urbanas de Guayaquil se asigna cada sector censal completo según dónde cae su punto interior en los límites municipales. Los hogares de sectores sin ubicación asignable quedan fuera del cálculo urbano.</p>
+</details>
+</div></details>
 <div id="campaign-results" hidden><span id="campaign-announcement" class="sr" role="status"></span><h3 id="campaign-result-title"></h3><p id="campaign-summary"></p>
 <div id="campaign-single" hidden>
 <div class="age-numbers"><div><span>Residentes del sector en 2022</span><strong id="campaign-pop"></strong></div><div id="campaign-single-age"><span id="campaign-age-label"></span><strong id="campaign-count"></strong><small id="campaign-share"></small></div></div>
@@ -162,7 +187,7 @@
 <div class="campaign-evidence"><h3>Consultas de compra registradas</h3><p id="campaign-observed"></p><button type="button" class="linkbutton" id="campaign-import">Importar consultas</button> <button type="button" class="linkbutton" id="campaign-all-origins" hidden>Ver todos los cantones de origen</button></div>
 <div id="campaign-outcomes"></div>
 </div>
-<p id="campaign-google-age" class="mini" hidden></p></div></div>
+<p id="campaign-google-age" class="mini" hidden></p></div></div></div>
 <details class="infra-method"><summary>Cómo se eligen y activan las zonas</summary>
 <p>El criterio «Más residentes» ordena los sectores por población censada. «Cercanía» usa la distancia en línea recta entre el proyecto y el punto interior de cada sector. Los empates de población se resuelven por cercanía. El perfil de edad describe a los residentes censados en 2022. La selección geográfica es una hipótesis para una prueba comercial.</p>
 <p>Un sector INEC puede quedar repartido entre varias ubicaciones publicitarias. Revisa la cobertura que admite tu plataforma y el solapamiento de radios antes de contratar la pauta. Google Ads estima la edad y el alcance de sus usuarios.</p>
@@ -324,4 +349,4 @@
 <section class="sources" id="datos"><details><summary>Fuentes, cobertura y metodología</summary><div id="source-items"></div></details></section>
 <div class="footer"><b>Atlas Litoral</b><span>Guayas y Santa Elena · Ecuador</span></div></main>
 <dialog id="modal"><div class="dialog-head"><h2 id="modal-title"></h2><button id="close" class="close" aria-label="Cerrar">×</button></div><div id="modal-body"></div></dialog><div id="toast" role="status"></div>
-<script src="./app.js?v=42f0f9024fb9" type="module" onerror="document.getElementById('map-load-notice').hidden=false;document.getElementById('map-load-message').textContent='No se pudo abrir el mapa interactivo. Se muestra la vista regional.'"></script></body></html>
+<script src="./app.js?v=d1d9cff213d7" type="module" onerror="document.getElementById('map-load-notice').hidden=false;document.getElementById('map-load-message').textContent='No se pudo abrir el mapa interactivo. Se muestra la vista regional.'"></script></body></html>

@@ -165,6 +165,14 @@ def check_sector_scope(page, base, touch):
         expect(polygons).to_have_count(1)
 
     expect_sector("090150224002", "375", "116")
+    ranges = page.locator("#sector-income-ranges tr")
+    expect(page.locator("#sector-income-card")).to_be_visible()
+    expect(ranges.locator("td span")).to_have_text(["39,3%", "34,1%", "13,2%", "6,4%", "7%"])
+    expect(page.locator("#sector-income-base")).to_contain_text("116 hogares")
+    page.locator("#sector-profile-band").select_option("4")
+    expect(page.locator("#income-band")).to_have_value("4")
+    expect(page.locator("#sector-income-ranges [data-current] th")).to_contain_text("$2.000")
+    expect(page.locator("#map-view")).to_have_value("sectors")
     expect(toggle).to_be_visible()
     expect(toggle).not_to_be_checked()
     expect(neighbors).to_have_count(0)
@@ -186,8 +194,12 @@ def check_sector_scope(page, base, touch):
     expect(page.locator("#selected-projects li")).to_have_count(2)
 
     # The income comparison can color multiple polygons without widening the count.
-    page.locator("#map-view").select_option("sector-income")
+    page.locator("#sector-profile-map").click()
+    expect(page.locator("#map-view")).to_have_value("sector-income")
     expect(page.locator("#income-controls")).to_be_visible()
+    page.locator("#income-band").select_option("2")
+    expect(page.locator("#sector-profile-band")).to_have_value("2")
+    expect(page.locator("#geo-path")).to_contain_text("090150224001")
     expect(polygons).to_have_count(11)
     expect(page.locator("#geo-pop")).to_have_text("278")
 
@@ -214,6 +226,55 @@ def check_sector_scope(page, base, touch):
     expect_sector("090150224002", "375", "116")
     expect(toggle).not_to_be_checked()
     expect(neighbors).to_have_count(0)
+
+
+def check_campaign_parishes(page, base):
+    page.locator("#building-select").select_option("velin-tower")
+    page.locator("#plan-selected-project").click()
+    panel = page.locator("#ingresos-parroquiales")
+    if not panel.evaluate("element => element.open"):
+        panel.locator("summary").first.click()
+    page.locator("#parish-income-band").select_option("2")
+    buttons = page.locator("#parish-income-list button")
+    expect(buttons).to_have_count(5)
+    expect(page.locator("#parish-income-group")).to_have_value("urban")
+    expect(buttons.locator("strong")).to_have_text([
+        "1. Tarqui", "2. Febres Cordero", "3. Letamendi", "4. Pascuales", "5. Ximena"
+    ])
+    expect(buttons.first).to_contain_text("13,3")
+    expect(buttons.first).to_contain_text("0 km")
+    expect(buttons.first).to_contain_text("30.122")
+    buttons.nth(1).click()
+    expect(buttons.nth(1)).to_have_attribute("aria-pressed", "true")
+    page.locator("#parish-income-reset").click()
+    expect(buttons.nth(1)).to_have_attribute("aria-pressed", "false")
+
+    minimum = page.locator("#parish-income-min")
+    minimum.fill("13.3")
+    expect(buttons.first).to_contain_text("Febres Cordero")
+    minimum.fill("100")
+    expect(page.locator("#parish-income-results")).to_be_hidden()
+    expect(page.locator("#parish-income-status")).to_contain_text("Ninguna")
+    minimum.fill("")
+    page.locator("#parish-income-group").select_option("census")
+    expect(buttons.first).to_contain_text("Guayaquil")
+    expect(buttons.first).to_contain_text("Cabecera cantonal")
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+
+    # A sector card carries the exact area and chosen income bracket into the plan.
+    page.goto(base + "?area=090150224002#ficha", wait_until="domcontentloaded")
+    page.locator("#sector-profile-band").select_option("4")
+    page.locator("#sector-parish-income").click()
+    expect(page.locator("#parish-income-band")).to_have_value("4")
+    expect(page.locator("#parish-income-origin")).to_contain_text("090150224002")
+    expect(buttons.first).to_contain_text("Tarqui")
+    expect(buttons.first).to_contain_text("6,9")
+
+    # A shared single-sector campaign centers the comparison on the sector itself.
+    page.goto(base + "?sectorCampana=240154001002#ingresos-parroquiales", wait_until="domcontentloaded")
+    expect(page.locator("#parish-income-origin")).to_contain_text("240154001002", timeout=30000)
+    expect(buttons.first).to_contain_text("Manglaralto")
+    expect(buttons.first).to_contain_text("0 km")
 
 
 def run(url, executable):
@@ -290,6 +351,7 @@ def run(url, executable):
             page.context.close()
             page = open_atlas([VELIN_GUIDE], width, touch)
             check_sector_scope(page, base, touch)
+            check_campaign_parishes(page, base)
             assert not errors, errors
             page.context.close()
         browser.close()

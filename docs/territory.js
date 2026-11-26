@@ -1,4 +1,4 @@
-import {estimatedShare, isSectorTheme} from './income-map.js';
+import {estimatedShare, incomeBandLabels, isSectorTheme} from './income-map.js';
 import {featureAt, normalize} from './model.js';
 import {readCompressedJSON} from './compressed-json.js';
 
@@ -15,21 +15,46 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
   const level=$('geo-level'), parish=$('parish-select'), zones=$('geo-zone'), ids=$('geo-sector');
   const buttons=[...document.querySelectorAll('[data-level]')];
   const zoneCodes=Object.keys(index?.zones||{}).sort();
-  const incomeBand=$('sector-profile-band');
+  const incomeBand=$('sector-profile-band'), mapBand=$('income-band');
+  const rangeTable=$('sector-income-ranges');
   if(index){
-    const cuts=index.incomeCuts;
-    const labels=['Menos de $'+fmt.format(cuts[0]),...cuts.slice(0,-1).map((n,i)=>'$'+fmt.format(n)+' a menos de $'+fmt.format(cuts[i+1])),'$'+fmt.format(cuts.at(-1))+' o más'];
-    incomeBand.replaceChildren(...labels.map((label,i)=>new Option(label,String(i))));
-    incomeBand.value='1';
+    for(const [i,label] of incomeBandLabels(index.incomeCuts).entries()){
+      incomeBand.add(new Option(label,String(i)));
+      const row=rangeTable.insertRow(), heading=document.createElement('th');
+      heading.scope='row';heading.textContent=label;row.append(heading);
+      const share=row.insertCell(), value=document.createElement('span'), track=document.createElement('i');
+      track.className='income-share-track';track.setAttribute('aria-hidden','true');
+      share.append(value,track);
+    }
   }
   function incomeEstimate(){
     const visible=current?.level==='sector'&&!!current.homes;
     $('sector-income-card').hidden=!visible;
     if(!visible)return;
-    const share=estimatedShare(current.homes,index.provinces[current.code.slice(0,2)],Number(incomeBand.value));
-    $('sector-profile-estimate').textContent=share===null?'Sin hogares con edad del representante publicada.':percent.format(share)+' de los hogares con edad del representante publicada · '+incomeBand.options[incomeBand.selectedIndex].text+'.';
+    incomeBand.value=mapBand.value;
+    const base=total(current.homes), unknown=index.withoutAgeBySector[current.code]||0;
+    const households=fmt.format(base+unknown), name='Sector censal '+current.code.slice(9);
+    $('sector-income-base').textContent=base ? name+' · '+(unknown?fmt.format(base)+' de '+households:households)+' hogares con edad del representante identificada.' : name+' · Sin hogares con edad del representante identificada.';
+    const refs=index.provinces[current.code.slice(0,2)];
+    for(const [i,row] of Array.from(rangeTable.rows).entries()){
+      const share=estimatedShare(current.homes,refs,i), value=share===null?'Sin estimación':percent.format(share);
+      row.cells[1].firstChild.textContent=value;
+      row.cells[1].lastChild.hidden=share===null;
+      row.cells[1].lastChild.style.setProperty('--income-share',(share===null?0:100*share)+'%');
+      row.toggleAttribute('data-current',i===incomeBand.selectedIndex);
+      if(i===incomeBand.selectedIndex)$('sector-profile-estimate').textContent=value+' · '+row.cells[0].textContent;
+    }
   }
-  incomeBand.onchange=incomeEstimate;
+  incomeBand.onchange=()=>{
+    mapBand.value=incomeBand.value;
+    mapBand.dispatchEvent(new Event('change',{bubbles:true}));
+  };
+  mapBand.addEventListener('change',incomeEstimate);
+  $('sector-profile-map').onclick=()=>{
+    const view=$('map-view');
+    view.value='sector-income';view.dispatchEvent(new Event('change',{bubbles:true}));
+    $('income-controls').scrollIntoView({block:'center'});mapBand.focus({preventScroll:true});
+  };
   const group=L.layerGroup().addTo(map), boundaries=L.layerGroup().addTo(map);
   for(const [name,z] of [['territory-boundaries',417],['territory-focus',425]]){
     const pane=map.createPane(name);pane.style.zIndex=z;pane.style.pointerEvents='none';
