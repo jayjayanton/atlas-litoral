@@ -1,4 +1,5 @@
 import {createScoreSurface,surfaceLegend} from './score-surface.js';
+import {readCompressedJSON} from './compressed-json.js';
 import {initSuitability} from './suitability.js';
 import {initSchoolFees} from './school-fees.js';
 import {accessibility,defaults,nearestFacility,nearestRoad,ownership,roadLines} from './access-model.js';
@@ -41,8 +42,11 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
     return gridTask;
   }
   async function loadRegional(){
-    const [base,density]=await Promise.all([loadGrid(),loadLayer('density')]);
-    return {...base,density};
+    const [base,density,amenities]=await Promise.all([
+      loadGrid(),loadLayer('density'),
+      readCompressedJSON('./data/infra/amenity-distances.json.gz').catch(()=>null)
+    ]);
+    return {...base,density,amenities};
   }
   let fees,suitability;
   const available={school:schools!==null,public:!!hospitals?.some(x=>ownership(x.sector)==='public'),private:!!hospitals?.some(x=>ownership(x.sector)==='private'),unknown:!!hospitals?.some(x=>ownership(x.sector)==='unknown'),roads:roads!==null};

@@ -1,231 +1,344 @@
 import {initSiteView} from './site-view.js';
 import {surfaceLegend} from './score-surface.js';
-import {countInRadius,buildDensityGrid,isValidWeights,presets,suitabilityScore} from './suitability-model.js';
+import {
+  buildDensityGrid, countInRadius, criterionKeys, presets,
+  suitabilityFactors, weightedSuitability, weightShares
+} from './suitability-model.js';
 import {distanceKm} from './model.js';
 
-const $=id=>document.getElementById(id);
-const labels=['Densidad de escuelas','Densidad de hospitales','Cercanía a vías'];
-const storageKey='atlasLitoral.density.v1';
-const siteCriteriaKey='atlasLitoral.site.criteria.v1';
-const number=new Intl.NumberFormat('es-EC',{maximumFractionDigits:2});
-const scoreFormat=new Intl.NumberFormat('es-EC',{maximumFractionDigits:1});
-const show=n=>Number.isFinite(n)?number.format(n):'Sin dato';
-const showScore=n=>Number.isFinite(n)?scoreFormat.format(n):'—';
-const densityDisplay=(n,area)=>Number.isFinite(n)?show(n/area):'Sin dato';
-const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = id => document.getElementById(id);
+const labels = [
+  'Densidad de escuelas', 'Densidad de hospitales', 'Cercanía a vías principales',
+  'Cercanía a centros comerciales', 'Cercanía a centros urbanos', 'Cercanía a atractivos turísticos'
+];
+const names = ['Escuelas', 'Hospitales', 'Vías principales', 'Centros comerciales', 'Centros urbanos', 'Atractivos turísticos'];
+const storageKey = 'atlasLitoral.suitability.v2';
+const number = new Intl.NumberFormat('es-EC', {maximumFractionDigits:2});
+const scoreFormat = new Intl.NumberFormat('es-EC', {maximumFractionDigits:1});
+const show = n => Number.isFinite(n) ? number.format(n) : 'Sin dato';
+const showScore = n => Number.isFinite(n) ? scoreFormat.format(n) : '—';
+const distanceLabel = n => Number.isFinite(n) ? show(n) + ' km' : 'Sin dato';
+const densityDisplay = (n,area) => Number.isFinite(n) ? show(n / area) : 'Sin dato';
+const escape = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const inRange = value => Number.isFinite(value) && value >= 0 && value <= 100;
+const validArray = (values, length) => Array.isArray(values) && values.length === length && values.every(inRange);
 
-export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRegional,schools,hospitals,siteAmenities,pinDistances,download}){
-  if(!scale){$('suit-status').textContent='No se pudo cargar la escala regional de aptitud.';return null;}
-  const {maxima}=scale, siteView=initSiteView(map);
-  let grid,surface,cells,regionalTask,regionalError=false;
-  const regions=new Map(state().features.map(f=>[f.properties.code,f]));
-  const col=Object.fromEntries(scale.columns.map((key,i)=>[key,i]));
-  const scopeSelect=$('suit-scope'),radiusSelect=$('suit-radius'),limitInput=$('suit-road-limit'),zone=$('suit-area'),preset=$('suit-preset');
-  const store=(()=>{try{return JSON.parse(localStorage.getItem(storageKey));}catch{return null;}})();
-  const weights=isValidWeights(store?.weights)?[...store.weights]:[...presets.balanced];
-  if(scale.radiiKm.includes(store?.radius))radiusSelect.value=String(store.radius);
-  if(['all','public','private'].includes(store?.scope))scopeSelect.value=store.scope;
-  if(Number.isFinite(store?.limit)&&store.limit>=.1&&store.limit<=200)limitInput.value=store.limit;
+function readStore(key) {
+  try { return JSON.parse(localStorage.getItem(key)) || {}; }
+  catch { return {}; }
+}
 
-  $('suit-weights').innerHTML=labels.map((label,i)=>'<div class="suit-weight"><label for="suit-w-'+i+'">'+label+'</label><input type="range" min="0" max="100" step="1" id="suit-slide-'+i+'" aria-label="Deslizador de '+label+'"><input type="number" min="0" max="100" step="1" id="suit-w-'+i+'" aria-label="Peso de '+label+'"><output id="suit-share-'+i+'" aria-label="Peso normalizado de '+label+'"></output></div>').join('');
-  const countsAtPin=new Map();
-  let areaProvince=null,seriesKey=null,mapKey=null,projectKey=null,ranking=[],pendingFrame=0;
-  let radius,scope,roadLimit,ri,hcol,valid,area;
-  const savedSite=(()=>{try{return JSON.parse(localStorage.getItem(siteCriteriaKey))||{};}catch{return {};}})();
-  const selectedSite=new Set(['school','hospital','road',...(savedSite.shopping?['shopping']:[]),...(savedSite.city?['city']:[])]);
-  const siteLabels={school:'Escuelas',hospital:'Hospitales',road:'Vías principales',shopping:'Centros comerciales',city:'Centros urbanos'};
-  for(const box of document.querySelectorAll('[data-site-criterion]')){
-    box.checked=selectedSite.has(box.dataset.siteCriterion);
-    box.addEventListener('change',()=>{if(box.checked)selectedSite.add(box.dataset.siteCriterion);else selectedSite.delete(box.dataset.siteCriterion);try{localStorage.setItem(siteCriteriaKey,JSON.stringify({shopping:selectedSite.has('shopping'),city:selectedSite.has('city')}));}catch{}refresh();});
+function readScenario() {
+  const current = readStore(storageKey);
+  if (validArray(current.weights, criterionKeys.length)) return current;
+  const previous = readStore('atlasLitoral.density.v1');
+  const optional = readStore('atlasLitoral.site.criteria.v1');
+  const base = validArray(previous.weights, 3) ? previous.weights : presets.balanced.slice(0, 3);
+  return {...previous, weights:[...base, optional.shopping ? 20 : 0, optional.city ? 20 : 0, 0]};
+}
+
+export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRegional,schools,hospitals,pinDistances,download}) {
+  if (!scale) {
+    $('suit-status').textContent = 'No se pudo cargar la escala regional de aptitud.';
+    return null;
   }
-  function pinScore(counts,near){
-    const components=[];
-    if(selectedSite.has('school'))components.push([siteLabels.school,weights[0],counts[0]===null?null:(maxima[ri][col.school]>0?Math.min(1,counts[0]/maxima[ri][col.school]):0)]);
-    if(selectedSite.has('hospital'))components.push([siteLabels.hospital,weights[1],counts[1]===null?null:(maxima[ri][hcol]>0?Math.min(1,counts[1]/maxima[ri][hcol]):0)]);
-    if(selectedSite.has('road'))components.push([siteLabels.road,weights[2],Number.isFinite(near.road?.km)?Math.max(0,1-near.road.km/roadLimit):null]);
-    for(const key of ['shopping','city'])if(selectedSite.has(key)){
-      const km=near[key]?.km,limit=radius;
-      components.push([siteLabels[key],20,Number.isFinite(km)?Math.max(0,1-km/limit):null]);
+  const {maxima} = scale, siteView = initSiteView(map);
+  const regions = new Map(state().features.map(f => [f.properties.code, f]));
+  const col = Object.fromEntries(scale.columns.map((key,i) => [key,i]));
+  const scopeSelect = $('suit-scope'), radiusSelect = $('suit-radius'), limitInput = $('suit-road-limit');
+  const zone = $('suit-area'), preset = $('suit-preset');
+  const store = readScenario();
+  const weights = [...store.weights];
+  const lastPositive = weights.map((weight,i) => {
+    const saved = store.lastPositive?.[i];
+    return weight > 0 ? weight : inRange(saved) && saved > 0 ? saved : (presets.balanced[i] || 20);
+  });
+  if (scale.radiiKm.includes(store.radius)) radiusSelect.value = String(store.radius);
+  if (['all','public','private'].includes(store.scope)) scopeSelect.value = store.scope;
+  if (Number.isFinite(store.limit) && store.limit >= .1 && store.limit <= 200) limitInput.value = store.limit;
+
+  let grid, surface, cells, regionalTask, regionalError = false, hasAmenityGrid = false;
+  let areaProvince = null, seriesKey = null, mapKey = null, projectKey = null, ranking = [], pendingFrame = 0;
+  let radius, scope, roadLimit, ri, hcol, shares, valid, area;
+  const countsAtPin = new Map();
+
+  const weightControls = ['suit','site'].map(prefix => {
+    $(prefix+'-weights').innerHTML = labels.map((label,i) => {
+      const key = criterionKeys[i], base = prefix+'-';
+      const siteAttribute = prefix==='site' ? ' data-site-criterion="'+key+'"' : '';
+      return '<div class="suit-weight"><label class="suit-weight-name" for="'+base+'toggle-'+i+'">'+
+        '<input type="checkbox" id="'+base+'toggle-'+i+'" data-weight-key="'+key+'"'+siteAttribute+'>'+label+'</label>'+
+        '<input type="range" min="0" max="100" step="any" id="'+base+'slide-'+i+'" aria-label="Deslizador de '+label+'">'+
+        '<input type="number" min="0" max="100" step="any" id="'+base+'w-'+i+'" aria-label="Peso de '+label+'">'+
+        '<output for="'+base+'w-'+i+' '+base+'slide-'+i+'" id="'+base+'share-'+i+'" aria-live="off" aria-label="Peso normalizado de '+label+'"></output></div>';
+    }).join('');
+    return criterionKeys.map((_,i) => ({
+      toggle:$(prefix+'-toggle-'+i), slider:$(prefix+'-slide-'+i),
+      field:$(prefix+'-w-'+i), share:$(prefix+'-share-'+i)
+    }));
+  });
+
+  function synchronizeArea(province) {
+    if (areaProvince === province) return;
+    const previous = zone.value;
+    areaProvince = province;
+    const fs = state().features.filter(f => !province || f.properties.province === province)
+      .sort((a,b) => a.properties.name.localeCompare(b.properties.name,'es'));
+    zone.replaceChildren(new Option(province ? 'Toda la provincia · '+province : 'Guayas y Santa Elena',''),
+      ...fs.map(f => new Option(f.properties.name, f.properties.code)));
+    if (fs.some(f => f.properties.code === previous)) zone.value = previous;
+  }
+
+  function changeWeight(i, value, source) {
+    weights[i] = value;
+    if (inRange(value) && value > 0) lastPositive[i] = value;
+    for (const controls of weightControls) {
+      const {field,slider,toggle} = controls[i];
+      if (source !== field) field.value = Number.isFinite(value) ? value : '';
+      if (inRange(value)) slider.value = value;
+      toggle.checked = Number.isFinite(value) && value > 0;
     }
-    const total=components.reduce((sum,item)=>sum+item[1],0);
-    if(!total||components.some(item=>item[2]===null))return {value:null,parts:components};
-    return {value:100*components.reduce((sum,item)=>sum+item[1]*item[2],0)/total,parts:components};
   }
 
-  function synchronizeArea(province){
-    if(areaProvince===province)return;
-    const old=zone.value;areaProvince=province;
-    const fs=state().features.filter(f=>!province||f.properties.province===province)
-      .sort((a,b)=>a.properties.name.localeCompare(b.properties.name,'es'));
-    zone.replaceChildren(new Option(province?'Toda la provincia · '+province:'Guayas y Santa Elena',''),
-      ...fs.map(f=>new Option(f.properties.name,f.properties.code)));
-    if(fs.some(f=>f.properties.code===old))zone.value=old;
-  }
-  function readControls(){
-    radius=Number(radiusSelect.value);scope=scopeSelect.value;roadLimit=limitInput.valueAsNumber;
-    ri=scale.radiiKm.indexOf(radius);hcol=col[scope];area=Math.PI*radius*radius;
-    valid=ri>=0&&hcol!==undefined&&isValidWeights(weights)&&Number.isFinite(roadLimit)&&roadLimit>=.1&&roadLimit<=200;
-    const sum=weights.reduce((a,b)=>a+b,0);
-    labels.forEach((_,i)=>{$('suit-share-'+i).textContent=isValidWeights(weights)?show(100*weights[i]/sum)+' %':'—';});
-    preset.value=Object.keys(presets).find(k=>presets[k].every((v,i)=>weights[i]===v))||'custom';
-    $('suit-message').textContent=valid?'':'Usa pesos entre 0 y 100 con al menos uno positivo y un límite vial entre 0,1 y 200 km.';
-    $('suit-map').disabled=!valid; $('suit-export').disabled=!valid||!cells;
-    if(valid){try{localStorage.setItem(storageKey,JSON.stringify({weights,scope,radius,limit:roadLimit}));}catch{}}
-  }
-  function score(s,h,d,activeWeights=weights){
-    return suitabilityScore(s,h,d,maxima[ri][col.school],maxima[ri][hcol],roadLimit,activeWeights);
-  }
-  function buildRanking(province){
-    if(!valid)return [];
-    const result=[];
-    for(const [index,c] of cells.entries()){
-      if(zone.value&&c.code!==zone.value)continue;
-      if(province&&regions.get(c.code).properties.province!==province)continue;
-      const s=c.counts[ri][col.school],h=c.counts[ri][hcol],value=score(s,h,c.roadKm);
-      if(value!==null)result.push({cell:c,index,s,h,value});
+  function readControls() {
+    radius = Number(radiusSelect.value);
+    scope = scopeSelect.value;
+    roadLimit = limitInput.valueAsNumber;
+    ri = scale.radiiKm.indexOf(radius);
+    hcol = col[scope];
+    area = Math.PI * radius * radius;
+    shares = weightShares(weights);
+    const validRoad = Number.isFinite(roadLimit) && roadLimit >= .1 && roadLimit <= 200;
+    let message = '';
+    if (!weights.every(inRange)) message = 'Ingresa un peso entre 0 y 100 para cada criterio.';
+    else if (!shares) message = 'Activa al menos un criterio o aumenta uno de los pesos para calcular la aptitud.';
+    else if (weights[2] && !validRoad) message = 'Ajusta el límite vial entre 0,1 y 200 km.';
+    valid = ri >= 0 && hcol !== undefined && !message;
+    for (const controls of weightControls) controls.forEach(({share,field,slider},i) => {
+      share.textContent = shares ? show(100 * shares[i])+' %' : '—';
+      slider.setAttribute('aria-valuetext',shares ? show(weights[i])+' de 100 · '+share.textContent+' del puntaje' : message);
+      field.setAttribute('aria-invalid', String(!inRange(weights[i])));
+    });
+    preset.value = Object.keys(presets).find(key => presets[key].every((v,i) => weights[i] === v)) || 'custom';
+    $('suit-message').textContent = $('site-weight-message').textContent = message;
+    if (weights.every(inRange) && validRoad) {
+      try { localStorage.setItem(storageKey, JSON.stringify({weights, lastPositive, scope, radius, limit:roadLimit})); }
+      catch {}
     }
-    return result.sort((a,b)=>b.value-a.value||a.cell.code.localeCompare(b.cell.code)||a.cell.lat-b.cell.lat||a.cell.lon-b.cell.lon);
   }
-  function projectSummary(site,canton){
-    $('suit-pin').hidden=!site;
-    if(!site){siteView.render(null);return;}
-    $('suit-pin-name').textContent=site.name;
-    let value=null,near={},counts='',parts=[];
-    if(canton){
-      near=pinDistances(site,scope);
-      const key=[site.lat,site.lon,radius,scope].join('|');
-      if(!countsAtPin.has(key)){
-        if(countsAtPin.size>=36)countsAtPin.clear();
-        countsAtPin.set(key,[countInRadius(site.lat,site.lon,schools,radius),countInRadius(site.lat,site.lon,hospitals,radius,scope)]);
+
+  function factors(s,h,roadKm,amenities) {
+    return suitabilityFactors(s,h,roadKm,maxima[ri][col.school],maxima[ri][hcol],roadLimit,amenities,radius);
+  }
+
+  function buildRanking(province) {
+    const result = [];
+    for (const [index,c] of cells.entries()) {
+      if (zone.value && c.code !== zone.value) continue;
+      if (province && regions.get(c.code).properties.province !== province) continue;
+      const s = c.counts[ri][col.school], h = c.counts[ri][hcol];
+      const value = weightedSuitability(factors(s,h,c.roadKm,c.amenityKm), weights);
+      if (value !== null) result.push({cell:c,index,s,h,value});
+    }
+    return result.sort((a,b) => b.value-a.value || a.cell.code.localeCompare(b.cell.code) || a.cell.lat-b.cell.lat || a.cell.lon-b.cell.lon);
+  }
+
+  function projectSummary(site,canton) {
+    $('suit-pin').hidden = !site;
+    if (!site) { siteView.render(null); return; }
+    $('suit-pin-name').textContent = site.name;
+    let value = null, near = {}, counts = '', parts = [];
+    const active = criterionKeys.filter((key,i) => inRange(weights[i]) && weights[i] > 0);
+    if (canton) {
+      near = pinDistances(site,scope);
+      const key = [site.lat,site.lon,radius,scope].join('|');
+      if (!countsAtPin.has(key)) {
+        if (countsAtPin.size >= 36) countsAtPin.clear();
+        countsAtPin.set(key,[countInRadius(site.lat,site.lon,schools,radius), countInRadius(site.lat,site.lon,hospitals,radius,scope)]);
       }
-      const [s,h]=countsAtPin.get(key);
-      const point=pinScore([s,h],near);value=point.value;
-      const totalWeight=point.parts.reduce((sum,item)=>sum+item[1],0);
-      parts=point.parts.map(([label,weight,factor])=>{
-        const fraction=totalWeight?weight/totalWeight:0;
-        return label+' · '+show(100*fraction)+' % del peso · '+(factor===null?'sin dato':showScore(factor*100*fraction)+' puntos');
-      });
-      const schoolCount=s===null?'Escuelas sin dato':show(s)+(s===1?' escuela':' escuelas');
-      const hospitalCount=h===null?'Hospitales sin dato':show(h)+(h===1?' hospital':' hospitales');
-      const network=scope==='public'?(h===1?' público':' públicos'):scope==='private'?(h===1?' privado':' privados'):'';
-      counts='Radio de conteo '+radius+' km · '+schoolCount+' · '+hospitalCount+network+'.';
-      const selectedNames=[...selectedSite].map(key=>siteLabels[key]);
-      counts+=' Criterios del puntaje: '+(selectedNames.join(', ')||'ninguno seleccionado')+'.';
-      if(value===null)counts+=' Faltan datos para un criterio seleccionado, o selecciona al menos un criterio.';
+      const [s,h] = countsAtPin.get(key);
+      if (valid) {
+        const terms = factors(s,h,near.road?.km,[near.shopping?.km,near.city?.km,near.tourism?.km]);
+        value = weightedSuitability(terms, weights);
+        parts = names.flatMap((label,i) => {
+          if (!weights[i]) return [];
+          return [label+' · '+show(100*shares[i])+' % del peso · '+
+            (Number.isFinite(terms[i]) ? showScore(100*shares[i]*terms[i])+' puntos' : 'sin dato')];
+        });
+      }
+      const schoolCount = s===null ? 'escuelas sin dato' : show(s)+(s===1 ? ' escuela' : ' escuelas');
+      const hospitalCount = h===null ? 'hospitales sin dato' : show(h)+(h===1 ? ' hospital' : ' hospitales');
+      const network = scope==='public' ? (h===1?' público':' públicos') : scope==='private' ? (h===1?' privado':' privados') : '';
+      counts = 'Radio de conteo '+radius+' km · '+schoolCount+' · '+hospitalCount+network+'.';
+      if (value === null) counts += ' '+(valid ? 'Faltan datos para un criterio con peso positivo.' : $('suit-message').textContent);
     }
-    $('suit-score').textContent=showScore(value);
-    $('suit-pin-facts').textContent=canton?counts:'Punto fuera de la cobertura de Guayas y Santa Elena.';
-    siteView.render({site,canton,counts,near,parts,score:showScore(value),radius,criteria:[...selectedSite]});
+    $('suit-score').textContent = showScore(value);
+    $('suit-pin-facts').textContent = canton ? counts : 'Punto fuera de la cobertura de Guayas y Santa Elena.';
+    siteView.render({site,canton,counts,near,parts,score:showScore(value),radius,criteria:active});
   }
-  function requestRegional(){
-    if(regionalTask||cells||regionalError)return;
-    $('suit-count').textContent='Cargando la malla regional…';
-    regionalTask=loadRegional().then(result=>{
-      cells=buildDensityGrid(result.grid,result.density).cells;
-      grid=result.grid;surface=result.surface;
-      readControls();refresh();
-      if(state().theme==='suitability')legend();
-    }).catch(()=>{
-      regionalError=true;
-      $('suit-count').textContent='No se pudo cargar la malla regional. ';
-      const retry=document.createElement('button');retry.type='button';retry.className='linkbutton';
-      retry.textContent='Reintentar';retry.onclick=()=>{regionalError=false;refresh();};$('suit-count').append(retry);
-      if(state().theme==='suitability')legend();
-    }).finally(()=>{regionalTask=null;});
+
+  function requestRegional(retry=false) {
+    if (regionalTask || (!retry && (cells || regionalError))) return;
+    regionalError = false;
+    $('suit-count').textContent = 'Cargando la malla regional…';
+    regionalTask = loadRegional().then(result => {
+      grid = result.grid;
+      surface = result.surface;
+      hasAmenityGrid = false;
+      if (result.amenities) {
+        try {
+          cells = buildDensityGrid(grid,result.density,result.amenities).cells;
+          hasAmenityGrid = true;
+        } catch {
+          // Older or incomplete distance files still allow the three original criteria.
+          cells = buildDensityGrid(grid,result.density).cells;
+        }
+      } else cells = buildDensityGrid(grid,result.density).cells;
+    }).catch(() => { regionalError = !cells; }).finally(() => {
+      regionalTask = null;
+      seriesKey = mapKey = null;
+      refresh();
+    });
   }
-  function rankTable(){
-    $('suit-count').textContent=valid?'Se muestran '+Math.min(5,ranking.length)+' de '+number.format(ranking.length)+' puntos de la malla. Cada punto abre su ubicación en el mapa.':'';
-    $('suit-top').innerHTML=ranking.slice(0,5).map(({cell:c,s,h,value},i)=>{
-      const name=regions.get(c.code).properties.name;
-      return '<tr><td><button data-ranking="'+i+'" class="linkbutton">Ver punto '+(i+1)+' · '+escape(name)+'</button><span class="suit-coord">'+c.lat.toFixed(4)+', '+c.lon.toFixed(4)+'</span></td><td><strong>'+showScore(value)+'</strong></td><td>'+s+'</td><td>'+h+'</td><td>'+show(c.roadKm)+' km</td></tr>';
-    }).join('')||'<tr><td colspan="5">Sin resultados para la selección.</td></tr>';
+
+  function regionalMessage(loading,failed,missing) {
+    const status = $('suit-count');
+    status.replaceChildren();
+    if (loading) { status.textContent = 'Cargando la malla regional…'; return; }
+    if (failed || missing) {
+      status.textContent = failed ? 'No se pudo cargar la malla regional. ' :
+        'Faltan las distancias regionales para los lugares seleccionados. ';
+      const retry = document.createElement('button');
+      retry.type = 'button'; retry.className = 'linkbutton'; retry.textContent = 'Reintentar';
+      retry.onclick = () => requestRegional(true);
+      status.append(retry);
+      return;
+    }
+    status.textContent = valid ? 'Se muestran '+Math.min(5,ranking.length)+' de '+number.format(ranking.length)+' puntos de la malla. Cada punto abre su ubicación en el mapa.' : '';
   }
-  function draw(){
-    if(!valid||state().theme!=='suitability'){surface?.clear('suitability');return;}
-    const scores=new Array(cells.length),codes=new Set();
-    for(const r of ranking){scores[r.index]=r.value;codes.add(r.cell.code);}
+
+  function rankTable() {
+    $('suit-top').innerHTML = ranking.slice(0,5).map(({cell:c,s,h,value},i) => {
+      const name = regions.get(c.code).properties.name;
+      const distances = [c.roadKm, ...(c.amenityKm || [null,null,null])];
+      return '<tr><td><button data-ranking="'+i+'" class="linkbutton">Ver punto '+(i+1)+' · '+escape(name)+'</button><span class="suit-coord">'+
+        c.lat.toFixed(4)+', '+c.lon.toFixed(4)+'</span></td><td><strong>'+showScore(value)+'</strong></td><td>'+s+'</td><td>'+h+'</td>'+
+        distances.map(d => '<td>'+distanceLabel(d)+'</td>').join('')+'</tr>';
+    }).join('') || '<tr><td colspan="8">Sin resultados para la selección.</td></tr>';
+  }
+
+  function draw() {
+    if (!ranking.length || state().theme !== 'suitability') { surface?.clear('suitability'); return; }
+    const scores = new Array(cells.length), codes = new Set();
+    for (const r of ranking) { scores[r.index] = r.value; codes.add(r.cell.code); }
     surface.draw('suitability',scores,codes);
   }
-  function refresh(){
-    const {province,theme,site,siteCanton}=state();
+
+  function refresh() {
+    const {province,theme,site,siteCanton} = state();
     synchronizeArea(province);
-    const parameters=[radius,scope,roadLimit,weights.join(',')].join('|');
-    const scenario=[parameters,zone.value,province].join('|');
-    const pinKey=[parameters,site?.lat,site?.lon,site?.name,site?.temporary,siteCanton?.code].join('|');
-    if(projectKey!==pinKey){projectKey=pinKey;projectSummary(site,siteCanton);}
+    const parameters = [radius,scope,roadLimit,weights.join(',')].join('|');
+    const scenario = [parameters,zone.value,province].join('|');
+    const pinKey = [parameters,site?.lat,site?.lon,site?.name,site?.temporary,siteCanton?.code].join('|');
+    if (projectKey !== pinKey) { projectKey = pinKey; projectSummary(site,siteCanton); }
     siteView.display(theme==='site');
-    if(theme==='site')siteView.legend();
-    if(theme==='suitability'||$('suit-regional').open){
-      if(!cells){requestRegional();return;}
-      if(seriesKey!==scenario){seriesKey=scenario;ranking=buildRanking(province);rankTable();}
+    if (theme==='site') siteView.legend();
+    const missing = !!cells && !hasAmenityGrid && weights.slice(3).some(w => w > 0);
+    $('suit-map').disabled = !valid || missing || regionalError;
+    if (theme==='suitability' || $('suit-regional').open) {
+      if (!cells && !regionalError) requestRegional();
+      if (seriesKey !== scenario) {
+        seriesKey = scenario;
+        ranking = valid && cells && !regionalError && !missing ? buildRanking(province) : [];
+        rankTable();
+        regionalMessage(!!regionalTask,regionalError,missing);
+      }
     }
-    const target=theme==='suitability'?scenario:'hidden';
-    if(mapKey!==target){mapKey=target;draw();}
+    $('suit-export').disabled = !ranking.length || !valid || missing || regionalError;
+    const target = theme==='suitability' ? scenario : 'hidden';
+    if (mapKey !== target) { mapKey = target; draw(); }
+    if (theme==='suitability') legend();
   }
-  function showPoint(r){
-    const c=r.cell;
-    L.popup().setLatLng([c.lat,c.lon]).setContent('<b>'+escape(regions.get(c.code).properties.name)+' · muestra de la malla · '+showScore(r.value)+'/100</b><br>Radio de '+radius+' km<br>Escuelas: '+r.s+' ('+densityDisplay(r.s,area)+'/km²)<br>Hospitales: '+r.h+' ('+densityDisplay(r.h,area)+'/km²)<br>Vía principal: '+show(c.roadKm)+' km').openOn(map);
+
+  function showPoint(r) {
+    const c = r.cell, others = c.amenityKm || [];
+    const details = ['Vía principal: '+distanceLabel(c.roadKm),'Centro comercial: '+distanceLabel(others[0]),
+      'Centro urbano: '+distanceLabel(others[1]),'Atractivo turístico: '+distanceLabel(others[2])];
+    L.popup().setLatLng([c.lat,c.lon]).setContent('<b>'+escape(regions.get(c.code).properties.name)+' · muestra de la malla · '+
+      showScore(r.value)+'/100</b><br>Radio de '+radius+' km<br>Escuelas: '+r.s+' ('+densityDisplay(r.s,area)+'/km²)<br>Hospitales: '+
+      r.h+' ('+densityDisplay(r.h,area)+'/km²)<br>'+details.join('<br>')).openOn(map);
   }
-  function inspect(ll){
-    if(!valid||!grid)return;
-    let near=null,nearest=grid.spacingKm*.72;
-    for(const r of ranking){
-      if(Math.abs(r.cell.lat-ll.lat)>.03||Math.abs(r.cell.lon-ll.lng)>.03)continue;
-      const d=distanceKm(ll.lat,ll.lng,[r.cell.lon,r.cell.lat]);
-      if(d<=nearest){nearest=d;near=r;}
+
+  function inspect(ll) {
+    if (!valid || !grid) return;
+    let near = null, nearest = grid.spacingKm * .72;
+    for (const r of ranking) {
+      if (Math.abs(r.cell.lat-ll.lat)>.03 || Math.abs(r.cell.lon-ll.lng)>.03) continue;
+      const d = distanceKm(ll.lat,ll.lng,[r.cell.lon,r.cell.lat]);
+      if (d <= nearest) { nearest = d; near = r; }
     }
-    if(near)showPoint(near);
+    if (near) showPoint(near);
   }
-  function legend(){
-    if(grid)surfaceLegend('Aptitud ponderada · 0–100',grid.spacingKm);
-    else {$('legend-title').textContent='Aptitud regional';$('legend').textContent=regionalError?'Malla no disponible. Reintenta en Aptitud.':'Cargando la malla regional…';}
+
+  function legend() {
+    if (grid && ranking.length && valid) { surfaceLegend('Aptitud ponderada · 0–100',grid.spacingKm); return; }
+    $('legend-title').textContent = 'Aptitud regional';
+    $('legend').textContent = !valid ? $('suit-message').textContent : regionalTask ? 'Cargando la malla regional…' :
+      regionalError || (cells && !hasAmenityGrid && weights.slice(3).some(w=>w>0)) ? 'Faltan datos de la malla. Reintenta en Aptitud del sitio.' :
+      cells ? 'Sin resultados para la selección.' : 'Cargando la malla regional…';
   }
-  function update(){
-    if(pendingFrame){cancelAnimationFrame(pendingFrame);pendingFrame=0;}
-    readControls();map.closePopup();refresh();
+
+  function update() {
+    if (pendingFrame) { cancelAnimationFrame(pendingFrame); pendingFrame = 0; }
+    readControls(); map.closePopup(); refresh();
   }
-  function updateOnFrame(){
-    if(!pendingFrame)pendingFrame=requestAnimationFrame(()=>{pendingFrame=0;update();});
+  function updateOnFrame() {
+    if (!pendingFrame) pendingFrame = requestAnimationFrame(() => { pendingFrame = 0; update(); });
   }
-  labels.forEach((_,i)=>{
-    const field=$('suit-w-'+i),slider=$('suit-slide-'+i);
-    field.value=slider.value=weights[i];
-    slider.oninput=()=>{weights[i]=Number(slider.value);field.value=slider.value;updateOnFrame();};
-    field.oninput=()=>{
-      weights[i]=field.valueAsNumber;
-      if(Number.isFinite(weights[i])&&weights[i]>=0&&weights[i]<=100)slider.value=field.value;
-      update();
-    };
-  });
-  preset.onchange=()=>{
-    const values=presets[preset.value];
-    if(!values)return;
-    values.forEach((v,i)=>{weights[i]=v;$('suit-w-'+i).value=$('suit-slide-'+i).value=v;});
+  weightControls.forEach(controls => controls.forEach(({field,slider,toggle},i) => {
+    changeWeight(i, weights[i]);
+    slider.oninput = () => { changeWeight(i,Math.round(Number(slider.value))); updateOnFrame(); };
+    field.oninput = () => { changeWeight(i,field.valueAsNumber,field); update(); };
+    toggle.onchange = () => { changeWeight(i,toggle.checked ? lastPositive[i] : 0); update(); };
+  }));
+  preset.onchange = () => {
+    const values = presets[preset.value];
+    if (!values) return;
+    values.forEach((value,i) => changeWeight(i,value));
     update();
   };
-  scopeSelect.onchange=radiusSelect.onchange=zone.onchange=update;limitInput.oninput=update;
-  $('suit-map').onclick=()=>{
+  scopeSelect.onchange = radiusSelect.onchange = zone.onchange = update;
+  limitInput.oninput = update;
+  $('suit-map').onclick = () => {
     changeTheme('suitability');
-    const group=state().features.filter(f=>(!zone.value||f.properties.code===zone.value)&&(!state().province||f.properties.province===state().province));
+    const group = state().features.filter(f => (!zone.value || f.properties.code===zone.value) && (!state().province || f.properties.province===state().province));
     map.fitBounds(L.geoJSON(group).getBounds(),{padding:[12,12],maxZoom:11});
     $('explorar').scrollIntoView({block:'start'});
   };
-  $('suit-top').onclick=event=>{
-    const button=event.target.closest('button[data-ranking]');if(!button)return;
-    const r=ranking[Number(button.dataset.ranking)];if(!r)return;
-    changeTheme('suitability');selectCanton(r.cell.code);
-    map.setView([r.cell.lat,r.cell.lon],11);showPoint(r);$('explorar').scrollIntoView({block:'start'});
+  $('suit-top').onclick = event => {
+    const button = event.target.closest('button[data-ranking]');
+    if (!button) return;
+    const r = ranking[Number(button.dataset.ranking)];
+    if (!r) return;
+    changeTheme('suitability'); selectCanton(r.cell.code);
+    map.setView([r.cell.lat,r.cell.lon],11); showPoint(r);
   };
-  $('suit-export').onclick=()=>{
-    const sums=weights.reduce((a,b)=>a+b,0);
-    const heads=['rango','dpa','canton','latitud','longitud','aptitud_0_100','escuelas_en_radio','hospitales_en_radio','escuelas_por_km2','hospitales_por_km2','distancia_via_km','radio_km','red_hospitalaria','limite_vial_km','peso_escuelas_pct','peso_hospitales_pct','peso_vias_pct','max_escuelas_regional_en_radio','max_hospitales_regional_en_radio'];
-    download('atlas_litoral_aptitud_ponderada.csv',[heads,...ranking.map(({cell:c,s,h,value},i)=>[
-      i+1,c.code,regions.get(c.code).properties.name,c.lat,c.lon,Number(value.toFixed(4)),s,h,Number((s/area).toFixed(5)),Number((h/area).toFixed(5)),c.roadKm,radius,scopeSelect.selectedOptions[0].textContent,roadLimit,...weights.map(w=>Number((100*w/sums).toFixed(4))),maxima[ri][col.school],maxima[ri][hcol]
+  $('suit-export').onclick = () => {
+    if (!valid || !ranking.length || seriesKey === null) return;
+    const heads = ['rango','dpa','canton','latitud','longitud','aptitud_0_100','escuelas_en_radio','hospitales_en_radio','escuelas_por_km2','hospitales_por_km2','distancia_via_km','radio_km','red_hospitalaria','limite_vial_km','peso_escuelas_pct','peso_hospitales_pct','peso_vias_pct','max_escuelas_regional_en_radio','max_hospitales_regional_en_radio','distancia_centro_comercial_km','distancia_centro_urbano_km','distancia_atractivo_turistico_km','peso_comercios_pct','peso_centros_urbanos_pct','peso_turismo_pct'];
+    const percentages = shares.map(f => Number((100*f).toFixed(4)));
+    download('atlas_litoral_aptitud_ponderada.csv', [heads,...ranking.map(({cell:c,s,h,value},i) => [
+      i+1,c.code,regions.get(c.code).properties.name,c.lat,c.lon,Number(value.toFixed(4)),s,h,
+      Number((s/area).toFixed(5)),Number((h/area).toFixed(5)),c.roadKm,radius,scopeSelect.selectedOptions[0].textContent,
+      Number.isFinite(roadLimit) ? roadLimit : '',...percentages.slice(0,3),maxima[ri][col.school],maxima[ri][hcol],
+      ...(c.amenityKm || ['','','']),...percentages.slice(3)
     ])]);
   };
-  $('suit-regional').ontoggle=refresh;
-  $('suit-start').disabled=$('site-start').disabled=$('site-opt').disabled=false;
-  $('suit-opt').disabled=false;$('suit-body').hidden=false;$('suit-status').textContent='';
-  readControls();refresh();
+  $('suit-regional').ontoggle = refresh;
+  $('suit-start').disabled = $('site-start').disabled = $('site-opt').disabled = false;
+  $('suit-opt').disabled = false;
+  $('suit-body').hidden = false;
+  $('suit-status').textContent = '';
+  readControls(); refresh();
   return {refresh,legend,inspect,siteLegend:siteView.legend};
 }

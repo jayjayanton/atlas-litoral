@@ -72,6 +72,23 @@
       ]
     },
     {
+      "title": "Centros comerciales y centros urbanos",
+      "period": "OpenStreetMap · extracto de Ecuador del 24 de noviembre de 2026",
+      "note": "19 centros comerciales identificados por nombre y 34 puntos de centros urbanos. La distancia se mide hasta el punto cartografiado más cercano de cada inventario.",
+      "links": [
+        {
+          "url": "./data/infra/site-amenities.json",
+          "label": "Descargar puntos de referencia",
+          "download": true
+        },
+        {
+          "url": "https://www.openstreetmap.org/copyright",
+          "label": "© OpenStreetMap contributors · ODbL",
+          "download": false
+        }
+      ]
+    },
+    {
       "title": "Atractivos turísticos",
       "period": "Viceministerio de Turismo · IEDG, 2026",
       "note": "1.229 puntos del inventario nacional. La distancia se mide hasta la coordenada registrada del atractivo; la cobertura depende de los levantamientos publicados.",
@@ -96,7 +113,8 @@
   ],
   "method": [
     "La malla tiene 74.108 centros terrestres espaciados cada 500 m en UTM 17S. El mapa interpola los puntajes cercanos mediante ponderación por distancia inversa, con un radio de 750 m. El color se limita a tierra dentro del área seleccionada y a la vecindad de las muestras. La cifra del proyecto se calcula en las coordenadas de su pin. Para las vías se mide al punto más cercano de un tramo.",
-    "Cada criterio aporta su peso completo a distancia cero. Su aporte disminuye linealmente hasta cero en el límite elegido. La suma se divide por los pesos activos y se escala de 0 a 100. El escenario inicial asigna 40 % a escuelas (3 km), 40 % a hospitales (10 km) y 20 % a vías (3 km).",
+    "En Accesibilidad a servicios, cada criterio aporta su peso completo a distancia cero. Su aporte disminuye linealmente hasta cero en el límite elegido. La suma se divide por los pesos activos y se escala de 0 a 100. El escenario inicial asigna 40 % a escuelas (3 km), 40 % a hospitales (10 km) y 20 % a vías (3 km).",
+    "En Aptitud del sitio se cuentan las escuelas y los hospitales dentro del radio. Para vías, centros comerciales, centros urbanos y atractivos turísticos se usa la distancia al elemento más cercano. El punto y la malla comparten los pesos que elijas.",
     "Los focos cantonales usan Gi* de Getis-Ord sobre tasas por 10.000 habitantes del Censo 2022. Se comparan el propio cantón y sus cuatro vecinos más cercanos dentro de las dos provincias. Se aplican 19.999 permutaciones y una corrección Benjamini–Yekutieli por indicador. Un foco cumple q ≤ 0,05. Los resultados dependen de la escala y de los vecinos disponibles en los bordes.",
     "La proximidad puede cruzar agua o cerramientos. Para valorar tiempos de viaje, cupos escolares, capacidad hospitalaria o demanda de compradores se requieren datos específicos de cada tema."
   ]

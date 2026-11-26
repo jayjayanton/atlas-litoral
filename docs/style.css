@@ -314,12 +314,29 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 #building-matches button:hover,#building-matches button:focus-visible{background:#eedfd6}
 
 #tool-close{font-weight:700;background:#fff;border-color:#bf9b9c;color:#782d48}
-.site-criteria{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0;padding:8px 10px;border:1px solid var(--outline);border-radius:7px}
-.site-criteria legend{padding:0 5px;font-size:13px;font-weight:700}
-.site-criteria label{display:flex;align-items:center;gap:5px;font-size:13px}
-.site-criteria input{accent-color:var(--accent)}
+/* Shared controls on the site card and in the regional analysis. */
+.site-criteria { display:block; min-inline-size:0; margin:12px 0; padding:8px 14px; border:1px solid var(--outline); border-radius:7px; }
+.site-criteria legend { padding:0 5px; font-size:.94rem; font-weight:700; }
+.suit-weight-note { color:var(--dim); font-size:.9rem; }
+.suit-weights { min-width:0; gap:0; }
+.suit-weight { grid-template-columns:minmax(0,1.45fr) minmax(78px,1fr) 62px 70px; min-height:48px; border-bottom:1px solid var(--outline); padding:4px 0; gap:10px; }
+.suit-weight:last-child { border-bottom:0; }
+.suit-weight-name { display:flex; align-items:center; gap:8px; font-size:.94rem; font-weight:600; line-height:1.3; }
+.suit-weight-name input[type=checkbox] { width:1.05rem; height:1.05rem; margin:0; flex:none; accent-color:var(--wine); }
+.suit-weight input[type=range] { min-width:0; min-height:32px; cursor:pointer; accent-color:var(--wine); }
+.suit-weight input[type=number] { min-width:0; min-height:34px; border:1px solid #ac9e9e; border-radius:4px; background:white; padding:4px 6px; font-variant-numeric:tabular-nums; }
+.suit-weight output { font-size:.85rem; font-variant-numeric:tabular-nums; }
+.suit-weight input:focus-visible { outline:2px solid var(--wine); outline-offset:3px; }
+.suit-weight-note:empty, #site-weight-message:empty { display:none; }
+@media (max-width: 640px) {
+  .suit-weight { grid-template-columns:minmax(0,1fr) 56px 62px; gap:2px 7px; padding:9px 0; }
+  .suit-weight-name { grid-column:1 / -1; }
+  .suit-weight input[type=range] { grid-column:1; }
+  .suit-weight input[type=number] { font-size:1rem; }
+}
+
 #site-explanation{font-size:13px;color:var(--dim)}
-@media(max-width:760px){.site-criteria{display:grid;grid-template-columns:1fr 1fr;gap:9px}}
+
 
 /* The masthead and regional locator share the ink and paper of a printed atlas. */
 main, .mast-in {

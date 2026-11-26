@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id);
 const number=new Intl.NumberFormat('es-EC',{maximumFractionDigits:2});
-const titles={school:'Escuela más cercana',hospital:'Hospital más cercano',road:'Vía principal más cercana',shopping:'Centro comercial o mercado más cercano',city:'Centro urbano más cercano',tourism:'Atractivo turístico'};
+const titles={school:'Escuela más cercana',hospital:'Hospital más cercano',road:'Vía principal más cercana',shopping:'Centro comercial más cercano',city:'Centro urbano más cercano',tourism:'Atractivo turístico más cercano'};
 const distance=km=>km<1?number.format(Math.round(km*1000))+' m':number.format(km)+' km';
 
 export function initSiteView(map){
@@ -14,7 +14,7 @@ export function initSiteView(map){
   }
   function legend(){
     $('legend-title').textContent=current?.canton?'Aptitud del punto · '+current.score+' / 100':'Aptitud del sitio';
-    $('legend').textContent=current?.canton?'Servicios contados a '+current.radius+' km':current?'Punto fuera de cobertura':'Toca una ubicación en el mapa.';
+    $('legend').textContent=current?.canton?'Servicios y lugares en un radio de '+current.radius+' km':current?'Punto fuera de cobertura':'Toca una ubicación en el mapa.';
   }
   function render(data){
     current=data;overlay.clearLayers();connection.clearLayers();
@@ -41,6 +41,7 @@ export function initSiteView(map){
         button.type='button';button.className='linkbutton';
         const name=item.name||item.ref||item.class||'Tramo sin nombre';
         button.textContent=title+' · '+distance(record.km)+' · '+name;
+        if(key==='tourism'&&!criteria.includes(key))button.append(' (referencia, peso cero)');
         button.onclick=()=>{
           const end=[record.lat??item.lat,record.lon??item.lon];
           connection.clearLayers();
