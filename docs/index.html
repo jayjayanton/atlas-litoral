@@ -61,6 +61,17 @@
 <div class="keymetric"><span>Población censada</span><strong id="pop">—</strong><small>habitantes · Censo 2022</small></div></div>
 <div id="geo-facts" hidden><div class="detail-top"><span id="geo-kind" class="eyebrow"></span><h2 id="geo-name"></h2><div class="detail-prov" id="geo-path"></div></div>
 <div class="keymetric"><span>Población censada</span><strong id="geo-pop"></strong><small id="geo-source"></small></div></div>
+
+<section id="sector-income-card" class="profile-block household-estimate" hidden><div class="income-scope">ESTIMACIÓN PARA ESTE SECTOR · INGRESO DEL HOGAR</div><h3>Distribución estimada del ingreso del hogar</h3>
+<label>Ingreso mensual del hogar<select id="sector-profile-band"></select></label><p id="sector-profile-estimate"></p>
+<p class="income-explainer">Estimación, no medición directa: combina la distribución provincial de ENIGHUR 2024–25 por edad de la persona representante con la composición de hogares de este sector según el Censo 2022.</p></section>
+<div id="profile-stats"><section id="cohort-profile" class="profile-block" hidden><h3 id="cohort-profile-title"></h3><p id="cohort-profile-value"></p></section><section class="profile-block"><h3>Edad de los residentes</h3><ul id="profile-ages"></ul><small id="age-profile-note"></small></section>
+<details class="profile-block income-block"><summary>Ingreso mediano del hogar · contexto provincial</summary><strong id="income">—</strong><small id="income-scale"></small><button type="button" class="linkbutton" id="province-income-map">Ver mapa provincial</button></details>
+
+<section id="profile-hot" class="profile-block" hidden><h3 id="profile-hot-title"></h3><p id="profile-hot-value"></p></section>
+<details id="loan-block" class="profile-block"><summary>Crédito de vivienda del cantón</summary><div class="metric"><div><h3>Mediana del préstamo</h3><small id="loan-note"></small></div><strong id="loan">—</strong></div></details>
+</div><div class="profile-actions"><button type="button" id="geo-zoom" class="linkbutton" hidden>Acercar al área</button><button type="button" id="geo-share" class="linkbutton" hidden>Compartir área</button><button type="button" id="geo-pin" class="linkbutton" hidden>Ubicar mi pin</button></div>
+<section class="profile-block" id="cohort-leaders" hidden><h3 id="cohort-leaders-title">Áreas destacadas</h3><ol id="cohort-leaders-list"></ol><a href="#demografia">Ver comparación completa</a></section>
 <section id="earnings-card" class="profile-block earnings-geography" hidden aria-labelledby="earn-title"><div class="income-scope">PORCENTAJE PROVINCIAL · INGRESO PERSONAL</div><h3 id="earn-title">Ingreso laboral por edad</h3>
 <label>Grupo de edad<select id="earn-age"><option value="18-24">18–24 años</option><option value="25-45" selected>25–45 años</option><option value="46-59">46–59 años</option><option value="60-120">60 años o más</option></select></label>
 <label>Ingreso laboral mensual (USD)<select id="earn-income"><option value="0-499">$0–499</option><option value="500-999">$500–999</option><option value="1000-1999" selected>$1.000–1.999</option><option value="2000-2999">$2.000–2.999</option><option value="3000-4999">$3.000–4.999</option><option value="5000-">$5.000 o más</option></select></label>
@@ -68,15 +79,6 @@
 <p id="earn-domain"></p><strong id="earn-result"></strong><p id="earn-note" role="status"></p>
 <button type="button" class="linkbutton" id="earn-retry" hidden>Reintentar consulta</button>
 <div class="local-census"><b>CONTEO CENSAL DEL SECTOR</b><p id="earn-local"></p></div><p class="income-explainer">ENEMDU publica ingresos personales a nivel provincial. Este porcentaje describe Guayas o Santa Elena, no este sector ni esta parroquia. El Censo 2022 aporta el conteo local de residentes, pero no su ingreso individual.</p><details><summary>Cómo leer los datos</summary><p>El total incluye a quienes están sin empleo o fuera de la fuerza laboral, con cero ingreso laboral. Se excluyen ingresos desconocidos. Se requieren al menos 30 registros para mostrar un porcentaje.</p><a href="https://www.ecuadorencifras.gob.ec/enemdu-anual/" target="_blank" rel="noopener">INEC · ENEMDU anual 2025</a></details></section>
-<div id="profile-stats"><section id="cohort-profile" class="profile-block" hidden><h3 id="cohort-profile-title"></h3><p id="cohort-profile-value"></p></section><section class="profile-block"><h3>Edad de los residentes</h3><ul id="profile-ages"></ul><small id="age-profile-note"></small></section>
-<details class="profile-block income-block"><summary>Ingreso mediano del hogar · contexto provincial</summary><strong id="income">—</strong><small id="income-scale"></small><button type="button" class="linkbutton" id="province-income-map">Ver mapa provincial</button></details>
-<section id="sector-income-card" class="profile-block household-estimate" hidden><div class="income-scope">ESTIMACIÓN PARA ESTE SECTOR · INGRESO DEL HOGAR</div><h3>Distribución estimada del ingreso del hogar</h3>
-<label>Ingreso mensual del hogar<select id="sector-profile-band"></select></label><p id="sector-profile-estimate"></p>
-<p class="income-explainer">Estimación, no medición directa: combina la distribución provincial de ENIGHUR 2024–25 por edad de la persona representante con la composición de hogares de este sector según el Censo 2022.</p></section>
-<section id="profile-hot" class="profile-block" hidden><h3 id="profile-hot-title"></h3><p id="profile-hot-value"></p></section>
-<details id="loan-block" class="profile-block"><summary>Crédito de vivienda del cantón</summary><div class="metric"><div><h3>Mediana del préstamo</h3><small id="loan-note"></small></div><strong id="loan">—</strong></div></details>
-</div><div class="profile-actions"><button type="button" id="geo-zoom" class="linkbutton" hidden>Acercar al área</button><button type="button" id="geo-share" class="linkbutton" hidden>Compartir área</button><button type="button" id="geo-pin" class="linkbutton" hidden>Ubicar mi pin</button></div>
-<section class="profile-block" id="cohort-leaders" hidden><h3 id="cohort-leaders-title">Áreas destacadas</h3><ol id="cohort-leaders-list"></ol><a href="#demografia">Ver comparación completa</a></section>
 </aside></section>
 <section id="herramientas" class="analysis-workspace" aria-labelledby="analysis-heading">
 <header class="analysis-navigation">
