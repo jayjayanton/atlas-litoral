@@ -393,10 +393,10 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     status.textContent='Localizando el sector…';
     try {
       const code=await codeAt(lat,lon);
-      if(version!==lookup || state().theme!==requestedTheme)return;
+      if(version!==lookup || state().theme!==requestedTheme || (scroll && $('sectores').hidden))return;
       if(code){
         await openCode(code,true,place);
-        if(scroll && version===lookup)showAnalysis('sectores',true);
+        if(scroll && version===lookup && !$('sectores').hidden)showAnalysis('sectores',true);
         return;
       }
       if (version===lookup) status.textContent='El punto queda fuera de los sectores cartografiados.';

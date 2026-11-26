@@ -546,7 +546,7 @@ async function main(){
  infrastructure=await import('./infrastructure.js').then(({initInfrastructure})=>initInfrastructure({
    map, land:context.features.filter(f=>f.properties.kind==='land'), state:()=>({theme:$('layer').value,province:$('province').value,code:selected,features,project,projectInCoverage:!!dest,site:studyPin||project,siteCanton:studyPin?studyCanton:dest}),
    changeTheme:theme=>{$('layer').value=theme;colorize();},isPicking:()=>picking,fitRegion,selectCanton:code=>setSelection(code),download
- })).catch(error=>{console.warn('Capas de infraestructura:',error);$('infra-status').textContent='No se pudo iniciar el análisis. Recarga para reintentar.';return null;});
+ })).catch(error=>{console.warn('Capas de infraestructura:',error);$('hot-region').textContent=$('infra-status').textContent='No se pudo iniciar el análisis. Recarga para reintentar.';return null;});
  campaign?.setHospitals(infrastructure?.hospitals);
  if(infrastructure){
    sectors?.setFacilities(infrastructure.schools,infrastructure.hospitals);

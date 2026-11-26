@@ -219,10 +219,25 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 .profile-actions{display:flex;gap:12px;flex-wrap:wrap;padding:0 19px}.profile-actions:has(button:not([hidden])){padding-block:8px;border-top:1px solid var(--outline)}
 .profile-actions .linkbutton{font-size:13px;margin:0}
 #profile-empty p{margin:8px 0;font-size:15px}
-.analysis-navigation{margin:24px 0 10px;padding:15px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px 18px;background:#e8f1ed;border:1px solid #cbded5;border-radius:9px}
-.analysis-navigation h2{font-size:21px}
-.analysis-navigation label{min-width:0}
-[data-analysis]{scroll-margin-top:10px}
+/* Each analysis shares a single switcher, scoped to the tool workspace. */
+.analysis-workspace{margin:24px 0 16px;min-width:0;scroll-margin-top:8px}
+.analysis-workspace.tool-open,.analysis-workspace:target{min-height:calc(100vh - 7rem);min-height:calc(100svh - 7rem)}
+.analysis-navigation{position:sticky;top:0;z-index:510;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:8px 20px;background:#e8f1ed;border:1px solid #cbded5;border-radius:9px}
+.analysis-navigation h2{font-size:20px}
+#tool-actions{display:flex;align-items:end;gap:9px;min-width:0}
+#tool-actions label{display:grid;gap:2px;min-width:0;font-size:12px;font-weight:650;color:#35574f}
+#tool-choice{width:min(17rem,100%);min-height:38px}
+#tool-close{min-height:38px}
+#tool-menu{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:10px}
+#tool-menu>div{padding:14px 16px;background:#fff;border:1px solid var(--outline);border-radius:8px}
+#tool-menu h3{font-size:15px;margin:0 0 6px}
+#tool-menu a{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:43px;border-top:1px solid #e0e8e5;text-decoration:none;font-size:14px;font-weight:560}
+#tool-menu a::after{content:"";width:6px;height:6px;border-top:2px solid;border-right:2px solid;transform:rotate(45deg);margin-right:3px;flex:none}
+#tool-menu a:hover,#tool-menu a:focus-visible{color:#073f3c;text-decoration:underline}
+.analysis-workspace>[data-analysis]{margin-top:10px;scroll-margin-top:88px}
+.access-result h3{font-size:16px;margin:8px 0}
+.hot-kind-label{display:grid;width:max-content;max-width:100%;gap:4px;margin:14px 0;font-size:14px;font-weight:600}
+.hot-kind-label select{min-height:38px}
 @media(max-width:900px){.workspace{grid-template-columns:minmax(0,1fr) minmax(250px,.56fr)}}
 @media(max-width:760px){
  .workspace{grid-template-columns:1fr;gap:10px}.mast-in{height:50px}.page-heading{padding:14px 0;align-items:start}.page-heading h1{font-size:28px}.page-heading p{font-size:14px}
@@ -230,7 +245,11 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
  .map-options{padding:0 12px;align-items:center;gap:2px 12px}.map-options .theme-label{max-width:100%}
  #map-hint,#geo-status{margin:6px 12px}.level-buttons button{font-size:13px;line-height:1.15;padding:4px}
  .mapstage #map,.mapstage:has(.sector-legend-area) #map{height:clamp(320px,43dvh,410px)}
- .analysis-navigation{align-items:flex-start;flex-direction:column}.analysis-navigation label,.analysis-navigation select{width:100%}
+ .analysis-navigation{display:block;padding:9px 12px}.analysis-navigation h2{font-size:17px}
+ #tool-actions{margin-top:6px;align-items:end}#tool-actions label{flex:1}#tool-choice{width:100%}
+ #tool-menu{grid-template-columns:1fr;gap:8px}#tool-menu>div{padding:10px 14px}
+ .analysis-workspace>[data-analysis]{scroll-margin-top:110px}
+ .mast nav{display:flex;gap:0;margin-left:auto}.mast nav a:not([href="#herramientas"]){display:none}.mast-button{margin-left:6px}
 }
 .map-canvas{position:relative}
 .map-options select,.analysis-navigation select{appearance:auto}

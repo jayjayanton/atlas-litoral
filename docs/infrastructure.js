@@ -134,7 +134,9 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
   }
   function updatePin(){
     const {project,projectInCoverage}=state();
-    $('show-services').disabled=!projectInCoverage || !points.length;
+    $('show-services').textContent=project?'Ver servicios cercanos':'Elegir edificio';
+    $('show-services').disabled=!!project&&(!projectInCoverage||!points.length);
+    $('analysis-project').hidden=!project;
     $('access-score-box').hidden=!project;
     if(!projectInCoverage){
       $('analysis-project').textContent=project?.name || 'Accesibilidad en el mapa';$('access-score').textContent='—';
@@ -217,7 +219,7 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
     const {code,features}=state(),kind=$('hot-kind').value,stat=hotspotData(code,kind),name=features.find(f=>f.properties.code===code)?.properties.name??code;
     const high=features.filter(f=>hotspotData(f.properties.code,kind)?.cluster==='hot').map(f=>f.properties.name);
     const low=features.filter(f=>hotspotData(f.properties.code,kind)?.cluster==='cold').map(f=>f.properties.name);
-    $('hot-region').textContent=!hotspots?'':(high.length||low.length)?[high.length?'Focos altos: '+high.join(', '):'',low.length?'Focos bajos: '+low.join(', '):''].filter(Boolean).join('. ')+'.':'Ningún foco significativo en los 28 cantones (q ≤ 0,05).';
+    $('hot-region').textContent=!hotspots?'No se pudieron cargar las tasas cantonales. Recarga la página para reintentar.':(high.length||low.length)?[high.length?'Focos altos: '+high.join(', '):'',low.length?'Focos bajos: '+low.join(', '):''].filter(Boolean).join('. ')+'.':'Ningún foco significativo en los 28 cantones (q ≤ 0,05).';
     if(isHot(state().theme)){
       $('profile-hot-title').textContent=(kind==='school'?'Escuelas':'Hospitales MSP')+' · cantón '+name;
       $('profile-hot-value').textContent=stat?num(stat.count)+' establecimientos · '+fmt(stat.rate,3)+' por 10.000 habitantes. '+clusterText[stat.cluster]+'.':'Sin datos para este cantón.';
@@ -241,6 +243,10 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
     const band=rateScales[kind].cuts.filter(cut=>cut===0?rate>0:rate>=cut).length;
     return rateColors[band];
   }
+  function linkToTool(hash,label){
+    const link=document.createElement('a');link.href=hash;link.textContent=label;
+    $('legend').append(link);
+  }
   function legend(theme){
     if(!appThemes(theme))return false;
     if(theme==='fees'||theme==='regional-fees'){fees?.legend(theme);return true;}
@@ -249,6 +255,7 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
     if(theme==='access'){
       if(grid)surfaceLegend('Aptitud de proximidad · 0–100',grid.spacingKm);
       else {$('legend-title').textContent='Aptitud por accesibilidad';$('legend').textContent='Cargando la malla regional…';}
+      linkToTool('#infra','Ajustar accesibilidad');
       return true;
     }
     const kind=theme==='hot-school'?'school':'hospital';
@@ -259,6 +266,7 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
     const note=hot.length?'Focos altos significativos: '+hot.map(f=>f.properties.name).join(' y ')+'.':'Sin focos significativos en los '+scope.length+' cantones de la vista.';
     $('map-hint').textContent=note+' El color indica '+(kind==='school'?'escuelas':'hospitales MSP')+' por 10.000 habitantes.';
     $('legend').innerHTML=keys.join('')+'<span class="hot-legend-note">'+(hot.length?'<i class="hot-line"></i>':'')+escape(note)+'</span>';
+    linkToTool('#focos','Consultar focos cantonales');
     return true;
   }
   $('hot-kind').onchange=()=>{if(isHot(state().theme))changeTheme('hot-'+$('hot-kind').value);else updateHot();};
@@ -267,6 +275,10 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
   function viewTheme(t){changeTheme(t);fitRegion();$('explorar').scrollIntoView({block:'start'});}
   $('show-access').onclick=()=>viewTheme('access');
   $('show-services').onclick=()=>{
+    if(!state().project){
+      const select=$('building-select');
+      select.closest('details').open=true;select.scrollIntoView({block:'center'});select.focus({preventScroll:true});return;
+    }
     for(const key of Object.keys(symbols))if(available[key])$('ol-'+key).checked=true;
     const p=state().project;map.setView([p.lat,p.lon],13);queuePoints();$('explorar').scrollIntoView({block:'start'});
   };
