@@ -151,3 +151,7 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 #site-distance-note{display:block;color:var(--dim)}#suit-regional[open]>button{margin-top:8px}
 #site-start{white-space:normal}
 #site-breakdown{font-size:14px}#site-breakdown summary{font-weight:600;color:var(--teal)}#site-parts{margin:4px 0;padding-left:20px}
+
+/* Focus the cartographic shape itself, including cantons with offshore islands. */
+#map .canton-shape:focus{outline:none}
+#map .canton-shape:focus-visible{stroke:#96520c;stroke-width:9px}

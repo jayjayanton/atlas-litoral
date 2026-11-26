@@ -151,14 +151,14 @@ function refreshMarker(){
  marker.getElement().title=project.name;marker.getElement().setAttribute('aria-label',project.name);$('project-name').textContent=project.name;$('project-where').textContent=area+(project.reference?' · Acceso aproximado':'');
 }
 function mapInit(context,streetGeo,provinces){
- map=L.map('map',{zoomAnimation:false,zoomSnap:.15,zoomDelta:.75,minZoom:4,maxZoom:19,scrollWheelZoom:false,zoomControl:false,attributionControl:false});
+ map=L.map('map',{zoomAnimation:false,zoomSnap:.15,zoomDelta:.75,minZoom:4,maxZoom:19,scrollWheelZoom:true,zoomControl:false,attributionControl:false});
  L.control.zoom({position:'topright',zoomInTitle:'Acercar',zoomOutTitle:'Alejar'}).addTo(map);
  L.control.attribution({prefix:false,position:'bottomright'}).addTo(map).addAttribution('© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · <a href="#datos">Fuentes</a>');
  for(const [key,z] of [['land',250],['rivers',370],['canton-outlines',413],['province-outlines',418],['labels',430]]){map.createPane(key);map.getPane(key).style.zIndex=z;map.getPane(key).style.pointerEvents='none';}
  L.geoJSON(context,{filter:f=>f.properties.kind==='land',pane:'land',interactive:false,style:{weight:1,color:'#9cb9b7',fillColor:'#eaf0e8',fillOpacity:1}}).addTo(map);
  L.geoJSON(context,{filter:f=>f.properties.kind==='river',pane:'rivers',interactive:false,style:f=>f.properties.kind==='river'?{weight:1.2,color:'#79b0c3',opacity:.84}:{weight:1.1,color:'#ba9660',opacity:.67}}).addTo(map);
  streets=L.geoJSON(streetGeo,{pane:'rivers',interactive:false,style:{weight:1.15,color:'#9f977f',opacity:.9}});
- polys=L.geoJSON({type:'FeatureCollection',features},{style,onEachFeature:(f,l)=>{
+ polys=L.geoJSON({type:'FeatureCollection',features},{className:'canton-shape',style,onEachFeature:(f,l)=>{
   const p=f.properties;layers[p.code]=l;l.bindTooltip(()=>esc(p.name)+' · '+esc(p.province)+($('layer').value==='income'?' · Mediana provincial $'+num(inc[p.province].median):''),{sticky:true,direction:'top',offset:[0,-7]});
   l.on('click',e=>{if(picking){L.DomEvent.stopPropagation(e);pick(e.latlng);return;}if($('layer').value!=='site' && !isSectorTheme($('layer').value))setSelection(p.code);});
  }}).addTo(map);
