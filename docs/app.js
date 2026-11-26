@@ -12,7 +12,7 @@ function load(key,init){try{return JSON.parse(localStorage.getItem(store+key))??
 function save(key,value){try{localStorage.setItem(store+key,JSON.stringify(value));return true;}catch{say('No se pudo guardar en este navegador.');return false;}}
 let project,catalog,buildings,buildingState,otherMarkers;
 let finance=load('finance',initialFinance),requests=load('demand',[]),userLoans=load('loans',[]);
-let infrastructure,parishes;
+let infrastructure,parishes,projectParish,viewRevision=0;
 let features,inc,observed,bank,polys,selected='0901',map,marker,labels,streets,selectedPopup,picking=false,pending=null,matches={},dest=null;
 const layers={},colors=['#d6e8dc','#9fcab7','#5fa592','#2b7c73','#155b56'],empty='#e3e7e3';
 const financingURL='https://www.superbancos.gob.ec/estadisticas/portalestudios/volumen-de-credito/';
@@ -23,8 +23,20 @@ let timeout;function say(s){$('toast').textContent=s;$('toast').style.display='b
 const byCode=c=>features.find(f=>f.properties.code===c);
 const scope=f=>f.properties.code==='0901'?'Guayaquil urbano':f.properties.province;
 const withinProvince=f=>!$('province').value||f.properties.province===$('province').value;
+function locate(lat,lon){
+ const parish=parishes?.at(lat,lon);
+ const canton=(parish && byCode(parish.properties.canton)) || featureAt(features,lat,lon);
+ return {parish,canton:canton?.properties};
+}
+function areaLabel(canton,parish,level){
+ if(!canton)return 'Fuera de Guayas y Santa Elena · Se mostrará el pin.';
+ const region=canton.province+' · Cantón '+canton.name;
+ if(level!=='parish')return region;
+ return region+' · '+(parish ? parish.properties.kind+' '+parish.properties.name : 'Sin límite parroquial disponible. Se mostrará el cantón.');
+}
 function projectState(){
- dest=featureAt(features,project.lat,project.lon)?.properties;
+ const current=locate(project.lat,project.lon);
+ dest=current.canton;projectParish=current.parish;
  matches=hasDemand()?recentMatches(requests,project,dest.code):{};
 }
 function hasDemandInputs(){return !!(dest && project.sector && project.price>0 && project.rooms>0);}
@@ -38,27 +50,61 @@ function metricValue(f){const c=f.properties.code;switch($('layer').value){case'
 function breaks(){return $('layer').value==='population'?[0,50000,100000,200000,500000]:$('layer').value==='loans'?[1,5,25,100,500]:[0,1,5,10,25];}
 function fill(f){if(infrastructure?.supports($('layer').value))return infrastructure.fill($('layer').value,f.properties.code);const v=metricValue(f);if(v==null)return empty;const ix=breaks().filter(x=>v>=x).length-1;return colors[Math.max(0,ix)];}
 function style(f){const active=f.properties.code===selected;return {color:active?'#134b45':'#509182',weight:active?2.7:1.2,fillColor:fill(f),fillOpacity:withinProvince(f)?(['access','suitability'].includes($('layer').value)?.24:.65):.16,opacity:withinProvince(f)?1:.35};}
-function setSelection(code,move=false){if(!byCode(code))return;selected=code;if($('province').value&&!withinProvince(byCode(code)))$('province').value='';$('canton').value=code;render();if(move)map.fitBounds(layers[code].getBounds(),{padding:[22,22],maxZoom:11});}
+function setSelection(code,move=false){if(!byCode(code))return;viewRevision++;selected=code;if($('province').value&&!withinProvince(byCode(code)))$('province').value='';$('canton').value=code;render();if(move)map.fitBounds(layers[code].getBounds(),{padding:[22,22],maxZoom:11});}
 function colorize(){polys.setStyle(style);if(layers[selected])layers[selected].bringToFront();
  if(infrastructure){infrastructure.refresh();if(infrastructure.legend($('layer').value))return;}
  const choices=$('layer').value==='population'?['<50 mil','50 mil+','100 mil+','200 mil+','500 mil+']:$('layer').value==='loans'?['1–4','5–24','25–99','100–499','500+']:['0','1–4','5–9','10–24','25+'];
  $('legend-title').textContent=$('layer').value==='population'?'Habitantes · 2022':$('layer').value==='loans'?'Créditos por destino · ene–sep 2026':'Solicitudes de origen · 90 días';
  $('legend').innerHTML=choices.map((c,i)=>'<span class="key"><i class="sw" style="background:'+colors[i]+'"></i>'+c+'</span>').join('')+($('layer').value==='population'?'':'<span class="key"><i class="sw" style="background:'+empty+'"></i>S/d</span>');
 }
-function fitRegion(){const fs=features.filter(withinProvince);const b=L.latLngBounds([]);fs.forEach(f=>b.extend(layers[f.properties.code].getBounds()));map.fitBounds(b,{padding:[12,12],maxZoom:9});}
-function projectFocus(){$('explorar').scrollIntoView({block:'start'});map.setView([project.lat,project.lon],12);marker.openPopup();}
+function fitRegion(){viewRevision++;const fs=features.filter(withinProvince);const b=L.latLngBounds([]);fs.forEach(f=>b.extend(layers[f.properties.code].getBounds()));map.fitBounds(b,{padding:[12,12],maxZoom:9});}
+function frameBuilding(){
+ const pin=[project.lat,project.lon];
+ if(!dest || !project.focusArea){
+   parishes?.highlight(null);
+   map.setView(pin,12,{animate:false});
+   return;
+ }
+ const parish=project.focusArea==='parish'?projectParish:null;
+ parishes?.highlight(parish);
+ const area=parish?L.geoJSON(parish).getBounds():layers[dest.code].getBounds();
+ const bounds=L.latLngBounds([area.getSouthWest(),area.getNorthEast(),pin]);
+ const legendHeight=$('legend').parentElement.offsetHeight;
+ const bottomPadding=Math.min(legendHeight+20,map.getSize().y*.35);
+ map.fitBounds(bounds,{paddingTopLeft:[20,24],paddingBottomRight:[20,bottomPadding],maxZoom:parish?16:13,animate:false});
+}
+function projectFocus(){
+ const building=project;
+ if(dest)setSelection(dest.code);
+ viewRevision++;
+ $('map').scrollIntoView({block:'center'});
+ frameBuilding();
+ marker.openPopup();
+ if(project.focusArea==='parish' && parishes?.needsUrban(projectParish)){
+   const revision=viewRevision;
+   parishes.loadUrban().then(()=>{
+     if(project!==building)return;
+     projectState();refreshMarker();
+     if(revision===viewRevision && selected===dest?.code &&
+        $('parish-outlines').checked && projectParish?.properties.kind==='Parroquia urbana')frameBuilding();
+   });
+ }
+}
 function refreshMarker(){
  marker.setLatLng([project.lat,project.lon]);const sub=project.reference?'Acceso aproximado a Torres del Salado':'Punto elegido por el usuario';
  const coords=project.lat.toFixed(5)+', '+project.lon.toFixed(5);
  const osm='https://www.openstreetmap.org/?mlat='+project.lat+'&mlon='+project.lon+'#map=17/'+project.lat+'/'+project.lon;
- marker.bindPopup('<b>'+esc(project.name)+'</b><br>'+sub+'<br>'+coords+'<br>'+link(osm,'Abrir en OpenStreetMap'));
- marker.getElement().title=project.name;marker.getElement().setAttribute('aria-label',project.name);$('project-name').textContent=project.name;$('project-where').textContent=(dest?.name??'Fuera de cobertura')+' · '+(project.reference?'acceso aproximado':'punto definido');
+ const area=areaLabel(dest,projectParish,project.focusArea);
+ const popup='<b>'+esc(project.name)+'</b><br>'+esc(area)+'<br>'+sub+'<br>'+coords+'<br>'+link(osm,'Abrir en OpenStreetMap');
+ if(marker.getPopup())marker.setPopupContent(popup);
+ else marker.bindPopup(popup,{autoPan:false});
+ marker.getElement().title=project.name;marker.getElement().setAttribute('aria-label',project.name);$('project-name').textContent=project.name;$('project-where').textContent=area+(project.reference?' · Acceso aproximado':'');
 }
-function mapInit(context,streetGeo){
- map=L.map('map',{zoomSnap:.15,zoomDelta:.75,minZoom:4,maxZoom:19,scrollWheelZoom:false,zoomControl:false,attributionControl:false});
+function mapInit(context,streetGeo,provinces){
+ map=L.map('map',{zoomAnimation:false,zoomSnap:.15,zoomDelta:.75,minZoom:4,maxZoom:19,scrollWheelZoom:false,zoomControl:false,attributionControl:false});
  L.control.zoom({position:'topright',zoomInTitle:'Acercar',zoomOutTitle:'Alejar'}).addTo(map);
  L.control.attribution({prefix:false,position:'bottomright'}).addTo(map).addAttribution('© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · <a href="#datos">Fuentes</a>');
- for(const [key,z] of [['land',250],['rivers',370],['labels',420]]){map.createPane(key);map.getPane(key).style.zIndex=z;map.getPane(key).style.pointerEvents='none';}
+ for(const [key,z] of [['land',250],['rivers',370],['province-outlines',418],['labels',420]]){map.createPane(key);map.getPane(key).style.zIndex=z;map.getPane(key).style.pointerEvents='none';}
  L.geoJSON(context,{filter:f=>f.properties.kind==='land',pane:'land',interactive:false,style:{weight:1,color:'#9cb9b7',fillColor:'#eaf0e8',fillOpacity:1}}).addTo(map);
  L.geoJSON(context,{filter:f=>f.properties.kind==='river',pane:'rivers',interactive:false,style:f=>f.properties.kind==='river'?{weight:1.2,color:'#79b0c3',opacity:.84}:{weight:1.1,color:'#ba9660',opacity:.67}}).addTo(map);
  streets=L.geoJSON(streetGeo,{pane:'rivers',interactive:false,style:{weight:1.15,color:'#9f977f',opacity:.9}});
@@ -66,6 +112,10 @@ function mapInit(context,streetGeo){
   const p=f.properties;layers[p.code]=l;l.bindTooltip(esc(p.name)+' · '+esc(p.province),{sticky:true,direction:'top',offset:[0,-7]});
   l.on('click',e=>{if(picking){L.DomEvent.stopPropagation(e);pick(e.latlng);return;}setSelection(p.code);});
  }}).addTo(map);
+ const provinceStyle={pane:'province-outlines',interactive:false,smoothFactor:0.7};
+ L.geoJSON(provinces,{...provinceStyle,style:{fill:false,color:'#f7faf6',weight:4.8,opacity:.88}}).addTo(map);
+ L.geoJSON(provinces,{...provinceStyle,style:{fill:false,color:'#243947',weight:2.9,opacity:1}}).addTo(map);
+ map.on('movestart zoomstart',()=>{viewRevision++;});
  const staticLabels=[['Guayaquil',-2.205,-79.88],['Daule',-1.86,-79.98],['Milagro',-2.125,-79.59],['Santa Elena',-2.165,-80.81],['Balzar',-1.367,-79.91],['Playas',-2.63,-80.39],['El Triunfo',-2.34,-79.39]];
  labels=L.layerGroup(staticLabels.map(([s,lat,lon])=>L.marker([lat,lon],{interactive:false,keyboard:false,pane:'labels',icon:L.divIcon({className:'map-label',html:s,iconSize:[70,16],iconAnchor:[35,2]})}))).addTo(map);
  L.marker([-2.54,-81.12],{interactive:false,keyboard:false,pane:'labels',icon:L.divIcon({className:'sea-label',html:'Océano Pacífico',iconSize:[135,22],iconAnchor:[70,15]})}).addTo(map);
@@ -105,6 +155,7 @@ function render(){
  $('evidence').innerHTML=evidenceHTML(f);colorize();table();refreshMarker();
 }
 function sourceHTML(){const urls=[
+ ['https://sgrportal.gestionderiesgos.gob.ec/server/rest/services/Hosted/OT_PROVINCIAL_17072026/FeatureServer/0','CONALI · Límites provinciales','Contornos oficiales de Guayas y Santa Elena del 17 de julio de 2026, simplificados para el mapa.'],
  ['https://sgrportal.gestionderiesgos.gob.ec/server/rest/services/Hosted/OT_PARROQUIAL_17072026/FeatureServer/0','CONALI · Organización Territorial del Estado','Límites territoriales de la Organización Territorial del Estado interparroquiales, aprobados por el Directorio del CONALI en sesión ordinaria del 24 de marzo de 2022, 17 de enero de 2023 y 13 de marzo de 2026. Capa del 17 de julio de 2026, simplificada para el mapa. Incluye parroquias rurales y cabeceras cantonales.'],
  ['https://www.arcgis.com/home/item.html?id=91c3a260949a48fa8ede07dfde9ed69c','Municipio de Guayaquil · Límites parroquiales urbanos','Servicio municipal consultado en línea para mostrar las subdivisiones urbanas de Guayaquil. El mapa y la selección de parroquias sirven para orientarse. Los focos y la ficha de indicadores corresponden al cantón.'],
  [incomeURL,'INEC · ENIGHUR 2024–2025','Mediana ponderada del ingreso corriente monetario mensual del hogar (ing_mon_cor, peso Fexp). Guayas, Santa Elena y dominio urbano de Guayaquil.'],
@@ -147,7 +198,8 @@ function activateBuilding(building, writeItem=false) {
  buildings=buildingList(catalog,next);
  project=buildings.find(b=>b.id===building.id) || building;
  projectState();renderBuildings();
- if(dest)setSelection(dest.code);else render();
+ if(!dest)render();
+ if(writeItem)close();
  projectFocus();return true;
 }
 function shareBuilding() {
@@ -167,19 +219,33 @@ function settings(p = project, coordinates = Number.isFinite(p.lat) ? p.lat + ',
    field('f-coordinates','Coordenadas (latitud, longitud)',coordinates,'placeholder="-2.18376, -79.97990" aria-describedby="coord-help" required') +
    '<p id="coord-help">Pega las coordenadas de Google Maps en grados decimales o elige el punto en el mapa.</p>' +
    '<button class="linkbutton" type="button" id="pick">Elegir en el mapa</button>' +
+   '<label for="f-level">Zoom al guardar</label><select id="f-level"><option value="parish">Parroquia</option><option value="canton">Cantón</option></select>' +
+   '<p id="f-location" role="status"></p>' +
    '<details id="building-details"><summary>Datos de venta opcionales</summary>' +
    field('f-sector','Sector buscado en las solicitudes',p.sector,'maxlength="80"') +
    '<div class="twocol"><div>'+field('f-price','Precio desde (USD)',p.price,'type="number" min="1" max="1000000000" step="0.01"')+
    '</div><div>'+field('f-rooms','Dormitorios',p.rooms,'type="number" min="1" max="50" step="1"')+'</div></div></details>' +
    '<p>Se guarda en este navegador. Puedes compartir el pin mediante un enlace.</p>' +
    '<p class="err" id="form-msg" role="alert"></p><div class="actions"><button class="button primary" type="submit">Guardar edificio</button></div></form>');
+ const level=$('f-level'), coordinateInput=$('f-coordinates'), locationText=$('f-location');
+ level.value=p.focusArea || 'parish';
+ function preview(){
+   const point=parseCoordinates(coordinateInput.value);
+   if(!point){locationText.textContent='';return;}
+   const {canton,parish}=locate(point.lat,point.lon);
+   locationText.textContent=areaLabel(canton,parish,level.value);
+   if(level.value==='parish' && parishes?.needsUrban(parish)){
+     parishes.loadUrban().then(()=>{if(locationText.isConnected)preview();});
+   }
+ }
+ coordinateInput.oninput=preview;level.onchange=preview;preview();
  function draft() {
-   return {...p,name:$('f-name').value.trim(),sector:$('f-sector').value.trim(),
+   return {...p,focusArea:level.value,name:$('f-name').value.trim(),sector:$('f-sector').value.trim(),
      price:$('f-price').valueAsNumber || null,rooms:$('f-rooms').valueAsNumber || null};
  }
  $('pick').onclick=()=>{
    pending={building:draft(),coordinates:$('f-coordinates').value};
-   close();picking=true;$('pin-tip').hidden=false;$('map').classList.add('pick-mode');$('explorar').scrollIntoView({block:'start'});
+   close();map.closePopup();picking=true;$('pin-tip').hidden=false;$('map').classList.add('pick-mode');$('explorar').scrollIntoView({block:'start'});
  };
  $('project-form').onsubmit=e=>{
    e.preventDefault();
@@ -191,7 +257,7 @@ function settings(p = project, coordinates = Number.isFinite(p.lat) ? p.lat + ',
    if(duplicate)return err('Ya existe un edificio con ese nombre y esas coordenadas. Selecciónalo en el mapa.');
    building.id=p.id || crypto.randomUUID();
    if(!activateBuilding(building,true))return;
-   close();say(adding?'Edificio agregado.':'Edificio actualizado.');
+   say(adding?'Edificio agregado.':'Edificio actualizado.');
  };
 }
 function stopPick(){picking=false;$('pin-tip').hidden=true;$('map').classList.remove('pick-mode');}
@@ -215,7 +281,17 @@ function imports(type='demand'){
  if(current.length)$('clear-sample').onclick=()=>{if(!confirm('¿Quitar la muestra de este navegador?'))return;if(!save(type,[]))return;if(isDemand){requests=[];$('sort').value='population';}else userLoans=[];projectState();close();render();say('Muestra retirada.');};
 }
 async function main(){
- const names=['cantons','context','incomes','evidence','mortgages','streets','buildings'];const [geo,context,incomes,sales,mortgages,streetGeo,publishedBuildings]=await Promise.all(names.map(async n=>{const r=await fetch('./data/'+n+'.json');if(!r.ok)throw Error(n);return r.json();}));
+ const names=['cantons','context','incomes','evidence','mortgages','streets','buildings','provinces','parishes'];
+ const [geo,context,incomes,sales,mortgages,streetGeo,publishedBuildings,provinces,parishCatalog]=await Promise.all(names.map(async n=>{
+   try{
+     const r=await fetch('./data/'+n+'.json');
+     if(!r.ok)throw Error(n);
+     return await r.json();
+   }catch(error){
+     if(n==='parishes')return null;
+     throw error;
+   }
+ }));
  features=geo.features;inc=incomes;observed=sales;bank=mortgages;
  catalog=publishedBuildings.filter(validBuilding);
  buildingState=load('buildings',null);
@@ -231,15 +307,21 @@ async function main(){
  const sharedRequest=new URL(location.href).searchParams.has('edificio');
  projectState();selected=dest?.code??'0901';
  $('canton').innerHTML=features.slice().sort((a,b)=>a.properties.name.localeCompare(b.properties.name,'es')).map(f=>'<option value="'+f.properties.code+'">'+esc(f.properties.name)+'</option>').join('');$('canton').value=selected;
- mapInit(context,streetGeo);$('source-items').innerHTML=sourceHTML()+'<p class="mini">Distancia de referencia: línea recta del pin a un punto interior de cada cantón; se usa para exploración geográfica. La distancia de viaje depende de la red vial.</p>';render();
+ mapInit(context,streetGeo,provinces);
+ if(parishCatalog){
+   parishes=initParishes(map,parishCatalog.features,()=>byCode(selected).properties,setSelection);
+   projectState();selected=dest?.code??selected;$('canton').value=selected;
+ }else $('parish-note').textContent='No se pudieron cargar los límites parroquiales.';
+ $('source-items').innerHTML=sourceHTML()+'<p class="mini">Distancia de referencia: línea recta del pin a un punto interior de cada cantón; se usa para exploración geográfica. La distancia de viaje depende de la red vial.</p>';render();
  if(shared){
    const known=buildings.find(b=>sameBuilding(b,shared));
-   activateBuilding(known || {...shared,id:crypto.randomUUID()},!known);
+   const changed=!!known && !!shared.focusArea && shared.focusArea!==known.focusArea;
+   activateBuilding(known?{...known,...shared}:{...shared,id:crypto.randomUUID()},!known || changed);
  }else if(sharedRequest)say('El enlace contiene coordenadas o un nombre no válidos.');
- else if(project.id!==catalog[0].id || !project.reference)projectFocus();
+ else if(project.focusArea || project.id!==catalog[0].id || !project.reference)projectFocus();
  if(sharedRequest){
    const url=new URL(location.href);
-   for(const key of ['edificio','lat','lon'])url.searchParams.delete(key);
+   for(const key of ['edificio','lat','lon','nivel'])url.searchParams.delete(key);
    history.replaceState(null,'',url);
  }
  for(const id of ['add-building','building-select','edit','share-building'])$(id).disabled=false;
@@ -252,8 +334,6 @@ async function main(){
  $('search').oninput=table;$('sort').onchange=table;$('edit').onclick=()=>settings();$('close').onclick=close;$('cancel-pick').onclick=cancelPick;$('finance-open').onclick=scenario;$('import-open').onclick=()=>imports();$('csv-out').onclick=exportData;
  const cantonLink=new URL(location.href).searchParams.get('canton');
  if(!shared && cantonLink && byCode(cantonLink))setSelection(cantonLink,true);
- initParishes(map,()=>byCode(selected).properties,setSelection).then(result=>{parishes=result;parishes.refresh();})
-   .catch(()=>{$('parish-note').textContent='No se pudieron cargar los límites parroquiales.';});
  infrastructure=await initInfrastructure({
    map, land:context.features.filter(f=>f.properties.kind==='land'), state:()=>({theme:$('layer').value,province:$('province').value,code:selected,features,project,projectInCoverage:!!dest}),
    changeTheme:theme=>{$('layer').value=theme;colorize();},isPicking:()=>picking,fitRegion,selectCanton:code=>setSelection(code),download

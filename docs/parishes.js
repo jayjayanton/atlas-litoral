@@ -1,9 +1,11 @@
+import {featureAt} from './model.js';
+
 // CONALI maps each cantonal seat as one area. The municipal service provides
 // the internal urban boundaries of Guayaquil and sometimes splits a parish into parts.
 const guayaquilService = 'https://services7.arcgis.com/NWWHhu45fOJtCgG3/arcgis/rest/services/LIMITE_PARROQUIAS_URBANAS/FeatureServer/0';
 async function municipalParishes() {
   const query = new URLSearchParams({where:'1=1',outFields:'Nam',outSR:'4326',maxAllowableOffset:'.00008',geometryPrecision:'5',f:'geojson'});
-  const response = await fetch(guayaquilService+'/query?'+query);
+  const response = await fetch(guayaquilService+'/query?'+query, {signal:AbortSignal.timeout(8000)});
   if (!response.ok) throw Error('Parroquias municipales');
   const json = await response.json();
   const groups = new Map();
@@ -19,14 +21,11 @@ async function municipalParishes() {
   }));
 }
 
-export async function initParishes(map, getCanton, setCanton) {
+export function initParishes(map, catalog, getCanton, setCanton) {
   const select = document.getElementById('parish-select');
   const label = document.getElementById('parish-label');
   const toggle = document.getElementById('parish-outlines');
   const note = document.getElementById('parish-note');
-  const reply = await fetch('./data/parishes.json');
-  if (!reply.ok) throw Error('Catálogo parroquial');
-  const catalog = (await reply.json()).features;
   const pane = map.createPane('parish-outlines');
   pane.style.zIndex = 416; pane.style.pointerEvents = 'none';
   const layer = L.geoJSON([], {pane:'parish-outlines',interactive:false,style:feature=>{
@@ -34,6 +33,25 @@ export async function initParishes(map, getCanton, setCanton) {
     return {color:active?'#7c3748':'#554865',weight:active?2.7:1.3,dashArray:active?null:'5 4',fill:false};
   }}).addTo(map);
   let previousCode, visible=[], urbans=[], municipalState='idle';
+  let municipalRequest;
+  function loadUrban() {
+    if (!municipalRequest) {
+      municipalState='loading';
+      municipalRequest=municipalParishes()
+        .then(rows=>{urbans=rows;municipalState='ready';})
+        .catch(()=>{municipalState='failed';})
+        .finally(()=>{if(getCanton().code==='0901')refresh(true);});
+    }
+    return municipalRequest;
+  }
+  function at(lat,lon) {
+    return featureAt(urbans,lat,lon) || featureAt(catalog,lat,lon);
+  }
+  function highlight(feature) {
+    select.value=feature?.properties.code || '';
+    if(feature)toggle.checked=true;
+    paint();
+  }
   function paint() {
     layer.clearLayers();
     if (toggle.checked) layer.addData(visible);
@@ -65,13 +83,11 @@ export async function initParishes(map, getCanton, setCanton) {
         ? 'Los límites urbanos municipales no están disponibles en este momento.'
         : '';
     paint();
-    if(code==='0901' && municipalState==='idle'){
-      municipalState='loading';
-      municipalParishes().then(rows=>{urbans=rows;municipalState='ready';})
-        .catch(()=>{municipalState='failed';}).finally(()=>{if(getCanton().code==='0901')refresh(true);});
-    }
+    if(code==='0901' && municipalState==='idle')loadUrban();
   }
   select.onchange=zoom;toggle.onchange=paint;
   select.disabled=false;toggle.disabled=false;refresh();
-  return {refresh};
+  return {refresh,at,highlight,loadUrban,
+    needsUrban:feature=>feature?.properties.code==='090150' && ['idle','loading'].includes(municipalState)
+  };
 }

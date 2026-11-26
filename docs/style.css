@@ -35,3 +35,7 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 .parish-toggle input {accent-color:var(--teal)}
 #parish-note:not(:empty) {display:block; flex-basis:100%; color:var(--dim)}
 #parish-note:empty {display:none}
+
+.pick-mode .leaflet-popup-pane, .pick-mode .leaflet-popup-pane * {pointer-events:none!important}
+.province-key {display:flex;align-items:center;gap:6px;margin-top:4px;color:#354a51}
+.province-key::before {content:"";width:19px;border-top:3px solid #243947}
