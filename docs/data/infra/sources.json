@@ -70,6 +70,28 @@
           "download": false
         }
       ]
+    },
+    {
+      "title": "Atractivos turísticos",
+      "period": "Viceministerio de Turismo · IEDG, 2026",
+      "note": "1.229 puntos del inventario nacional. La distancia se mide hasta la coordenada registrada del atractivo; la cobertura depende de los levantamientos publicados.",
+      "links": [
+        {
+          "url": "https://www.iedg.gob.ec/servicios/descargas/",
+          "label": "Ficha del inventario",
+          "download": false
+        },
+        {
+          "url": "https://visor-iedg.github.io/Atractivos-turisticos/",
+          "label": "Visor oficial",
+          "download": false
+        },
+        {
+          "url": "./data/infra/attractions.json",
+          "label": "Puntos del atlas (JSON)",
+          "download": true
+        }
+      ]
     }
   ],
   "method": [

@@ -1,3 +1,4 @@
+import {initSiteView} from './site-view.js';
 import {surfaceLegend} from './score-surface.js';
 import {countInRadius,buildDensityGrid,isValidWeights,presets,suitabilityScore} from './suitability-model.js';
 import {distanceKm} from './model.js';
@@ -12,20 +13,21 @@ const showScore=n=>Number.isFinite(n)?scoreFormat.format(n):'—';
 const densityDisplay=(n,area)=>Number.isFinite(n)?show(n/area):'Sin dato';
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-export function initSuitability({map,state,changeTheme,selectCanton,grid,density,schools,hospitals,roadDistance,download,surface}){
-  if(!grid||!density){$('suit-status').textContent='No se pudo cargar la malla de aptitud.';return null;}
-  const {cells,maxima}=buildDensityGrid(grid,density);
+export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRegional,schools,hospitals,pinDistances,download}){
+  if(!scale){$('suit-status').textContent='No se pudo cargar la escala regional de aptitud.';return null;}
+  const {maxima}=scale, siteView=initSiteView(map);
+  let grid,surface,cells,regionalTask,regionalError=false;
   const regions=new Map(state().features.map(f=>[f.properties.code,f]));
-  const col=Object.fromEntries(density.columns.map((key,i)=>[key,i]));
+  const col=Object.fromEntries(scale.columns.map((key,i)=>[key,i]));
   const scopeSelect=$('suit-scope'),radiusSelect=$('suit-radius'),limitInput=$('suit-road-limit'),zone=$('suit-area'),preset=$('suit-preset');
   const store=(()=>{try{return JSON.parse(localStorage.getItem(storageKey));}catch{return null;}})();
   const weights=isValidWeights(store?.weights)?[...store.weights]:[...presets.balanced];
-  if(density.radiiKm.includes(store?.radius))radiusSelect.value=String(store.radius);
+  if(scale.radiiKm.includes(store?.radius))radiusSelect.value=String(store.radius);
   if(['all','public','private'].includes(store?.scope))scopeSelect.value=store.scope;
   if(Number.isFinite(store?.limit)&&store.limit>=.1&&store.limit<=200)limitInput.value=store.limit;
 
   $('suit-weights').innerHTML=labels.map((label,i)=>'<div class="suit-weight"><label for="suit-w-'+i+'">'+label+'</label><input type="range" min="0" max="100" step="1" id="suit-slide-'+i+'" aria-label="Deslizador de '+label+'"><input type="number" min="0" max="100" step="1" id="suit-w-'+i+'" aria-label="Peso de '+label+'"><output id="suit-share-'+i+'" aria-label="Peso normalizado de '+label+'"></output></div>').join('');
-  const roadsAtPin=new Map(),countsAtPin=new Map();
+  const countsAtPin=new Map();
   let areaProvince=null,seriesKey=null,mapKey=null,projectKey=null,ranking=[],pendingFrame=0;
   let radius,scope,roadLimit,ri,hcol,valid,area;
 
@@ -40,17 +42,17 @@ export function initSuitability({map,state,changeTheme,selectCanton,grid,density
   }
   function readControls(){
     radius=Number(radiusSelect.value);scope=scopeSelect.value;roadLimit=limitInput.valueAsNumber;
-    ri=density.radiiKm.indexOf(radius);hcol=col[scope];area=Math.PI*radius*radius;
+    ri=scale.radiiKm.indexOf(radius);hcol=col[scope];area=Math.PI*radius*radius;
     valid=ri>=0&&hcol!==undefined&&isValidWeights(weights)&&Number.isFinite(roadLimit)&&roadLimit>=.1&&roadLimit<=200;
     const sum=weights.reduce((a,b)=>a+b,0);
     labels.forEach((_,i)=>{$('suit-share-'+i).textContent=isValidWeights(weights)?show(100*weights[i]/sum)+' %':'—';});
     preset.value=Object.keys(presets).find(k=>presets[k].every((v,i)=>weights[i]===v))||'custom';
     $('suit-message').textContent=valid?'':'Usa pesos entre 0 y 100 con al menos uno positivo y un límite vial entre 0,1 y 200 km.';
-    $('suit-export').disabled=$('suit-map').disabled=!valid;
+    $('suit-map').disabled=!valid; $('suit-export').disabled=!valid||!cells;
     if(valid){try{localStorage.setItem(storageKey,JSON.stringify({weights,scope,radius,limit:roadLimit}));}catch{}}
   }
-  function score(s,h,d){
-    return suitabilityScore(s,h,d,maxima[ri][col.school],maxima[ri][hcol],roadLimit,weights);
+  function score(s,h,d,activeWeights=weights){
+    return suitabilityScore(s,h,d,maxima[ri][col.school],maxima[ri][hcol],roadLimit,activeWeights);
   }
   function buildRanking(province){
     if(!valid)return [];
@@ -63,20 +65,55 @@ export function initSuitability({map,state,changeTheme,selectCanton,grid,density
     }
     return result.sort((a,b)=>b.value-a.value||a.cell.code.localeCompare(b.cell.code)||a.cell.lat-b.cell.lat||a.cell.lon-b.cell.lon);
   }
-  function projectSummary(project){
-    $('suit-pin-name').textContent=project.name;
-    if(!state().projectInCoverage){$('suit-score').textContent='—';$('suit-pin-facts').textContent='Edificio fuera de la cobertura de Guayas y Santa Elena.';return;}
-    if(!valid){$('suit-score').textContent='—';$('suit-pin-facts').textContent='Ajusta los parámetros del escenario.';return;}
-    const coord=project.lat+','+project.lon;
-    const key=[coord,radius,scope].join('|');
-    if(!countsAtPin.has(key)){
-      if(countsAtPin.size>=36)countsAtPin.clear();
-      countsAtPin.set(key,[countInRadius(project.lat,project.lon,schools,radius),countInRadius(project.lat,project.lon,hospitals,radius,scope)]);
+  function projectSummary(site,canton){
+    $('suit-pin').hidden=!site;
+    if(!site){siteView.render(null);return;}
+    $('suit-pin-name').textContent=site.name;
+    let value=null,near={},counts='',parts=[];
+    if(canton){
+      near=pinDistances(site,scope);
+      const key=[site.lat,site.lon,radius,scope].join('|');
+      if(!countsAtPin.has(key)){
+        if(countsAtPin.size>=36)countsAtPin.clear();
+        countsAtPin.set(key,[countInRadius(site.lat,site.lon,schools,radius),countInRadius(site.lat,site.lon,hospitals,radius,scope)]);
+      }
+      const [s,h]=countsAtPin.get(key);
+      if(valid){
+        value=score(s,h,near.road?.km);
+        const totalWeight=weights.reduce((a,b)=>a+b,0);
+        parts=labels.map((label,i)=>{
+          const fraction=weights[i]/totalWeight;
+          const component=score(s,h,near.road?.km,weights.map((_,j)=>i===j?1:0));
+          const points=fraction===0?0:component===null?null:component*fraction;
+          return label+' · '+show(100*fraction)+' % del peso · '+(points===null?'sin dato':showScore(points)+' puntos');
+        });
+      }
+      const schoolCount=s===null?'Escuelas sin dato':show(s)+(s===1?' escuela':' escuelas');
+      const hospitalCount=h===null?'Hospitales sin dato':show(h)+(h===1?' hospital':' hospitales');
+      const network=scope==='public'?(h===1?' público':' públicos'):scope==='private'?(h===1?' privado':' privados'):'';
+      counts='En un radio de '+radius+' km · '+schoolCount+' · '+hospitalCount+network+'.';
+      if(!valid)counts+=' Revisa los pesos y el límite vial.';
+      else if(value===null)counts+=' Faltan datos para un criterio con peso positivo.';
     }
-    if(!roadsAtPin.has(coord)){if(roadsAtPin.size>=12)roadsAtPin.clear();roadsAtPin.set(coord,roadDistance(project));}
-    const [s,h]=countsAtPin.get(key),d=roadsAtPin.get(coord);
-    $('suit-score').textContent=showScore(score(s,h,d));
-    $('suit-pin-facts').innerHTML='<p>'+ (project.reference?'Acceso aproximado a Torres del Salado':'Pin del proyecto')+' · radio de '+radius+' km</p><ul class="suit-parts"><li><b>'+show(s)+' escuelas</b> · '+densityDisplay(s,area)+' por km²</li><li><b>'+show(h)+' hospitales</b> · '+densityDisplay(h,area)+' por km²</li><li><b>Vía principal</b> · '+show(d)+' km en línea recta</li></ul>';
+    $('suit-score').textContent=showScore(value);
+    $('suit-pin-facts').textContent=canton?counts:'Punto fuera de la cobertura de Guayas y Santa Elena.';
+    siteView.render({site,canton,counts,near,parts,score:showScore(value),radius});
+  }
+  function requestRegional(){
+    if(regionalTask||cells||regionalError)return;
+    $('suit-count').textContent='Cargando la malla regional…';
+    regionalTask=loadRegional().then(result=>{
+      cells=buildDensityGrid(result.grid,result.density).cells;
+      grid=result.grid;surface=result.surface;
+      readControls();refresh();
+      if(state().theme==='suitability')legend();
+    }).catch(()=>{
+      regionalError=true;
+      $('suit-count').textContent='No se pudo cargar la malla regional. ';
+      const retry=document.createElement('button');retry.type='button';retry.className='linkbutton';
+      retry.textContent='Reintentar';retry.onclick=()=>{regionalError=false;refresh();};$('suit-count').append(retry);
+      if(state().theme==='suitability')legend();
+    }).finally(()=>{regionalTask=null;});
   }
   function rankTable(){
     $('suit-count').textContent=valid?'Se muestran '+Math.min(5,ranking.length)+' de '+number.format(ranking.length)+' puntos de la malla. Cada punto abre su ubicación en el mapa.':'';
@@ -86,22 +123,23 @@ export function initSuitability({map,state,changeTheme,selectCanton,grid,density
     }).join('')||'<tr><td colspan="5">Sin resultados para la selección.</td></tr>';
   }
   function draw(){
-    if(!valid||state().theme!=='suitability'){surface.clear('suitability');return;}
+    if(!valid||state().theme!=='suitability'){surface?.clear('suitability');return;}
     const scores=new Array(cells.length),codes=new Set();
     for(const r of ranking){scores[r.index]=r.value;codes.add(r.cell.code);}
     surface.draw('suitability',scores,codes);
   }
   function refresh(){
-    const {province,theme,project}=state();
+    const {province,theme,site,siteCanton}=state();
     synchronizeArea(province);
-    const scenario=[radius,scope,roadLimit,weights.join(','),zone.value,province].join('|');
-    if(seriesKey!==scenario){
-      seriesKey=scenario;ranking=buildRanking(province);rankTable();
-    }
-    $('suit-pin').hidden=!project;
-    if(project){
-      const pinKey=[scenario,project.lat,project.lon,project.name,project.reference].join('|');
-      if(projectKey!==pinKey){projectKey=pinKey;projectSummary(project);}
+    const parameters=[radius,scope,roadLimit,weights.join(',')].join('|');
+    const scenario=[parameters,zone.value,province].join('|');
+    const pinKey=[parameters,site?.lat,site?.lon,site?.name,site?.temporary,siteCanton?.code].join('|');
+    if(projectKey!==pinKey){projectKey=pinKey;projectSummary(site,siteCanton);}
+    siteView.display(theme==='site');
+    if(theme==='site')siteView.legend();
+    if(theme==='suitability'||$('suit-regional').open){
+      if(!cells){requestRegional();return;}
+      if(seriesKey!==scenario){seriesKey=scenario;ranking=buildRanking(province);rankTable();}
     }
     const target=theme==='suitability'?scenario:'hidden';
     if(mapKey!==target){mapKey=target;draw();}
@@ -111,7 +149,7 @@ export function initSuitability({map,state,changeTheme,selectCanton,grid,density
     L.popup().setLatLng([c.lat,c.lon]).setContent('<b>'+escape(regions.get(c.code).properties.name)+' · muestra de la malla · '+showScore(r.value)+'/100</b><br>Radio de '+radius+' km<br>Escuelas: '+r.s+' ('+densityDisplay(r.s,area)+'/km²)<br>Hospitales: '+r.h+' ('+densityDisplay(r.h,area)+'/km²)<br>Vía principal: '+show(c.roadKm)+' km').openOn(map);
   }
   function inspect(ll){
-    if(!valid)return;
+    if(!valid||!grid)return;
     let near=null,nearest=grid.spacingKm*.72;
     for(const r of ranking){
       if(Math.abs(r.cell.lat-ll.lat)>.03||Math.abs(r.cell.lon-ll.lng)>.03)continue;
@@ -121,7 +159,8 @@ export function initSuitability({map,state,changeTheme,selectCanton,grid,density
     if(near)showPoint(near);
   }
   function legend(){
-    surfaceLegend('Aptitud ponderada · 0–100',grid.spacingKm);
+    if(grid)surfaceLegend('Aptitud ponderada · 0–100',grid.spacingKm);
+    else {$('legend-title').textContent='Aptitud regional';$('legend').textContent=regionalError?'Malla no disponible. Reintenta en Aptitud.':'Cargando la malla regional…';}
   }
   function update(){
     if(pendingFrame){cancelAnimationFrame(pendingFrame);pendingFrame=0;}
@@ -166,7 +205,9 @@ export function initSuitability({map,state,changeTheme,selectCanton,grid,density
       i+1,c.code,regions.get(c.code).properties.name,c.lat,c.lon,Number(value.toFixed(4)),s,h,Number((s/area).toFixed(5)),Number((h/area).toFixed(5)),c.roadKm,radius,scopeSelect.selectedOptions[0].textContent,roadLimit,...weights.map(w=>Number((100*w/sums).toFixed(4))),maxima[ri][col.school],maxima[ri][hcol]
     ])]);
   };
+  $('suit-regional').ontoggle=refresh;
+  $('suit-start').disabled=$('site-start').disabled=$('site-opt').disabled=false;
   $('suit-opt').disabled=false;$('suit-body').hidden=false;$('suit-status').textContent='';
   readControls();refresh();
-  return {refresh,legend,inspect};
+  return {refresh,legend,inspect,siteLegend:siteView.legend};
 }

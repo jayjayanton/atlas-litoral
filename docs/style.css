@@ -137,3 +137,17 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 .income-controls select{max-width:100%;min-height:36px}
 .income-controls small{flex-basis:100%;color:#50405d}
 #province-income-map{display:block;font-size:13px;margin-top:4px}
+
+.site-card{border-top:1px solid var(--outline);padding:14px 16px;background:#f4f8f6}
+.site-card[hidden],#site-result[hidden]{display:none}
+.site-card .sectionbar{align-items:baseline;gap:6px 12px;flex-wrap:wrap}
+.site-card h3,.site-card p{margin:0 0 7px}.site-card .sectionbar a,.site-card label{font-size:14px}
+#site-form label{display:block;font-weight:600;margin-bottom:4px}
+#site-form div{display:flex;gap:7px;flex-wrap:wrap}#site-form input{width:min(17em,100%);min-width:0}
+#site-error{color:#953b2e}#site-result{margin-top:12px;border-top:1px solid var(--outline);padding-top:10px}
+#site-summary{font-size:19px}#site-counts,#site-location{font-size:14px}#site-nearest{padding:0;margin:9px 0;list-style:none}
+#site-nearest li{border-top:1px solid var(--outline);padding:6px 0;font-size:14px}
+#site-nearest .linkbutton{font-size:inherit;text-align:left;padding:0}
+#site-distance-note{display:block;color:var(--dim)}#suit-regional[open]>button{margin-top:8px}
+#site-start{white-space:normal}
+#site-breakdown{font-size:14px}#site-breakdown summary{font-weight:600;color:var(--teal)}#site-parts{margin:4px 0;padding-left:20px}

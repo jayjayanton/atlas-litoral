@@ -49,7 +49,7 @@ export function roadLines(geo) {
 // Closest point along each mapped segment in a tangent plane centered on the pin.
 export function nearestRoad(lat,lon,lines) {
   const k=6371.0088*Math.PI/180, kx=k*Math.cos(lat*Math.PI/180);
-  let shortest=Infinity,item;
+  let shortest=Infinity,item,nearestLat,nearestLon;
   for(const line of lines){
     let ax=(line.coords[0][0]-lon)*kx,ay=(line.coords[0][1]-lat)*k;
     for(let i=1;i<line.coords.length;i++){
@@ -57,9 +57,13 @@ export function nearestRoad(lat,lon,lines) {
       const dx=bx-ax,dy=by-ay,denom=dx*dx+dy*dy;
       const t=denom?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/denom)):0;
       const squared=(ax+t*dx)**2+(ay+t*dy)**2;
-      if(squared<shortest){shortest=squared;item=line.item;}
+      if(squared<shortest){
+        shortest=squared;item=line.item;
+        nearestLon=line.coords[i-1][0]+t*(b[0]-line.coords[i-1][0]);
+        nearestLat=line.coords[i-1][1]+t*(b[1]-line.coords[i-1][1]);
+      }
       ax=bx;ay=by;
     }
   }
-  return item?{item,km:Math.sqrt(shortest)}:null;
+  return item?{item,km:Math.sqrt(shortest),lat:nearestLat,lon:nearestLon}:null;
 }

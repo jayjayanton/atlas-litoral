@@ -83,6 +83,8 @@ def main():
     output={'radiiKm':RADII,'columns':COLUMNS,'cells':cells}
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(output,separators=(',',':'),allow_nan=False)+'\n',encoding='utf-8')
+    scale={'radiiKm':RADII,'columns':COLUMNS,'maxima':counts.max(axis=0).tolist()}
+    args.output.with_name('density-scale.json').write_text(json.dumps(scale,separators=(',',':'))+'\n',encoding='utf-8')
     print(f'{len(centers)} centers. Radius maxima [schools, all hospitals, public, private]: {counts.max(axis=0).tolist()}')
 
 if __name__=='__main__':

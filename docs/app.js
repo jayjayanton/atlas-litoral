@@ -15,6 +15,7 @@ const money=n=>n==null?'—':'$'+num(Math.round(n));
 const store='atlasLitoral.v1.';
 function load(key,init){try{return JSON.parse(localStorage.getItem(store+key))??init;}catch{return init;}}
 function save(key,value){try{localStorage.setItem(store+key,JSON.stringify(value));return true;}catch{say('No se pudo guardar en este navegador.');return false;}}
+let studyPin=null,studyCanton=null;
 let project=null,catalog,buildings,buildingState,otherMarkers;
 let finance=load('finance',initialFinance),requests=load('demand',[]),userLoans=load('loans',[]);
 let campaign,sectors,provinceIncome,demographics,creditMap,infrastructure,parishes,projectParish,viewRevision=0;
@@ -54,7 +55,7 @@ function demandNote(){
 function observedLoans(f){return bank.rows.find(r=>normalize(r.province)===normalize(f.properties.province)&&(normalize(r.canton)===normalize(f.properties.name)||(r.canton.includes('BUCAY')&&f.properties.code==='0927')));}
 function metricValue(f){const c=f.properties.code;switch($('layer').value){case'population':return f.properties.population;case'loans':return observedLoans(f)?.operations??null;default:return hasDemand()?matches[c]??0:null;}}
 function breaks(){return $('layer').value==='population'?[0,50000,100000,200000,500000]:$('layer').value==='loans'?[1,5,25,100,500]:[0,1,5,10,25];}
-function fill(f){if(['ages','sectors','sector-income','income'].includes($('layer').value))return '#e5e9e8';if(creditMap && $('layer').value==='credit')return creditMap.fill(f.properties.code);if(infrastructure?.supports($('layer').value))return infrastructure.fill($('layer').value,f.properties.code);const v=metricValue(f);if(v==null)return empty;const ix=breaks().filter(x=>v>=x).length-1;return colors[Math.max(0,ix)];}
+function fill(f){if(['ages','sectors','sector-income','income','site'].includes($('layer').value))return '#e5e9e8';if(creditMap && $('layer').value==='credit')return creditMap.fill(f.properties.code);if(infrastructure?.supports($('layer').value))return infrastructure.fill($('layer').value,f.properties.code);const v=metricValue(f);if(v==null)return empty;const ix=breaks().filter(x=>v>=x).length-1;return colors[Math.max(0,ix)];}
 function style(f){return {stroke:false,fillColor:fill(f),fillOpacity:withinProvince(f)?(['access','suitability'].includes($('layer').value)?.24:.65):.16};}
 function cantonLine(f){
  const active=f.properties.code===selected;
@@ -70,7 +71,8 @@ function colorize(){polys.setStyle(style);cantonCasing.setStyle(cantonHalo);cant
  $('income').textContent='$'+num(inc[domain].median);
  $('income-scale').textContent=(domain===p.province?'Referencia provincial':'Dominio urbano')+' · '+domain;
  $('income-controls').hidden=theme!=='sector-income';
- $('map-heading').textContent=provinceView?'Ingreso por provincia':theme==='sector-income'?'Ingreso por sector censal':theme==='sectors'?'Mapa de sectores censales':'Mapa territorial';
+ $('site-card').hidden=theme!=='site';
+ $('map-heading').textContent=theme==='site'?'Aptitud en un punto':provinceView?'Ingreso por provincia':theme==='sector-income'?'Ingreso por sector censal':theme==='sectors'?'Mapa de sectores censales':'Mapa territorial';
  creditMap?.refresh();demographics?.refresh();sectors?.refresh();
  provinceIncome?.refresh(provinceView,$('province').value);
  if(infrastructure){infrastructure.refresh();if(infrastructure.legend(theme))return;}
@@ -98,9 +100,26 @@ function frameBuilding(){
  const bottomPadding=Math.min(legendHeight+20,map.getSize().y*.35);
  map.fitBounds(bounds,{paddingTopLeft:[20,24],paddingBottomRight:[20,bottomPadding],maxZoom:parish?16:13,animate:false});
 }
+function openSiteMap(){
+ $('layer').value='site';colorize();map.closePopup();
+ const site=studyPin||project;
+ if(site)map.setView([site.lat,site.lon],Math.max(13,map.getZoom()),{animate:false});
+ $('map').scrollIntoView({block:'center'});
+}
+function placeStudyPin(point){
+ studyPin={...point,name:'Punto seleccionado',temporary:true};studyCanton=locate(point.lat,point.lon).canton;
+ $('site-error').textContent='';$('site-coords').value=point.lat.toFixed(6)+', '+point.lon.toFixed(6);
+ $('layer').value='site';map.closePopup();
+ if(studyCanton)setSelection(studyCanton.code);else colorize();
+ map.setView([point.lat,point.lon],Math.max(13,map.getZoom()),{animate:false});
+}
 function projectFocus(){
  if(!project)return;
  const building=project;
+ studyPin=studyCanton=null;
+ $('site-error').textContent='';$('site-coords').value=building.lat+', '+building.lon;
+ if(!$('site-opt').disabled)$('layer').value='site';
+ if(!dest)colorize();
  if(dest)setSelection(dest.code);
  viewRevision++;
  $('map').scrollIntoView({block:'center'});
@@ -141,7 +160,7 @@ function mapInit(context,streetGeo,provinces){
  streets=L.geoJSON(streetGeo,{pane:'rivers',interactive:false,style:{weight:1.15,color:'#9f977f',opacity:.9}});
  polys=L.geoJSON({type:'FeatureCollection',features},{style,onEachFeature:(f,l)=>{
   const p=f.properties;layers[p.code]=l;l.bindTooltip(()=>esc(p.name)+' · '+esc(p.province)+($('layer').value==='income'?' · Mediana provincial $'+num(inc[p.province].median):''),{sticky:true,direction:'top',offset:[0,-7]});
-  l.on('click',e=>{if(picking){L.DomEvent.stopPropagation(e);pick(e.latlng);return;}if(!isSectorTheme($('layer').value))setSelection(p.code);});
+  l.on('click',e=>{if(picking){L.DomEvent.stopPropagation(e);pick(e.latlng);return;}if($('layer').value!=='site' && !isSectorTheme($('layer').value))setSelection(p.code);});
  }}).addTo(map);
  const cantonBorders={pane:'canton-outlines',interactive:false};
  cantonCasing=L.geoJSON(features,{...cantonBorders,style:cantonHalo}).addTo(map);
@@ -155,7 +174,7 @@ function mapInit(context,streetGeo,provinces){
  L.marker([-2.54,-81.12],{interactive:false,keyboard:false,pane:'labels',icon:L.divIcon({className:'sea-label',html:'Océano Pacífico',iconSize:[135,22],iconAnchor:[70,15]})}).addTo(map);
  otherMarkers=L.layerGroup().addTo(map);
  map.on('zoomend',()=>{if(map.getZoom()>=11&&!map.hasLayer(streets))streets.addTo(map);if(map.getZoom()<11&&map.hasLayer(streets))map.removeLayer(streets);});
- map.on('click',e=>{if(picking){pick(e.latlng);return;}if(isSectorTheme($('layer').value)){sectors?.locate(e.latlng.lat,e.latlng.lng);return;}infrastructure?.inspect(e.latlng);});fitRegion();renderBuildings();
+ map.on('click',e=>{if(picking){pick(e.latlng);return;}if($('layer').value==='site'){const ll=map.wrapLatLng(e.latlng);placeStudyPin({lat:ll.lat,lon:ll.lng});return;}if(isSectorTheme($('layer').value)){sectors?.locate(e.latlng.lat,e.latlng.lng);return;}infrastructure?.inspect(e.latlng);});fitRegion();renderBuildings();
 }
 function evidenceHTML(f){
  const sources=observed.filter(s=>s.code===f.properties.code),ln=observedLoans(f),c=f.properties.code;
@@ -393,6 +412,13 @@ async function main(){
    else {colorize();if(theme==='income')fitRegion();}
  }
  $('province-income-map').onclick=()=>{$('layer').value='income';chooseLayer();$('explorar').scrollIntoView({block:'start'});};
+ $('site-start').onclick=$('suit-start').onclick=openSiteMap;
+ $('site-form').onsubmit=e=>{
+   e.preventDefault();
+   const point=parseCoordinates($('site-coords').value);
+   if(!point){$('site-error').textContent='Revisa la latitud y la longitud en grados decimales.';return;}
+   placeStudyPin(point);
+ };
  $('layer').onchange=chooseLayer;$('province').onchange=()=>{if(!withinProvince(byCode(selected))){selected=features.filter(withinProvince).sort((a,b)=>b.properties.population-a.properties.population)[0].properties.code;$('canton').value=selected;}fitRegion();render();};
  $('canton').onchange=e=>setSelection(e.target.value,true);$('all-map').onclick=()=>{fitRegion();};$('focus-project').onclick=projectFocus;$('p-link').onclick=projectFocus;
  $('rows').onclick=e=>{const b=e.target.closest('button[data-code]');if(b){setSelection(b.dataset.code,true);$('explorar').scrollIntoView({block:'start'});}};
@@ -406,13 +432,14 @@ async function main(){
  }
  if(!shared && initialTheme==='ages')demographics?.openParish(new URL(location.href).searchParams.get('parroquia'));
  infrastructure=await initInfrastructure({
-   map, land:context.features.filter(f=>f.properties.kind==='land'), state:()=>({theme:$('layer').value,province:$('province').value,code:selected,features,project,projectInCoverage:!!dest}),
+   map, land:context.features.filter(f=>f.properties.kind==='land'), state:()=>({theme:$('layer').value,province:$('province').value,code:selected,features,project,projectInCoverage:!!dest,site:studyPin||project,siteCanton:studyPin?studyCanton:dest}),
    changeTheme:theme=>{$('layer').value=theme;colorize();},isPicking:()=>picking,fitRegion,selectCanton:code=>setSelection(code),download
  }).catch(error=>{console.warn('Capas de infraestructura:',error);$('infra-status').textContent='No se pudo iniciar el análisis. Recarga para reintentar.';return null;});
  campaign?.setHospitals(infrastructure?.hospitals);
  if(infrastructure){
    sectors?.setFacilities(infrastructure.schools,infrastructure.hospitals);
    const requested=new URL(location.href).searchParams.get('capa');
+   if((requested==='site'||(project&&!requested)) && !$('site-opt').disabled)$('layer').value='site';
    if(['access','suitability'].includes(requested) && !$('layer').querySelector('[value="'+requested+'"]').disabled)$('layer').value=requested;
    colorize();
  }
