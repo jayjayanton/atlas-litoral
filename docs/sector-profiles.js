@@ -20,7 +20,7 @@ function cell(row, value, detail) {
   }
 }
 
-export function initSectorProfiles({map, index, parishCatalog, cantons, state, focusBuilding, selectArea, useForCampaign, editFinance, changeTheme, isPicking}) {
+export function initSectorProfiles({map, index, parishCatalog, cantons, state, focusBuilding, selectArea, useForCampaign, editFinance, changeTheme, inspectSector}) {
   const canton = $('sector-canton'), parish = $('sector-parish'), zone = $('sector-zone'), sector = $('sector-id');
   const results = $('sector-results'), status = $('sector-status'), cache = new Map();
   const zones = Object.keys(index.zones).sort();
@@ -32,7 +32,6 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
     const name=normalize(p.name)===normalize(cantonName)?cantonName:p.name;
     return p.kind+(p.kind==='Cabecera cantonal'?' de ':' ')+name;
   };
-  const parishArea = () => L.geoJSON(parishAreas.get(parish.value)).getBounds();
   const cantonNames = new Map(cantons.map(f => [f.properties.code, f.properties.name]));
   const labels = ['Menos de ' + index.ageCuts[0], ...index.ageCuts.slice(0,-1).map((lo,i) => lo+'–'+(index.ageCuts[i+1]-1)), index.ageCuts.at(-1)+' o más'];
   const bands = ['Menos de '+dollars.format(index.incomeCuts[0]), ...index.incomeCuts.slice(0,-1).map((lo,i) => dollars.format(lo)+' a <'+dollars.format(index.incomeCuts[i+1])), dollars.format(index.incomeCuts.at(-1))+' o más'];
@@ -72,31 +71,44 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
   const casing={...outline,color:'#ffffff'};
   const sectorInk={color:'#075862',weight:2.8,opacity:1};
   const neighbors=L.layerGroup(), shapeBounds=new WeakMap();
+  const neighborToggle=$('sector-neighbors');
+  function selectionCode(theme) {
+    const area=state().area;
+    if(area?.level==='sector')return area.code;
+    return isSectorTheme(theme) && selectedRow ? currentZone+selectedRow[0] : '';
+  }
   let neighborState='', neighborView='', neighborRevision=0;
   function updateNeighbors() {
     const {theme,province}=state();
     const bounds=map.getBounds(), zoom=map.getZoom();
     const income=theme==='sector-income';
     const browseSectors=$('geo-level').value==='sector'&&theme!=='ages';
-    const key=[theme,browseSectors,income?bandIndex():'',currentZone,province,zoom,bounds.toBBoxString()].join('|');
+    const focus=selectionCode(theme);
+    const sectorView=theme==='sectors'||browseSectors;
+    $('sector-neighbor-control').hidden=!sectorView||income||!focus;
+    const showNearby=income || (sectorView && (!focus || neighborToggle.checked));
+    const key=[theme,showNearby,focus,visibleZone,income?bandIndex():'',currentZone,province,zoom,bounds.toBBoxString()].join('|');
     if (key===neighborView) return;
     neighborView=key;
     const version=++neighborRevision;
     neighbors.clearLayers();
     neighborState='';
-    if (!isSectorTheme(theme) && !browseSectors) {neighbors.remove();return;}
+    if (!showNearby) {neighbors.remove();return;}
     neighbors.addTo(map);
     if (zoom<13) {neighborState='zoom';legend();return;}
     const visible=zones.filter(z=>{
       const [,s,w,n,e]=index.zones[z];
-      return (!isSectorTheme(theme)||z!==currentZone) && (!province || provinces[z.slice(0,2)]===province) && bounds.intersects([[s,w],[n,e]]);
+      // The full zone is already drawn when browsing or comparing income.
+      const drawnByOverlay=isSectorTheme(theme) && z===currentZone && (income || (!focus && visibleZone===currentZone));
+      return !drawnByOverlay && (!province || provinces[z.slice(0,2)]===province) && bounds.intersects([[s,w],[n,e]]);
     });
     async function draw() {
       const batches=await Promise.all(visible.map(async z=>[z,(await getBlock(z))[z]]));
       if(version!==neighborRevision)return;
       const polygons=[];
       const byColor=new Map();
-      for(const [z,batch] of batches) for(const [, counts, rings] of batch) {
+      for(const [z,batch] of batches) for(const [id, counts, rings] of batch) {
+        if(z+id===focus)continue;
         let extent=shapeBounds.get(rings);
         if(!extent){extent=L.latLngBounds(rings);shapeBounds.set(rings,extent);}
         if(!bounds.intersects(extent)) continue;
@@ -114,15 +126,14 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
         }
       } else if(polygons.length) {
         const rings=polygons.flat();
-        L.polygon(rings,{...casing,pane:'neighbor-sectors',weight:5}).addTo(neighbors);
-        L.polygon(rings,{...outline,pane:'neighbor-sectors',color:'#384554',weight:2.5,dashArray:'6 5',lineCap:'butt'}).addTo(neighbors);
+        L.polygon(rings,{...outline,pane:'neighbor-sectors',color:'#63717a',weight:1.5,dashArray:'5 4',lineCap:'butt'}).addTo(neighbors);
       }
       neighborState=polygons.length?'visible':'';legend();
     }
     draw().catch(()=>{if(version===neighborRevision){neighborState='unavailable';neighborView='';legend();}});
   }
   map.on('moveend',updateNeighbors);
-  let selectedRow, rows = [], currentZone = '', locationKey = '', generation = 0, lookup = 0;
+  let selectedRow, rows = [], currentZone = '', visibleZone = '', locationKey = '', generation = 0, lookup = 0;
   let buildingFocusVersion=0;
   let financeKey = '', synchronizing = false;
   let facilities = [], points = [], buildingList, anchors = new Map(), matchedPlace;
@@ -163,10 +174,14 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
     if(e.key==='Enter' && !matches.hidden){e.preventDefault();matches.querySelector('button')?.click();}
     if(e.key==='Escape'){matches.hidden=true;$('place-status').textContent='';}
   };
+  function zoneExtent() {
+    const [,south,west,north,east]=index.zones[currentZone];
+    return L.latLngBounds([[south,west],[north,east]]);
+  }
   function markPlaces() {
     anchors = new Map();
     if (!rows.length) return;
-    const zoneBounds=overlay.getBounds();
+    const zoneBounds=zoneExtent();
     const candidates = points.filter(p=>zoneBounds.contains([p.lat,p.lon]));
     for (const [id,poly] of layers) {
       const bounds=poly.getBounds(), nearby=candidates.filter(p=>bounds.contains([p.lat,p.lon]));
@@ -206,28 +221,32 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
     zone.replaceChildren(...zones.filter(z => z.startsWith(code)).map(z => new Option('Zona '+z.slice(6),z)));
   }
   function paintSelection() {
+    const theme=state().theme, focus=selectionCode(theme);
+    const wholeZone=incomeTheme() || (!focus && visibleZone===currentZone && !!currentZone);
     selectedBorder.clearLayers();
+    if(isSectorTheme(theme) && wholeZone)zoneCasing.addTo(map);
+    else zoneCasing.remove();
     for (const [id,counts] of rows) {
-      const polygon=layers.get(id), active=id===sector.value;
+      const polygon=layers.get(id), active=currentZone+id===focus;
+      if(!wholeZone && !active){overlay.removeLayer(polygon);continue;}
       if (incomeTheme()) polygon.setStyle({color:'#574c60',weight:1.4,fillColor:shareColor(rowShare(counts,currentZone),bandIndex()),fillOpacity:.82});
-      else polygon.setStyle({...sectorInk,fillColor:active?'#e9a34d':'#b8dbd1',fillOpacity:active?.4:.22});
+      else polygon.setStyle({...sectorInk,fillColor:active?'#e9a34d':'#b8dbd1',fillOpacity:active?.32:.14});
+      overlay.addLayer(polygon);
       if (active) {
         const rings=polygon.getLatLngs();
-        L.polygon(rings,{...casing,pane:'selected-sector',weight:9}).addTo(selectedBorder);
-        L.polygon(rings,{...outline,pane:'selected-sector',weight:5,color:'#681d46'}).addTo(selectedBorder);
+        L.polygon(rings,{...casing,pane:'selected-sector',weight:7}).addTo(selectedBorder);
+        L.polygon(rings,{...outline,pane:'selected-sector',weight:4,color:'#681d46'}).addTo(selectedBorder);
       }
     }
   }
   function showMap(zoom, scroll, theme=incomeTheme()?'sector-income':'sectors') {
+    const code=selectedRow?currentZone+selectedRow[0]:null;
     changeTheme(theme);
+    if(zoom && (code ? state().area?.code!==code : $('geo-level').value!=='sector'))inspectSector(code);
     let bounds=layers.get(sector.value)?.getBounds();
     if (bounds && theme==='sector-income') bounds=bounds.pad(.7);
-    if (!bounds && theme==='sector-income' && currentZone) {
-      const [,south,west,north,east]=index.zones[currentZone];
-      bounds=L.latLngBounds([[south,west],[north,east]]);
-    }
-    if (!bounds) bounds=parishArea();
-    if (zoom && bounds.isValid()) fit(bounds);
+    if (!bounds && (theme==='sector-income' || visibleZone) && currentZone) bounds=zoneExtent();
+    if (zoom && bounds?.isValid()) fit(bounds);
     if (scroll) $('map').scrollIntoView({block:'center'});
   }
   function fit(bounds) {
@@ -236,16 +255,20 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
     map.fitBounds(bounds,{paddingTopLeft:[20,20],paddingBottomRight:[20,bottom],maxZoom:17,animate:false});
   }
   function legend() {
-    if(!sectorMapActive())return;
-    $('legend-title').textContent = selectedRow ? zoneNumber()+' · Sector '+selectedRow[0]+' seleccionado' : 'Selecciona un sector censal';
+    const {theme,area}=state(), code=selectionCode(theme);
+    const overview=['overview','population'].includes(theme) && area?.level==='sector';
+    if(!isSectorTheme(theme) && !overview)return;
+    const showZone=incomeTheme() || !!visibleZone;
+    const hasProfile=selectedRow && currentZone+selectedRow[0]===code;
+    $('legend-title').textContent = code ? 'Sector censal '+code.slice(9)+' seleccionado' : 'Selecciona un sector censal';
     const where=document.createElement('span');where.className='sector-legend-area';
-    where.textContent = parentLabel()+(selectedRow?'':' › '+zoneNumber());
-    const items=[where];
+    where.textContent=area?.level==='sector'?area.path:parentLabel()+' › '+zoneNumber();
+    const items=code || showZone ? [where] : [];
     if(incomeTheme()) {
       $('legend-title').textContent='Hogares con ingreso mensual · '+bands[bandIndex()];
       items.push(...bandKeys(bandIndex()));
       const detail=document.createElement('small');detail.className='sector-legend-area';
-      detail.textContent=selectedRow?'Sector '+selectedRow[0]+' · '+shareLabel(rowShare(selectedRow[1],currentZone)):'Toca un sector para consultar su porcentaje.';
+      detail.textContent=hasProfile?'Sector '+selectedRow[0]+' · '+shareLabel(rowShare(selectedRow[1],currentZone)):'Toca un sector para consultar su porcentaje.';
       items.push(detail);
       const note=document.createElement('small');note.className='sector-legend-area';
       note.textContent=neighborState==='unavailable'?'No se cargaron las zonas vecinas.':neighborState==='zoom'?'Se muestra la zona elegida. Acércate para ver las zonas vecinas.':'Estimación según la edad del representante y la distribución provincial.';
@@ -257,21 +280,22 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
       const span=document.createElement('span'), chip=document.createElement('i');
       span.className='key';chip.className='sw '+style;span.append(chip,label);items.push(span);
     }
-    if (selectedRow) key('Sector seleccionado','selected-sector-key');
-    key('Sectores de la zona'+(rows.length?' ('+number.format(rows.length)+')':''),'zone-sectors-key');
-    if (neighborState==='visible') key('Sectores de otras zonas','neighbor-sectors-key');
+    if (code) key('Población y hogares de este sector','selected-sector-key');
+    else if(showZone)key('Sectores de la zona'+(rows.length?' ('+number.format(rows.length)+')':''),'zone-sectors-key');
+    if (neighborState==='visible') key(code?'Sectores vecinos · solo referencia':showZone?'Sectores de otras zonas':'Límites de los sectores','neighbor-sectors-key');
     if (neighborState==='zoom' || neighborState==='unavailable') {
       const note=document.createElement('small');note.className='sector-legend-area';
-      note.textContent=neighborState==='zoom'?'Acércate para ver los sectores vecinos.':'No se cargaron los límites vecinos.';
+      note.textContent=neighborState==='zoom'?'Acércate para ver los límites de los sectores.':'No se pudieron cargar los límites cercanos.';
       items.push(note);
     }
     const link=document.createElement('a');link.href='#sectores';
-    link.textContent=selectedRow?'Ver hogares e ingresos':'Buscar por lugar o código';
+    link.textContent=code?'Ver hogares e ingresos':'Buscar por lugar o código';
+    if(code)link.onclick=()=>{if(currentZone+selectedRow?.[0]!==code)openCode(code,false,undefined,false);};
     items.push(link);
-    if(selectedRow) {
+    if(code) {
       const campaignButton=document.createElement('button');
       campaignButton.type='button';campaignButton.className='linkbutton sector-campaign-action';campaignButton.textContent='Usar en campaña';
-      campaignButton.onclick=()=>useForCampaign(currentZone+selectedRow[0]);items.push(campaignButton);
+      campaignButton.onclick=()=>useForCampaign(code);items.push(campaignButton);
     }
     if(adCircle) key('Radio de referencia · '+(adCircle.getRadius()/1000).toLocaleString('es-EC')+' km','campaign-radius-key');
     $('legend').replaceChildren(...items);
@@ -316,20 +340,28 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
     $('sector-caution').textContent = notes.join(' ');
   }
   function pickRow(id, zoom = false, place) {
-    clearRadius();
+    clearRadius();visibleZone='';
     matchedPlace = place;
     selectedRow = rows.find(row => row[0] === id);
     if (!selectedRow) return;
     sector.value = id;
-    profile(); paintSelection();
+    profile(); paintSelection(); updateNeighbors();
     status.textContent=''; $('sector-map').textContent='Ver sector en el mapa';
     if (sectorMapActive()) legend();
     if (zoom) showMap(true,false);
   }
+  function showWholeZone(scroll=false) {
+    const code=currentZone, bounds=zoneExtent();
+    changeTheme(incomeTheme()?'sector-income':'sectors');
+    inspectSector(null);
+    visibleZone=code;
+    paintSelection();updateNeighbors();legend();fit(bounds);
+    if(scroll)$('map').scrollIntoView({block:'center'});
+  }
   async function openZone(z, desired, zoom = false, place) {
     const version = ++generation, requestedTheme=state().theme, previousFocus=buildingFocusVersion;
     clearRadius();
-    currentZone = z; zone.value = z; selectedRow = undefined; rows = [];
+    visibleZone='';currentZone = z; zone.value = z; selectedRow = undefined; rows = [];
     results.hidden = true; sector.disabled = true; sector.replaceChildren(new Option('Seleccionar sector',''));
     matchedPlace=undefined; placeMarker.clearLayers(); selectedBorder.clearLayers(); zoneCasing.clearLayers(); $('sector-map').textContent='Elegir en el mapa';
     $('sector-map').disabled = false; $('sector-zone-map').disabled = true; overlay.clearLayers(); layers.clear();
@@ -346,7 +378,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
         sector.add(new Option('Sector '+id,id));
         const polygon = L.polygon(rings,{...sectorInk,pane:'census-sectors'});
         polygon.bindTooltip(()=>{const label=document.createElement('span');label.textContent='Sector '+id+' · '+zoneNumber()+' · '+cantonNames.get(canton.value)+(incomeTheme()?' · '+shareLabel(rowShare(counts,z)):'');return label;},{sticky:true});
-        layers.set(id,polygon); overlay.addLayer(polygon);
+        layers.set(id,polygon);
       }
       status.textContent = '';
       sector.disabled = false; $('sector-zone-map').disabled = false;
@@ -356,7 +388,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
         status.textContent=desired && previousFocus===buildingFocusVersion?'Ese código de sector no figura en la zona. Elige un punto u otro código.':'Elige un lugar, toca el mapa o selecciona un sector por su código.';
         paintSelection();
         if (sectorMapActive()) legend();
-        if (zoom && previousFocus===buildingFocusVersion && state().theme===requestedTheme) {changeTheme(incomeTheme()?'sector-income':'sectors');fit(overlay.getBounds());}
+        if (zoom && previousFocus===buildingFocusVersion && state().theme===requestedTheme) showWholeZone();
       }
     } catch {
       if (version === generation) {
@@ -371,10 +403,11 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
     try { selectArea(code); } finally { synchronizing = false; }
     locationKey = state().canton+'|'+state().parish;
   }
-  function openCode(code, zoom = true, place) {
+  function openCode(code, zoom = true, place, sync = true) {
     const z = code.slice(0,9);
     if (!index.zones[z]) {status.textContent='Zona censal fuera de la cobertura del atlas.';return;}
-    syncCanton(code); setZones(code.slice(0,6));
+    if(sync)syncCanton(code);
+    setZones(code.slice(0,6));
     return openZone(z,code.slice(9),zoom,place);
   }
   async function codeAt(lat,lon) {
@@ -410,7 +443,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
     if (buildingList!==state().buildings) buildPointIndex();
     $('sector-building').hidden = !project;
     if(project) $('sector-building').textContent='Ubicar '+project.name;
-    for (const group of [zoneCasing,overlay,selectedBorder,placeMarker]) {
+    for (const group of [overlay,selectedBorder,placeMarker]) {
       if (isSectorTheme(theme) && !map.hasLayer(group)) group.addTo(map);
       if (!isSectorTheme(theme) && map.hasLayer(group)) group.remove();
     }
@@ -420,7 +453,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
       const code = parishes.includes(p)?p:(parish.value.startsWith(canton)?parish.value:parishes.find(k=>k.startsWith(canton)));
       if (code && !currentZone.startsWith(code)) { setZones(code); openZone(zone.value); }
     }
-    const styleKey=theme+'|'+bandIndex();
+    const styleKey=[theme,bandIndex(),selectionCode(theme)].join('|');
     if (styleKey!==paintKey) {paintKey=styleKey;paintSelection();}
     updateNeighbors();
     if (selectedRow && JSON.stringify(finance)!==financeKey) profile();
@@ -429,10 +462,11 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
   parish.onchange=()=>{lookup++; syncCanton(parish.value); setZones(parish.value); openZone(zone.value,undefined,sectorMapActive());};
   zone.onchange=()=>{lookup++; openZone(zone.value,undefined,sectorMapActive());};
   sector.onchange=()=>{lookup++; if(sector.value) pickRow(sector.value,sectorMapActive());else openZone(currentZone,undefined,sectorMapActive());};
-  $('sector-zone-map').onclick=()=>{changeTheme(incomeTheme()?'sector-income':'sectors');fit(overlay.getBounds());$('map').scrollIntoView({block:'center'});};
+  $('sector-zone-map').onclick=()=>showWholeZone(true);
   $('sector-map').onclick=()=>showMap(true,true);
   $('sector-building').onclick=()=>{const p=state().project;if(p)focusBuilding(p.id);};
   $('sector-income-map').onclick=()=>showMap(true,true,'sector-income');
+  neighborToggle.onchange=()=>{updateNeighbors();legend();};
   bandSelect.onchange=()=>{refresh();legend();};
   $('sector-income-option').disabled=false;
   $('sector-finance').onclick=editFinance;
@@ -443,9 +477,8 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
   refresh();
   async function previewRadius(code,lat,lon,km) {
     changeTheme('sectors');
-    const previousFocus=buildingFocusVersion;
     const pending=openCode(code,true);
-    const version=generation;
+    const version=generation, previousFocus=buildingFocusVersion;
     await pending;
     if(previousFocus!==buildingFocusVersion || version!==generation || currentZone+selectedRow?.[0]!==code || state().theme!=='sectors') return;
     clearRadius();
@@ -453,23 +486,14 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, f
     legend();fit(adCircle.getBounds().extend(layers.get(sector.value).getBounds()));
   }
   function focusPin() {
-    buildingFocusVersion++;lookup++;clearRadius();placeMarker.clearLayers();
+    buildingFocusVersion++;lookup++;visibleZone='';clearRadius();placeMarker.clearLayers();
     matchedPlace=selectedRow=undefined;
     sector.value='';results.hidden=true;
     $('sector-map').textContent='Elegir en el mapa';
-    paintSelection();
+    paintSelection();updateNeighbors();
     if(sectorMapActive())legend();
   }
-  function showPinSector(code) {
-    if (!sectorMapActive() || !code) return;
-    const z=code.slice(0,9),suffix=code.slice(9);
-    if (currentZone===z && layers.has(suffix)) {
-      pickRow(suffix);return;
-    }
-    setZones(code.slice(0,6));
-    return openZone(z,suffix);
-  }
-  return {refresh, openCode, locate, codeAt, focusPin, showPinSector, selectedCode:()=>currentZone+(selectedRow?.[0]||''), readZone:async z=>(await getBlock(z))[z], previewRadius, frame:(theme='sectors')=>showMap(true,false,theme), legend, setFacilities(schools,hospitals) {
+  return {refresh, openCode, locate, codeAt, focusPin, selectedCode:()=>currentZone+(selectedRow?.[0]||''), readZone:async z=>(await getBlock(z))[z], previewRadius, legend, setFacilities(schools,hospitals) {
     facilities = [[schools,'Escuela'],[hospitals,'Hospital']].flatMap(([list,kind])=>(list||[])
       .filter(p=>cantonNames.has(p.code)).map(p=>({...p,kind})));
     buildPointIndex();

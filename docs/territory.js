@@ -1,5 +1,5 @@
-import {estimatedShare} from './income-map.js';
-import {featureAt} from './model.js';
+import {estimatedShare, isSectorTheme} from './income-map.js';
+import {featureAt, normalize} from './model.js';
 import {readCompressedJSON} from './compressed-json.js';
 
 const $ = id => document.getElementById(id);
@@ -65,7 +65,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
       const areas=[...parishCatalog.features,...parishes.urbanFeatures()].filter(f=>!province||cantons.get(f.properties.canton)?.properties.province===province);
       L.geoJSON(areas,{pane:style.pane,renderer:canvas,interactive:false,style}).addTo(boundaries);
     }
-    if(kind==='zone'||kind==='sector'){
+    if(kind==='zone'){
       zoneOutlines().then(data=>{
         if(ticket!==outlineRevision)return;
         const visible=[];
@@ -80,6 +80,12 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
   map.on('moveend',paintBorders);
   function controls(){
     const kind=level.value, fine=kind==='zone'||kind==='sector';
+    const theme=$('layer').value;
+    const sectorFocus=current?.level==='sector';
+    $('explorar').toggleAttribute('data-sector-focus',sectorFocus&&(theme==='overview'||theme==='population'||isSectorTheme(theme)));
+    // The sector thematic layers draw their own selection above their data.
+    if(sectorFocus && isSectorTheme(theme))group.remove();
+    else if(!map.hasLayer(group))group.addTo(map);
     buttons.forEach(b=>{b.disabled=level.querySelector('[value="'+b.dataset.level+'"]').disabled;b.setAttribute('aria-pressed',String(kind===b.dataset.level));});
     $('parish-field').hidden=kind==='canton';
     $('geo-children').hidden=!fine;$('geo-sector-field').hidden=kind!=='sector';
@@ -92,12 +98,12 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     $('geo-boundary-key').hidden=!current;
     if(current)$('geo-boundary-key').textContent='Área seleccionada';
     const hint=noMatch&&kind==='canton'?'Selecciona un cantón para ver su ficha.':'Toca '+articles[kind]+' para ver su ficha.';
-    $('map-hint').textContent=hint+(kind==='sector'?' Acerca el mapa para distinguir los sectores.':'');
+    $('map-hint').textContent=sectorFocus?'Toca otro sector para consultar su ficha.':hint+(kind==='sector'?' Acerca el mapa para distinguir los sectores.':'');
     const firstLook=kind==='canton' && empty && !pointName && $('layer').value==='overview';
     $('profile-empty-heading').textContent=firstLook?'Elige una ubicación':'Selecciona '+articles[kind];
     $('profile-prompt').textContent=firstLook?'Elige un proyecto para preparar su campaña, o toca un cantón para consultar su población.':hint;
     $('try-project').hidden=!firstLook||!$('try-project').textContent;
-    const title=current?(kind==='zone'||kind==='sector'?names[kind]+' '+current.code:names[kind]+' · '+current.name):('Cantón · '+cantons.get(cantonCode()).properties.name);
+    const title=current?(current.level==='zone'||current.level==='sector'?names[current.level]+' '+current.code:names[current.level]+' · '+current.name):('Cantón · '+cantons.get(cantonCode()).properties.name);
     const pop=current?current.population:cantons.get(cantonCode()).properties.population;
     $('selection-label').textContent=pointName?'Ubicación · '+pointName:empty?'':title+(pop==null?'':' · '+fmt.format(pop)+' hab.');
     $('profile-link').hidden=!pointName&&empty;
@@ -119,8 +125,9 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     const children=Object.entries(ages||{}).filter(([id])=>id.startsWith(code));
     return children.length?children.reduce((sum,[,series])=>ageBands(series).map((n,i)=>n+sum[i]),[0,0,0,0]):null;
   }
-  function clear(kind='canton',awaitSelection=false){
+  function clear(kind='canton',awaitSelection=false,clearSector=true){
     revision++;pointName=null;lastMapPoint=null;noMatch=awaitSelection;current=shape=null;group.clearLayers();level.value=names[kind]?kind:'canton';
+    if(clearSector && isSectorTheme($('layer').value))sectors?.focusPin();
     $('geo-status').textContent='';controls();
     if(level.value==='canton')displayAges(cantonAges(cantonCode()));
   }
@@ -134,13 +141,16 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
   function render(layer,details,zoom){
     pointName=null;noMatch=false;current=details;shape=layer;group.clearLayers();
     const rings=layer.getLatLngs();
-    for(const [color,weight] of [['#fff',6],['#864214',3.4]]){
-      L.polygon(rings,{pane:'territory-focus',interactive:false,color,weight,fill:false,smoothFactor:.5}).addTo(group);
+    const sector=details.level==='sector';
+    for(const [color,weight] of [['#fff',sector?7:6],[sector?'#681d46':'#864214',sector?4:3.4]]){
+      L.polygon(rings,{pane:'territory-focus',interactive:false,color,weight,fill:sector&&color!=='#fff',fillColor:'#e9a34d',fillOpacity:.32,smoothFactor:.5}).addTo(group);
     }
     controls();displayAges(details.bands);
     $('geo-kind').textContent='Ficha de '+names[details.level].toLowerCase();
     $('geo-name').textContent=details.name;$('geo-path').textContent=details.path+' · '+details.code;
     $('geo-pop').textContent=details.population==null?'Sin desglose':fmt.format(details.population);
+    $('geo-households').hidden=!sector;
+    if(sector)$('geo-homes').textContent=fmt.format(total(details.homes)+(index.withoutAgeBySector[details.code]||0));
     $('geo-source').textContent=details.source;
     if(zoom)fit(layer);
     updateLegend();alignSector(details);
@@ -176,6 +186,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     if(kind==='region'){reset(zoom);return;}
     if(!names[kind]||level.querySelector('[value="'+kind+'"]').disabled)return;
     if(!code){browse(kind);return;}
+    if(pointName||(current && current.code!==code))clear(kind,true,false);
     lastMapPoint=anchor;
     const ticket=++revision;
     const parent=code.startsWith('gye-')?'0901':code.slice(0,4), canton=cantons.get(parent);
@@ -194,7 +205,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
       const parishCode=municipal||(kind==='parish'?code:code.slice(0,6));
       const area=parishes.available().find(f=>f.properties.code===parishCode);
       if(!area){missing('Sin límite parroquial disponible para este punto.');return;}
-      const q=area.properties;parishes.highlight(area);
+      const q=area.properties;parishes.highlight(area,kind==='parish');
       if(kind==='parish'){
         const series=ages?.[q.code];
         render(single(area),{level:kind,code:q.code,canton:parent,name:q.name,path:path+' · '+q.kind,bands:ageBands(series),population:series?total(series):null,source:series?'habitantes · Censo 2022':'El INEC agrupa esta parroquia urbana en la cabecera cantonal.'},zoom);return;
@@ -209,13 +220,16 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
       if(!selectedRows.length){missing('El sector no figura en la cartografía disponible.');return;}
       zoneList(q.code,eligible,zone);options(ids,'Elegir sector',children,'Sector',9,kind==='sector'?code:'');
       const bands=selectedRows.reduce((s,row)=>s.map((n,i)=>n+row[1][i]),[0,0,0,0]);
+      const parishName=q.kind==='Cabecera cantonal' && normalize(q.name)===normalize(p.name)?q.kind:q.kind+' '+q.name;
       $('geo-status').textContent='';
-      render(L.polygon(outlines?.[zone]||selectedRows.flatMap(row=>row[2])),{level:kind,code,canton:parent,municipal,name:names[kind]+' '+code.slice(kind==='zone'?6:9),path:path+' › '+q.name+(kind==='sector'?' › Zona '+zone.slice(6):''),bands,homes:kind==='sector'?selectedRows[0][1].slice(4):null,population:total(bands),source:'residentes con código sectorial publicado · Censo 2022'},zoom);
+      render(L.polygon(outlines?.[zone]||selectedRows.flatMap(row=>row[2])),{level:kind,code,canton:parent,municipal,name:names[kind]+' '+code.slice(kind==='zone'?6:9),path:path+' › '+parishName+(kind==='sector'?' › Zona '+zone.slice(6):''),bands,homes:kind==='sector'?selectedRows[0][1].slice(4):null,population:total(bands),source:kind==='sector'?'Censo 2022 · residentes y hogares de este sector':'residentes con código sectorial publicado · Censo 2022'},zoom);
     }catch{
       if(ticket===revision)missing('No se pudo cargar esta área. Vuelve a seleccionarla.');
     }
   }
   async function atPoint(kind,point,location,zoom=true){
+    clear(kind,true);
+    updateLegend();
     const ticket=++revision;
     const anchor={point,location};
     lastMapPoint=anchor;
@@ -244,7 +258,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     if(kind==='parish'&&code)return open(kind,code,zoom);
     clear(kind);
     const area=parishes.available().find(f=>f.properties.code===code);
-    parishes.highlight(area);
+    parishes.highlight(area,kind==='parish');
     if(!area){zoneList(cantonCode(),null);updateLegend();return;}
     if(zoom)fit(single(area));
     const ticket=revision;
@@ -275,10 +289,16 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
   for(const kind of ['zone','sector'])level.querySelector('[value="'+kind+'"]').disabled=!sectors;
   level.onchange=()=>{
     const kind=level.value;
+    const previous=current;
     const anchor=onLevelChoice(kind,!!pointName)||lastMapPoint;
     browse(kind);
     if(anchor&&map.getBounds().contains([anchor.point.lat,anchor.point.lon])){
       atPoint(kind,anchor.point,anchor.location,false);
+    }else if(previous){
+      const parent=kind==='canton'?previous.canton
+        :kind==='parish'&&['sector','zone'].includes(previous.level)?previous.municipal||previous.code.slice(0,6)
+        :kind==='zone'&&previous.level==='sector'?previous.code.slice(0,9):null;
+      if(parent)open(kind,parent,false,kind==='zone'?previous.municipal:'');
     }
   };
   buttons.forEach(b=>b.onclick=()=>{level.value=b.dataset.level;level.onchange();});
@@ -294,5 +314,5 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
   level.disabled=false;clear();
   return {clear,reset,overview,open,browse,atPoint,chooseCanton,parentParish,controls,zoneOutlines,
     showPoint(name){clear(level.value);pointName=name;controls();},get isPoint(){return !!pointName;},
-    get level(){return level.value;},get current(){return current;}};
+    get level(){return level.value;},get current(){return current;},get anchor(){return lastMapPoint;}};
 }

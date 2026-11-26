@@ -27,6 +27,32 @@ AREA_PROJECTS = [
     {"id": "east", "name": "Punto este", "lat": -1.8381, "lon": -80.74459},
 ]
 
+# Halfway from VELIN Tower to this marker is the published interior point of
+# neighboring Guayaquil sector 090150224001. This lets the test tap the map itself.
+VELIN_GUIDE = {"id": "guide", "name": "Punto norte", "lat": -2.17562, "lon": -79.98014}
+
+
+def tap_between_projects(page, touch):
+    # Target one real map point at any zoom, without dispatching Leaflet events.
+    page.locator("#selection-fit").click()
+    map_view = page.locator("#map")
+    map_view.scroll_into_view_if_needed()
+    pins = page.locator("#map .project-map-pin")
+    expect(pins).to_have_count(2)
+    positions = pins.evaluate_all("""pins => pins.map(pin => {
+        const box = pin.getBoundingClientRect();
+        return [box.x + box.width / 2, box.y + box.height / 2];
+    })""")
+    box = map_view.bounding_box()
+    position = {
+        "x": sum(point[0] for point in positions) / 2 - box["x"],
+        "y": sum(point[1] for point in positions) / 2 - box["y"],
+    }
+    if touch:
+        map_view.tap(position=position)
+    else:
+        map_view.click(position=position)
+
 
 def check_subdivisions(page, touch):
     choose = page.locator("#building-select")
@@ -50,26 +76,6 @@ def check_subdivisions(page, touch):
         expect(button).to_have_attribute("aria-pressed", "true")
         expect(page.locator("[data-level][aria-pressed=true]")).to_have_count(1)
 
-    def tap_between_projects():
-        # Target one real map point at any zoom, without dispatching Leaflet events.
-        page.locator("#selection-fit").click()
-        map_view = page.locator("#map")
-        map_view.scroll_into_view_if_needed()
-        expect(pins).to_have_count(2)
-        positions = pins.evaluate_all("""pins => pins.map(pin => {
-            const box = pin.getBoundingClientRect();
-            return [box.x + box.width / 2, box.y + box.height / 2];
-        })""")
-        box = map_view.bounding_box()
-        position = {
-            "x": sum(point[0] for point in positions) / 2 - box["x"],
-            "y": sum(point[1] for point in positions) / 2 - box["y"],
-        }
-        if touch:
-            map_view.tap(position=position)
-        else:
-            map_view.click(position=position)
-
     # A subdivision takes over the next map tap even if point placement was active.
     page.locator("#site-start").click()
     for level, result in [
@@ -81,7 +87,7 @@ def check_subdivisions(page, touch):
         name = "#canton-name" if level == "canton" else "#geo-name"
         if level != "canton":
             expect(page.locator(name)).to_have_text(result)  # Same location at its new level.
-        tap_between_projects()
+        tap_between_projects(page, touch)
         expect(page.locator("#geo-share")).to_be_visible()
         expect(page.locator(name)).to_have_text(result)
         expect(page.locator("#selected-projects li")).to_have_count(2)
@@ -92,14 +98,14 @@ def check_subdivisions(page, touch):
     page.locator("#map-view").select_option("sector-income")
     expect(page.locator("#income-controls")).to_be_visible()
     pick("parish")
-    tap_between_projects()
+    tap_between_projects(page, touch)
     expect(page.locator("#geo-name")).to_have_text("MANGLARALTO")
     expect(page.locator("#campaign-building")).to_have_value("east")
 
     page.locator("#map-view").select_option("site")
     expect(page.locator("#site-card")).to_be_visible()
     pick("zone")
-    tap_between_projects()
+    tap_between_projects(page, touch)
     expect(page.locator("#geo-name")).to_have_text("Zona censal 001")
     expect(page.locator("#site-card")).to_be_hidden()
     expect(pins).to_have_count(2)
@@ -121,6 +127,93 @@ def check_subdivisions(page, touch):
     expect(page.locator("#geo-name")).to_have_text("Sector censal 002")
     expect(page.locator("#geo-pop")).to_have_text("238")
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+
+
+def check_sector_scope(page, base, touch):
+    select = page.locator("#building-select")
+    expect(select).to_be_enabled(timeout=30000)
+    page.locator("#select-several-projects").check()
+    select.select_option("guide")
+    select.select_option("velin-tower")
+
+    polygons = page.locator(".leaflet-census-sectors-pane path")
+    neighbors = page.locator(".leaflet-neighbor-sectors-pane path")
+    toggle = page.locator("#sector-neighbors")
+
+    # Move from the municipal parish in the reported screenshot to the sector.
+    page.locator('[data-level="parish"]').click()
+    expect(page.locator("#geo-name")).to_have_text("TARQUI")
+    page.locator('[data-level="sector"]').click()
+    expect(page.locator("#geo-pop")).to_have_text("375")
+    expect(toggle).to_be_visible()
+    expect(toggle).not_to_be_checked()
+    expect(neighbors).to_have_count(0)
+    expect(page.locator(".leaflet-parish-outlines-pane path")).to_have_count(0)
+    page.locator("#map-view").select_option("sectors")
+
+    def expect_sector(code, residents, households):
+        expect(page.locator("#geo-facts")).to_be_visible()
+        expect(page.locator('[data-level="sector"]')).to_have_attribute("aria-pressed", "true")
+        expect(page.locator("#geo-path")).to_contain_text(code)
+        expect(page.locator("#selection-label")).to_contain_text(code)
+        expect(page.locator("#geo-pop")).to_have_text(residents)
+        expect(page.locator("#geo-homes")).to_be_visible()
+        expect(page.locator("#geo-homes")).to_have_text(households)
+        expect(page.locator("#sector-pop")).to_have_text(residents)
+        expect(page.locator("#sector-homes")).to_have_text(households)
+        expect(page.locator("#legend-title")).to_contain_text(code[-3:])
+        expect(polygons).to_have_count(1)
+
+    expect_sector("090150224002", "375", "116")
+    expect(toggle).to_be_visible()
+    expect(toggle).not_to_be_checked()
+    expect(neighbors).to_have_count(0)
+    toggle.check()
+    expect(neighbors.first).to_be_attached()
+    assert all(p.get_attribute("fill") == "none" for p in neighbors.all())
+    expect_sector("090150224002", "375", "116")
+    page.locator("#legend").get_by_role("button", name="Usar en campaña").click()
+    expect(page.locator("#campaign-mode")).to_have_value("sector")
+    expect(page.locator("#campaign-code")).to_have_value("090150224002")
+    expect(page.locator("#campaign-pop")).to_have_text("375")
+    toggle.uncheck()
+    expect(neighbors).to_have_count(0)
+
+    # An unpainted neighbor is still selectable, and replaces the previous area.
+    tap_between_projects(page, touch)
+    expect_sector("090150224001", "278", "77")
+    expect(neighbors).to_have_count(0)
+    expect(page.locator("#selected-projects li")).to_have_count(2)
+
+    # The income comparison can color multiple polygons without widening the count.
+    page.locator("#map-view").select_option("sector-income")
+    expect(page.locator("#income-controls")).to_be_visible()
+    expect(polygons).to_have_count(11)
+    expect(page.locator("#geo-pop")).to_have_text("278")
+
+    page.locator('[data-level="zone"]').click()
+    expect(page.locator("#geo-name")).to_have_text("Zona censal 224")
+    expect(page.locator("#geo-pop")).to_have_text("4.511")
+    expect(toggle).to_be_hidden()
+
+    # Starting another campaign pick from the zone opens a fresh sector selection.
+    settings = page.locator("#campaign-settings-panel")
+    if not settings.evaluate("panel => panel.open"):
+        settings.locator("summary").click()
+    page.locator("#campaign-mode").select_option("sector")
+    page.locator("#campaign-pick").click()
+    expect(page.locator("#map-view")).to_have_value("sectors")
+    expect(page.locator("#legend-title")).to_have_text("Selecciona un sector censal")
+    expect(page.locator("#geo-facts")).to_be_hidden()
+    expect(polygons).to_have_count(0)
+    tap_between_projects(page, touch)
+    expect_sector("090150224001", "278", "77")
+
+    # A bookmarked sector produces the same single-sector selection on a fresh load.
+    page.goto(base + "?capa=sectors&sector=090150224002#explorar", wait_until="domcontentloaded")
+    expect_sector("090150224002", "375", "116")
+    expect(toggle).not_to_be_checked()
+    expect(neighbors).to_have_count(0)
 
 
 def run(url, executable):
@@ -195,6 +288,10 @@ def run(url, executable):
             check_subdivisions(page, touch)
             assert not errors, errors
             page.context.close()
+            page = open_atlas([VELIN_GUIDE], width, touch)
+            check_sector_scope(page, base, touch)
+            assert not errors, errors
+            page.context.close()
         browser.close()
 
 
@@ -204,4 +301,4 @@ if __name__ == "__main__":
     parser.add_argument("--chromium", help="Use an installed Chromium executable")
     args = parser.parse_args()
     run(args.url, args.chromium)
-    print("Project selection, active campaign and all four map subdivisions passed.")
+    print("Project selection, campaigns, subdivisions and single-sector census counts passed.")

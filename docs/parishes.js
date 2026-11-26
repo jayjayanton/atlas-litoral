@@ -38,7 +38,7 @@ export function initParishes(map, catalog, getCanton, setCanton, onSelectionChan
     const active = feature.properties.code===select.value;
     return {color:active?'#7c3748':'#554865',weight:active?2.7:1.3,dashArray:active?null:'5 4',fill:false};
   }}).addTo(map);
-  let previousCode, visible=[], urbans=[], municipalState='idle';
+  let previousCode, visible=[], urbans=[], municipalState='idle',autoOutlines=false;
   let municipalRequest;
   function loadUrban() {
     if (!municipalRequest) {
@@ -53,9 +53,10 @@ export function initParishes(map, catalog, getCanton, setCanton, onSelectionChan
   function at(lat,lon) {
     return featureAt(urbans,lat,lon) || featureAt(catalog,lat,lon);
   }
-  function highlight(feature) {
+  function highlight(feature, showOutlines=true) {
     select.value=feature?.properties.code || '';
-    if(feature)toggle.checked=true;
+    if(feature && showOutlines && !toggle.checked){toggle.checked=true;autoOutlines=true;}
+    else if((!feature||!showOutlines) && autoOutlines){toggle.checked=false;autoOutlines=false;}
     paint();
   }
   function paint() {
@@ -92,7 +93,7 @@ export function initParishes(map, catalog, getCanton, setCanton, onSelectionChan
     paint();
     if(code==='0901' && municipalState==='idle')loadUrban();
   }
-  select.onchange=zoom;toggle.onchange=paint;
+  select.onchange=zoom;toggle.onchange=()=>{autoOutlines=false;paint();};
   select.disabled=false;toggle.disabled=false;refresh();
   return {refresh,at,highlight,loadUrban,available:()=>visible,urbanFeatures:()=>urbans,
     needsUrban:feature=>feature?.properties.code==='090150' && ['idle','loading'].includes(municipalState)

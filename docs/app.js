@@ -115,6 +115,7 @@ function colorize(){if(markingPoint && markingTheme!==$('layer').value)setMarkin
  if(infrastructure){infrastructure.refresh();if(infrastructure.legend(theme))return;}
  const level=territory?.level||'canton';
  if(theme==='overview'||(theme==='population'&&level!=='canton')){
+   if(level==='sector' && territory?.current?.level==='sector' && sectors){sectors.legend();return;}
    $('legend-title').textContent='Límites territoriales';
    $('legend').textContent={
      canton:'Cantones de Guayas y Santa Elena',parish:'Parroquias de Guayas y Santa Elena',
@@ -177,6 +178,13 @@ function showBuildingAddress(){
  $('project-sector-open').hidden=!pinSector;
  $('project-location-retry').hidden=pinLookup!=='error';
 }
+function showProjectSector(code){
+ if(!project||!territory?.isPoint||!code)return;
+ const theme=$('layer').value;
+ if(isSectorTheme(theme)||(territory.level==='sector'&&['overview','population'].includes(theme))){
+   territory.open('sector',code,false,'',{point:project,location:locate(project.lat,project.lon)});
+ }
+}
 function resolveBuildingAddress(){
  const building=project;
  pinSector=null;pinLookup=sectors?'loading':'error';showBuildingAddress();
@@ -188,7 +196,7 @@ function resolveBuildingAddress(){
  sectors.codeAt(building.lat,building.lon).then(code=>{
    if(project!==building)return;
    pinSector=code;pinLookup='ready';projectState();showBuildingAddress();refreshMarker();earnings?.refresh();
-   if(territory?.isPoint)sectors.showPinSector(code);
+   showProjectSector(code);
  }).catch(()=>{
    if(project!==building)return;
    pinLookup='error';showBuildingAddress();earnings?.refresh();
@@ -198,7 +206,7 @@ function projectFocus(){
  if(!project)return;
  sectors?.focusPin();territory?.showPoint(project.name);
  if(dest)setSelection(dest.code,false,true);else render();
- sectors?.showPinSector(pinSector);
+ showProjectSector(pinSector);
  map.setView([project.lat,project.lon],16,{animate:false});
  $('map').scrollIntoView({block:'center'});
 }
@@ -216,7 +224,7 @@ function mapInit(){
  L.control.attribution({prefix:false,position:'bottomright'}).addTo(map).addAttribution(osmCredit).addAttribution('<a href="#datos">Fuentes</a>');
  for(const [key,z] of [['land',250],['rivers',370],['canton-outlines',413],['province-outlines',418],['labels',375]]){map.createPane(key);map.getPane(key).style.zIndex=z;map.getPane(key).style.pointerEvents='none';}
  polys=L.geoJSON({type:'FeatureCollection',features},{className:'canton-shape',style,onEachFeature:(f,l)=>{
-  const p=f.properties;layers[p.code]=l;l.bindTooltip(()=>'Cantón '+esc(p.name)+' · '+esc(p.province)+($('layer').value==='income'&&inc[p.province]?' · Mediana provincial $'+num(inc[p.province].median):''),{sticky:true,direction:'top',offset:[0,-7]});
+  const p=f.properties;layers[p.code]=l;l.bindTooltip(()=>'Cantón '+esc(p.name)+' · '+esc(p.province)+($('layer').value==='income'&&inc[p.province]?' · Mediana provincial $'+num(inc[p.province].median):''),{className:'canton-tooltip',sticky:true,direction:'top',offset:[0,-7]});
 
  }}).addTo(map);
  const cantonBorders={pane:'canton-outlines',interactive:false};
@@ -339,7 +347,7 @@ function chooseLocation(location,view){
  }
  territory?.showPoint(project.name);
  if(dest)setSelection(dest.code,false,true);else {highlighted=null;render();}
- if(changed)resolveBuildingAddress();else sectors?.showPinSector(pinSector);
+ if(changed)resolveBuildingAddress();else showProjectSector(pinSector);
  if(view==='active')map.setView([project.lat,project.lon],16,{animate:false});
  if(view==='point')map.setView([project.lat,project.lon],Math.max(13,map.getZoom()),{animate:false});
 }
@@ -542,20 +550,29 @@ async function main(){
  }else $('age-status').textContent='No se pudo cargar la demografía censal. Recarga para reintentar.';
  if(sectorIndex&&parishes&&sectorTools){
    sectors=sectorTools.initSectorProfiles({map,index:sectorIndex,parishCatalog,cantons:features,
-     state:()=>({theme:$('layer').value,province:$('province').value,canton:selected,parish:$('parish-select').value,finance,project,buildings}),
-     focusBuilding:id=>{const b=selectionChoices.find(item=>item.id===id);if(b)activateBuilding(b);},
+     state:()=>({theme:$('layer').value,province:$('province').value,canton:selected,parish:$('parish-select').value,area:territory?.current,finance,project,buildings}),
+     focusBuilding:id=>{
+       const building=selectionChoices.find(item=>item.id===id);
+       if(!building)return;
+       if(!isSectorTheme(allThemes.value))allThemes.value='sectors';
+       activateBuilding(building);
+     },
      selectArea:code=>{
        const area=territory?.current;
        const contained=area && code.startsWith(area.code);
-       if(!contained)territory?.clear();
-       setSelection(code.slice(0,4));
-       if(!contained||!area.municipal)parishes.highlight(parishCatalog.features.find(f=>f.properties.code===code.slice(0,6)));
+       if(!contained)territory?.clear(isSectorTheme($('layer').value)?'sector':'canton',true);
+       setSelection(code.slice(0,4),false,true);
+       if(!contained||!area.municipal)parishes.highlight(parishCatalog.features.find(f=>f.properties.code===code.slice(0,6)),false);
      },
-     useForCampaign:code=>campaign?.useSector(code),editFinance:scenario,changeTheme:theme=>{$('layer').value=theme;colorize();},isPicking:()=>picking});
+     inspectSector:code=>{
+       if(!code)return territory?.browse('sector');
+       if(territory?.current?.code!==code)return territory?.open('sector',code,false);
+     },
+     useForCampaign:code=>campaign?.useSector(code),editFinance:scenario,changeTheme:theme=>{$('layer').value=theme;colorize();}});
  }else $('sector-status').textContent='No se pudieron cargar los sectores. Recarga para reintentar.';
  function alignSector(area){
-   if(isSectorTheme($('layer').value) && ['zone','sector'].includes(area?.level) && sectors.selectedCode()!==area.code)
-     sectors.openCode(area.code,false);
+   if(area?.level==='sector' && sectors && sectors.selectedCode()!==area.code)
+     sectors.openCode(area.code,false,undefined,false);
  }
  if(!navigation){render();mapNotice('Puedes consultar cantones. Reintenta para cargar los demás niveles.');return;}
  territory=navigation.initTerritory({map,cantons:new Map(features.map(f=>[f.properties.code,f])),parishes,parishCatalog,sectors,index:sectorIndex,ages:censusAges?.agesByDpa,
@@ -582,7 +599,7 @@ async function main(){
  $('project-sector-open').onclick=()=>{
    if(!pinSector)return;
    if($('layer').value==='site')$('layer').value='overview';
-   territory.open('sector',pinSector,false);
+   territory.open('sector',pinSector,false,'',{point:project,location:locate(project.lat,project.lon)});
  };
  $('parish-select').onchange=()=>territory.parentParish($('parish-select').value);
  if(campaignTools)campaign=campaignTools.initCampaign({cantons:features,parishes:parishCatalog?.features,
@@ -600,7 +617,12 @@ async function main(){
    },
    updatePlanMap:initCampaignMap({cantons:features,context,streets:streetGeo,readZone:sectors?.readZone}),
    selectBuilding:id=>{const b=selectionChoices.find(item=>item.id===id);if(b){activateBuilding(b);showAnalysis('campana',true);}},
-   pickOnMap:()=>{if(sectors){territory.browse('sector');sectors.frame();$('map').scrollIntoView({block:'center'});}else say('Los límites sectoriales no están disponibles.');},
+   pickOnMap:()=>{
+     if(!sectors){say('Los límites sectoriales no están disponibles.');return;}
+     allThemes.value='sectors';
+     territory.browse('sector');
+     $('map').scrollIntoView({block:'center'});
+   },
    previewRadius:(code,lat,lon,km)=>{if(sectors){sectors.previewRadius(code,lat,lon,km);$('map').scrollIntoView({block:'center'});}else say('Los límites sectoriales no están disponibles.');},
    download});
  else $('campaign-status').textContent='No se pudo cargar la herramienta de campaña.';
@@ -658,29 +680,17 @@ async function main(){
  };
  allThemes.onchange=chooseLayer;
  mapView.disabled=false;
- mapView.onchange=async()=>{
-   const theme=mapView.value, revision=++mapChoiceRevision;
+ mapView.onchange=()=>{
+   const theme=mapView.value;
+   mapChoiceRevision++;
    allThemes.value=theme;
    chooseLayer();
    if(!isSectorTheme(theme)||!sectors)return;
-   const point=project;
-   const area=territory.current;
-   if(!point&&area?.level!=='sector'){
-     territory.browse('sector');
-     sectors.frame(theme);
-     return;
-   }
-   try{
-     const code=area?.level==='sector'?area.code:await sectors.codeAt(point.lat,point.lon);
-     if(revision!==mapChoiceRevision||allThemes.value!==theme||point!==project||area!==territory.current)return;
-     if(code)await territory.open('sector',code,true);
-     else {
-       territory.browse('sector');
-       $('geo-status').textContent='No hay datos censales para este punto. Toca otro sector del mapa.';
-     }
-   }catch{
-     $('geo-status').textContent='No se pudo consultar el sector. Vuelve a elegir la ubicación.';
-   }
+   const area=territory.current,anchor=territory.anchor;
+   if(area?.level==='sector')return territory.open('sector',area.code,true,area.municipal,anchor);
+   const point=anchor?.point||project;
+   if(point)return territory.atPoint('sector',point,anchor?.location||locate(point.lat,point.lon),true);
+   territory.browse('sector');
  };
  document.querySelectorAll('[data-map-theme]').forEach(button=>{
    button.onclick=()=>{
@@ -708,7 +718,7 @@ async function main(){
  if(!shared && isSectorTheme(initialTheme)){
    const id=new URL(location.href).searchParams.get('sector');
    if(/^\d{12}$/.test(id))territory.open('sector',id);
-   else if(initialTheme==='sector-income')sectors?.frame(initialTheme);
+   else if(!new URL(location.href).searchParams.has('area'))territory.browse('sector');
  }
  const areaLink=new URL(location.href).searchParams.get('area');
  if(!shared && areaLink){
