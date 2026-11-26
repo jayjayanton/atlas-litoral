@@ -2,6 +2,7 @@ import {readCompressedJSON} from './compressed-json.js';
 
 const $=id=>document.getElementById(id);
 const provinces={'09':'Guayas','24':'Santa Elena'};
+const populationScope={canton:'del cantón',parish:'de la parroquia',zone:'de la zona censal',sector:'del sector censal'};
 const number=new Intl.NumberFormat('es-EC');
 const percent=new Intl.NumberFormat('es-EC',{style:'percent',maximumFractionDigits:1});
 
@@ -37,6 +38,7 @@ export function initEarnings(location,residentCount){
     const ticket=++revision;
     result.textContent='';local.textContent='';note.textContent='';$('earn-retry').hidden=true;
     $('earn-domain').textContent='Referencia provincial · '+provinces[area.province]+' · ENEMDU 2025';
+    $('earn-local-heading').textContent='Población censada '+(populationScope[area.level] || 'del área');
     if(area.code){
       local.textContent='Consultando el Censo 2022…';
       Promise.resolve(residentCount(area.code,lo,hi)).then(count=>{

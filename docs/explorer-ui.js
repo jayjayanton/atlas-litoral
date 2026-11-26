@@ -1,6 +1,7 @@
 const $ = id => document.getElementById(id);
 const workspace = $('herramientas');
 const menu = $('tool-menu');
+const campaign = $('campana');
 const choice = $('tool-choice');
 const panels = [...document.querySelectorAll('[data-analysis]')];
 let current = '';
@@ -17,11 +18,17 @@ function render(id) {
 
 function navigate(id, scroll) {
   const previous = current;
+  const isCampaign = id === campaign.id;
   render(id);
-  const hash = '#' + (current || workspace.id);
+  const destination = isCampaign ? campaign : workspace;
+  const hash = '#' + (current || destination.id);
   if (location.hash !== hash) history.pushState(null, '', hash);
   if (!scroll) return;
-  workspace.scrollIntoView({block:'start'});
+  destination.scrollIntoView({block:'start'});
+  if (isCampaign) {
+    campaign.querySelector('h2').focus({preventScroll:true});
+    return;
+  }
   const target = current ? $(current).querySelector('h2') : menu.querySelector('a[href="#' + previous + '"]');
   (target || $('analysis-heading')).focus({preventScroll:true});
 }
@@ -59,7 +66,7 @@ if (menu) {
     const link = event.target.closest('a[href^="#"]');
     if (!link || link.target === '_blank') return;
     const target = $(link.hash.slice(1));
-    if (target === workspace || panels.includes(target)) {
+    if (target === workspace || target === campaign || panels.includes(target)) {
       event.preventDefault();
       navigate(target === workspace ? '' : target.id, true);
     }

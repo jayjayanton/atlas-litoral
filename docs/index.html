@@ -1,12 +1,80 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#132f39"><title>Atlas Litoral · Mercado de vivienda</title><link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./style.css?v=8a696acce434"><script defer src="./vendor/leaflet.js"></script><style>.map-canvas{position:relative}#map-preview[hidden]{display:none}#map-preview{position:absolute;inset:0;z-index:495;display:grid;place-items:center;overflow:hidden;background:#e2ebe5;pointer-events:none}
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#34212e"><meta name="description" content="Compara sectores censales cerca de tu proyecto en Guayas y Santa Elena y elige dónde probar una campaña inmobiliaria."><title>Atlas Litoral · Planificación de campañas inmobiliarias</title><link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./style.css?v=fb01b8e0d584"><script defer src="./vendor/leaflet.js"></script><style>.map-canvas{position:relative}#map-preview[hidden]{display:none}#map-preview{position:absolute;inset:0;z-index:495;display:grid;place-items:center;overflow:hidden;background:#e2ebe5;pointer-events:none}
 #map-preview img{width:100%;height:100%;min-height:0;object-fit:contain}
 #map-preview span{position:absolute;bottom:10px;left:10px;padding:4px 8px;border-radius:4px;background:#fffffff0;color:#24484d;font-size:12px}
-</style><script type="importmap">{"imports":{"./access-model.js":"./access-model.js?v=0d26bf0d093c","./app.js":"./app.js?v=e5e721d2c303","./building-search.js":"./building-search.js?v=f7c5400bb174","./buildings.js":"./buildings.js?v=dfbbae50db0a","./campaign.js":"./campaign.js?v=10b464ee1e92","./compressed-json.js":"./compressed-json.js?v=ebc8b9c2a627","./credit-map.js":"./credit-map.js?v=4b80fa04531c","./credit-model.js":"./credit-model.js?v=3eea3e7c20eb","./demographics.js":"./demographics.js?v=71a3aed9b0b9","./earnings.js":"./earnings.js?v=4fd5c73295c5","./explorer-ui.js":"./explorer-ui.js?v=61374692acfb","./income-map.js":"./income-map.js?v=cd5a1c04135d","./infrastructure.js":"./infrastructure.js?v=f0f1c26afed6","./model.js":"./model.js?v=56b3640001bc","./parishes.js":"./parishes.js?v=2191e9efccf1","./school-fees.js":"./school-fees.js?v=badcbca5b104","./score-surface.js":"./score-surface.js?v=b9ce45494c9b","./sector-profiles.js":"./sector-profiles.js?v=dc261e5dc71e","./site-view.js":"./site-view.js?v=602100f6513f","./suitability-model.js":"./suitability-model.js?v=8beec3351968","./suitability.js":"./suitability.js?v=de7256f0f400","./territory.js":"./territory.js?v=8abafac592c0"}}</script></head>
+</style><script type="importmap">{"imports":{"./access-model.js":"./access-model.js?v=0d26bf0d093c","./app.js":"./app.js?v=aa2216932143","./building-search.js":"./building-search.js?v=f7c5400bb174","./buildings.js":"./buildings.js?v=dfbbae50db0a","./campaign-map.js":"./campaign-map.js?v=fa424e33ccbe","./campaign-model.js":"./campaign-model.js?v=b00b8d9a98b4","./campaign-outcomes.js":"./campaign-outcomes.js?v=4f8df545dcd8","./campaign.js":"./campaign.js?v=98614bde84e3","./compressed-json.js":"./compressed-json.js?v=ebc8b9c2a627","./credit-map.js":"./credit-map.js?v=4b80fa04531c","./credit-model.js":"./credit-model.js?v=3eea3e7c20eb","./demographics.js":"./demographics.js?v=db0765052a83","./earnings.js":"./earnings.js?v=36c0e0d2552c","./explorer-ui.js":"./explorer-ui.js?v=02d986157c4c","./income-map.js":"./income-map.js?v=cd5a1c04135d","./infrastructure.js":"./infrastructure.js?v=f0f1c26afed6","./model.js":"./model.js?v=56b3640001bc","./parishes.js":"./parishes.js?v=2191e9efccf1","./school-fees.js":"./school-fees.js?v=badcbca5b104","./score-surface.js":"./score-surface.js?v=b9ce45494c9b","./sector-profiles.js":"./sector-profiles.js?v=dc261e5dc71e","./site-view.js":"./site-view.js?v=602100f6513f","./suitability-model.js":"./suitability-model.js?v=8beec3351968","./suitability.js":"./suitability.js?v=de7256f0f400","./territory.js":"./territory.js?v=8abafac592c0"}}</script></head>
 <body>
-<header class="mast"><div class="mast-in"><div class="brand"><svg viewBox="0 0 34 34" aria-hidden="true"><g fill="none" stroke="#9de3cb" stroke-width="1.8"><path d="M2 24 12 14l6 3L31 4M2 30l11-11 6 3L32 9M2 18l9-10 6 3L28 1"/></g></svg><span>Atlas <b>Litoral</b></span></div><nav aria-label="Secciones"><a href="#explorar">Mapa</a><a href="#herramientas">Análisis</a><a href="#datos">Fuentes</a></nav><button class="mast-button" id="import-open">Importar CSV</button></div></header>
+<header class="mast">
+  <div class="mast-in">
+    <a class="skip-to-plan" href="#campana">Ir al plan de campaña</a>
+    <a href="./" class="brand" aria-label="Atlas Litoral, inicio"><span class="brand-rose" aria-hidden="true"></span><span>Atlas <b>Litoral</b></span></a>
+    <nav aria-label="Secciones"><a href="#campana">Campaña</a><a href="#explorar">Mapa</a><a href="#herramientas">Análisis</a><a href="#datos">Fuentes</a></nav>
+    <button class="mast-button" id="import-open" type="button">Importar CSV</button>
+  </div>
+</header>
 <main>
-<section class="page-heading"><div><div class="eyebrow"><i></i> GUAYAS Y SANTA ELENA</div><h1>Mercado de vivienda</h1><p>Consulta la población, las edades y el ingreso de referencia de un área.</p></div><button type="button" id="age-start" class="button primary" disabled>Explorar por edad</button></section>
+<section class="page-heading" aria-labelledby="page-title">
+  <div class="hero-intro">
+    <span class="eyebrow">Guayas y Santa Elena</span>
+    <h1 id="page-title">¿Dónde probar tu <em>próxima campaña?</em></h1>
+    <p>Compara los sectores cercanos a un proyecto inmobiliario y mide cuánto cuesta conseguir una visita agendada en cada zona.</p>
+    <div class="hero-actions"><a class="button primary" href="#campana">Comparar sectores</a><a class="hero-map-link" href="#explorar">Explorar el mapa</a></div>
+  </div>
+  <figure class="hero-map"><img src="./assets/litoral-cantones.webp" width="1080" height="489" alt="Mapa de la costa de Ecuador con los límites cantonales de Guayas y Santa Elena y la ubicación de Guayaquil y Santa Elena."></figure>
+</section>
+<section id="campana" class="campaign-workspace panel age-panel credit-panel" aria-labelledby="campaign-heading">
+<div class="sectionbar"><h2 id="campaign-heading" tabindex="-1">Plan de campaña</h2><button id="campaign-export" class="button subtle" disabled>Descargar plan CSV</button></div>
+<p>Elige qué sectores explorar primero y compara su población con la de toda el área alrededor del proyecto.</p>
+<div class="campaign-layout"><div class="campaign-settings"><details id="campaign-settings-panel" open><summary class="campaign-settings-title">Configurar la prueba</summary>
+<div class="age-controls campaign-controls">
+<label>Tipo de análisis<select id="campaign-mode"><option value="near">Comparar sectores cercanos</option><option value="sector">Consultar un sector específico</option></select></label>
+<label>Perfil censal<select id="campaign-age" disabled><option value="all">Todas las edades</option></select></label>
+</div>
+<div id="campaign-near" class="age-controls campaign-controls">
+<div class="campaign-project-control"><label>Proyecto<select id="campaign-building" disabled><option value="">Cargando proyectos…</option></select></label>
+<button type="button" id="campaign-add-building" class="linkbutton" disabled>Agregar proyecto</button></div>
+<label>Radio de estudio (km)<input type="number" id="campaign-radius" min="0.1" max="250" step="any" value="10" required></label>
+<label>Priorizar por<select id="campaign-rank"><option value="population">Más residentes</option><option value="near">Cercanía al proyecto</option><option value="cohort" disabled>Más residentes del grupo de edad</option></select></label>
+<label>Sectores para la prueba<select id="campaign-limit"><option value="1">1 sector</option><option value="3" selected>3 sectores</option><option value="5">5 sectores</option></select></label>
+</div>
+<div id="campaign-specific" hidden>
+<form id="campaign-code-form" class="age-controls"><label>Código censal de 12 dígitos<input type="text" inputmode="numeric" id="campaign-code" placeholder="Ej. 090150224002" maxlength="12" pattern="[0-9]{12}" required></label><button type="submit" class="button subtle">Consultar sector</button><button type="button" id="campaign-pick" class="linkbutton">Elegir en el mapa</button><a href="#sectores">Buscar por lugar o parroquia</a></form>
+</div>
+</details>
+<p id="campaign-status" role="status">Cargando los conteos de residentes…</p><button id="campaign-retry" class="linkbutton" hidden>Reintentar carga</button></div>
+<div id="campaign-results" hidden><span id="campaign-announcement" class="sr" role="status"></span><h3 id="campaign-result-title"></h3><p id="campaign-summary"></p>
+<div id="campaign-single" hidden>
+<div class="age-numbers"><div><span>Residentes del sector en 2022</span><strong id="campaign-pop"></strong></div><div id="campaign-single-age"><span id="campaign-age-label"></span><strong id="campaign-count"></strong><small id="campaign-share"></small></div></div>
+<h3>Ubicación para Google Ads</h3><p id="campaign-location"></p>
+<details id="campaign-catalog" class="infra-method"><summary>Ver ubicaciones publicadas por Google en esta provincia</summary>
+<label>Ubicación disponible <select id="campaign-google-place" disabled></select></label><p class="mini" id="campaign-place-note" role="status"></p><button id="campaign-catalog-retry" class="linkbutton" hidden>Reintentar</button></details>
+<div class="age-controls"><label>Radio de referencia (km)<input type="number" id="campaign-ad-radius" value="1" min="1" max="250" step="any" required></label><button id="campaign-preview" class="button subtle">Ver polígono y radio en el mapa</button><button type="button" id="campaign-back" class="linkbutton">Volver a comparar sectores</button></div>
+</div>
+<div id="campaign-list" hidden>
+<div class="campaign-comparison">
+<div class="campaign-stat"><span>Sectores seleccionados</span><strong id="campaign-pilot-size"></strong><small id="campaign-area-size"></small></div>
+<div class="campaign-stat"><span>Residentes en la selección</span><strong id="campaign-pilot-pop"></strong><small id="campaign-pilot-coverage"></small></div>
+<div class="campaign-stat"><span>Residentes en todo el radio</span><strong id="campaign-area-pop"></strong><small id="campaign-rest-pop"></small></div>
+</div>
+<p id="campaign-age-benchmark" hidden></p>
+<details class="campaign-map-panel" id="campaign-map-panel"><summary>Ver las zonas de prueba en el mapa</summary><div id="campaign-plan-map" role="region" aria-label="Mapa del proyecto, los sectores piloto y los sectores de referencia"></div><p id="campaign-map-note" class="mini" role="status"></p></details>
+<div class="table-scroll campaign-table"><table><caption class="sr">Sectores seleccionados en orden de prioridad</caption><thead><tr><th scope="col">Sector censal</th><th scope="col">Distancia al proyecto</th><th scope="col">Residentes</th><th scope="col" id="campaign-age-column" hidden>Grupo de edad</th></tr></thead><tbody id="campaign-rows"></tbody></table></div>
+<p class="mini">INEC · Censo 2022. Se cuenta cada sector completo si su punto interior cae dentro del radio. El CSV incluye todos los sectores del radio e identifica los elegidos.</p>
+<div class="campaign-test"><h3>Cómo probar esta selección</h3><p id="campaign-test-area"></p>
+<details class="infra-method" id="campaign-references"><summary>Sectores de referencia para la prueba</summary>
+<p id="campaign-reference-summary"></p><div class="table-scroll campaign-table"><table><caption class="sr">Comparación de sectores piloto y sectores de referencia por población censada</caption><thead><tr><th scope="col">Sector piloto</th><th scope="col">Referencia sugerida</th><th scope="col">Diferencia de residentes (referencia − piloto)</th></tr></thead><tbody id="campaign-reference-rows"></tbody></table></div>
+<p class="mini">En orden de prioridad, cada sector piloto se empareja con el sector disponible de población más parecida. En un empate se elige la distancia al proyecto más similar y luego el código INEC menor. Cada sector participa una sola vez. Revisa también la oferta inmobiliaria, el acceso y la cobertura publicitaria de cada zona.</p></details>
+<p id="campaign-measure"><strong>Qué medir.</strong> Registra el gasto y las visitas agendadas por zona durante las mismas fechas. Compara el costo por visita con los resultados observados al pie de esta ficha.</p>
+<p id="campaign-hospital"></p></div>
+<div class="campaign-evidence"><h3>Consultas de compra registradas</h3><p id="campaign-observed"></p><button type="button" class="linkbutton" id="campaign-import">Importar consultas</button> <button type="button" class="linkbutton" id="campaign-all-origins" hidden>Ver todos los cantones de origen</button></div>
+<div id="campaign-outcomes"></div>
+</div>
+<p id="campaign-google-age" class="mini" hidden></p></div></div>
+<details class="infra-method"><summary>Cómo se eligen y activan las zonas</summary>
+<p>El criterio «Más residentes» ordena los sectores por población censada. «Cercanía» usa la distancia en línea recta entre el proyecto y el punto interior de cada sector. Los empates de población se resuelven por cercanía. El perfil de edad describe a los residentes censados en 2022. La selección geográfica es una hipótesis para una prueba comercial.</p>
+<p>Un sector INEC puede quedar repartido entre varias ubicaciones publicitarias. Revisa la cobertura que admite tu plataforma y el solapamiento de radios antes de contratar la pauta. Google Ads estima la edad y el alcance de sus usuarios.</p>
+<p><a href="https://support.google.com/google-ads/answer/1722043?hl=es">Ubicaciones y radios en Google Ads</a> · <a href="https://support.google.com/adspolicy/answer/143465?hl=es">Política de anuncios de vivienda</a></p>
+</details></section>
 <section class="workspace" id="explorar">
 <div class="mapcard">
 <div class="geo-switch"><h2 id="map-heading">Explorar el mapa</h2><span id="level-label">Nivel territorial</span>
@@ -78,7 +146,7 @@
 <label>Calcular el porcentaje entre<select id="earn-base"><option value="all">Todas las personas del grupo</option><option value="employed">Solo personas ocupadas</option></select></label>
 <p id="earn-domain"></p><strong id="earn-result"></strong><p id="earn-note" role="status"></p>
 <button type="button" class="linkbutton" id="earn-retry" hidden>Reintentar consulta</button>
-<div class="local-census"><b>CONTEO CENSAL DEL SECTOR</b><p id="earn-local"></p></div><p class="income-explainer">ENEMDU publica ingresos personales a nivel provincial. Este porcentaje describe Guayas o Santa Elena, no este sector ni esta parroquia. El Censo 2022 aporta el conteo local de residentes, pero no su ingreso individual.</p><details><summary>Cómo leer los datos</summary><p>El total incluye a quienes están sin empleo o fuera de la fuerza laboral, con cero ingreso laboral. Se excluyen ingresos desconocidos. Se requieren al menos 30 registros para mostrar un porcentaje.</p><a href="https://www.ecuadorencifras.gob.ec/enemdu-anual/" target="_blank" rel="noopener">INEC · ENEMDU anual 2025</a></details></section>
+<div class="local-census"><b id="earn-local-heading">Población censada del área</b><p id="earn-local"></p></div><p class="income-explainer">ENEMDU publica ingresos personales a nivel provincial. Este porcentaje describe Guayas o Santa Elena, no este sector ni esta parroquia. El Censo 2022 aporta el conteo local de residentes, pero no su ingreso individual.</p><details><summary>Cómo leer los datos</summary><p>El total incluye a quienes están sin empleo o fuera de la fuerza laboral, con cero ingreso laboral. Se excluyen ingresos desconocidos. Se requieren al menos 30 registros para mostrar un porcentaje.</p><a href="https://www.ecuadorencifras.gob.ec/enemdu-anual/" target="_blank" rel="noopener">INEC · ENEMDU anual 2025</a></details></section>
 </aside></section>
 <section id="herramientas" class="analysis-workspace" aria-labelledby="analysis-heading">
 <header class="analysis-navigation">
@@ -101,45 +169,11 @@
     <a href="#comparar">Comparar cantones</a>
   </div>
   <div><h3>Mercado de vivienda</h3>
-    <a href="#campana">Preparar una campaña</a>
     <a href="#credito">Crédito de vivienda</a>
     <a href="#mercado">Demanda observada</a>
     <a href="#escenario">Escenario financiero</a>
   </div>
 </nav>
-<section id="campana" class="panel age-panel credit-panel" data-analysis hidden>
-<div class="sectionbar"><h2>Campaña por sector y edad</h2><button id="campaign-export" class="button subtle" disabled>Descargar CSV</button></div>
-<p>Consulta cuántas personas de una edad vivían en un sector censal de Guayas o Santa Elena. También puedes comparar los sectores próximos a un edificio.</p>
-<div class="age-controls">
-<label>Área de estudio<select id="campaign-mode"><option value="sector">Un sector específico</option><option value="near">Sectores cerca de un edificio</option></select></label>
-<label>Edad de los residentes<select id="campaign-age" disabled><option>45–54 años</option></select></label>
-</div>
-<div id="campaign-specific">
-<form id="campaign-code-form" class="age-controls"><label>Código censal de 12 dígitos<input type="text" inputmode="numeric" id="campaign-code" placeholder="Ej. 090150224002" maxlength="12" pattern="[0-9]{12}" required></label><button type="submit" class="button subtle">Consultar sector</button><button type="button" id="campaign-pick" class="linkbutton">Elegir en el mapa</button><a href="#sectores">Buscar por lugar o parroquia</a></form>
-</div>
-<div id="campaign-near" class="age-controls" hidden>
-<label>Edificio<select id="campaign-building" disabled><option value="">Seleccionar edificio</option></select></label>
-<label>Radio de comparación (km)<input type="number" id="campaign-radius" min="0.1" max="250" step="any" value="10" required></label>
-<label>Ordenar sectores por<select id="campaign-rank"><option value="cohort">Más residentes de la edad elegida</option><option value="population">Más residentes totales</option><option value="near">Menor distancia</option><option value="demand" disabled>Consultas compatibles del cantón de origen</option></select></label>
-</div>
-<p id="campaign-status" role="status"></p><button id="campaign-retry" class="linkbutton" hidden>Reintentar carga</button>
-<div id="campaign-results" hidden><h3 id="campaign-result-title"></h3><p id="campaign-summary"></p>
-<div id="campaign-single" hidden>
-<div class="age-numbers"><div><span>Residentes del sector en 2022</span><strong id="campaign-pop"></strong></div><div><span id="campaign-age-label"></span><strong id="campaign-count"></strong><small id="campaign-share"></small></div></div>
-<h3>Ubicación para Google Ads</h3><p id="campaign-location"></p>
-<details id="campaign-catalog" class="infra-method"><summary>Ver ubicaciones publicadas por Google en esta provincia</summary>
-<label>Ubicación disponible <select id="campaign-google-place" disabled></select></label><p class="mini" id="campaign-place-note" role="status"></p><button id="campaign-catalog-retry" class="linkbutton" hidden>Reintentar</button></details>
-<div class="age-controls"><label>Radio de referencia (km)<input type="number" id="campaign-ad-radius" value="1" min="1" max="250" step="any" required></label><button id="campaign-preview" class="button subtle">Ver polígono y radio en el mapa</button></div>
-</div>
-<div id="campaign-list" hidden><div class="table-scroll"><table><thead><tr><th>Sector censal</th><th>Distancia</th><th>Residentes totales</th><th>Residentes del grupo</th><th>% del sector</th><th>Consultas del cantón en 90 días</th></tr></thead><tbody id="campaign-rows"></tbody></table></div>
-<h3>Mensaje sobre el proyecto</h3><p id="campaign-hospital"></p></div>
-<p id="campaign-google-age" class="mini"></p></div>
-<details class="infra-method"><summary>Del sector censal a una campaña de Google Ads</summary>
-<p>Las edades corresponden a todos los residentes con ubicación sectorial en el Censo 2022. Los porcentajes se calculan sobre la población total de cada sector. Google estima la edad de sus usuarios e incluye una categoría de edad desconocida. El alcance actual de un anuncio depende de Google Ads.</p>
-<p>Usa una ubicación disponible en Google Ads o un radio alrededor del punto de referencia. Google exige un mínimo de 1 km y un volumen suficiente de usuarios. El círculo puede incluir partes de otros sectores o dejar fuera partes del elegido. En campañas de búsqueda, la opción de presencia cubre a personas que están o suelen estar en el área.</p>
-<p>En la comparación por edificio se incluyen sectores con punto interior dentro del radio. La distancia es en línea recta. Las consultas importadas corresponden al cantón de origen completo. Para evaluar el mensaje sobre el hospital, compara las consultas compatibles y las visitas agendadas por zona y anuncio.</p>
-<p><a href="https://support.google.com/google-ads/answer/2580383?hl=es">Edades en Google Ads</a> · <a href="https://support.google.com/google-ads/answer/1722043?hl=es">Ubicaciones y radios</a> · <a href="https://support.google.com/adspolicy/answer/143465?hl=es">Política de anuncios de vivienda</a></p>
-</details></section>
 <template id="cohort-form">
 <label>Grupo de edad<select data-field="preset"><option value="working">25–45 años</option><option value="older">60 años o más</option><option value="sixty">60 años exactos</option><option value="all">Todas las edades</option><option value="custom">Personalizado</option></select></label>
 <label>Desde (años)<input data-field="from" type="number" min="0" max="120" step="1" value="25" required></label>
@@ -269,4 +303,4 @@
 <section class="sources" id="datos"><details><summary>Fuentes, cobertura y metodología</summary><div id="source-items"></div></details></section>
 <div class="footer"><b>Atlas Litoral</b><span>Guayas y Santa Elena · Ecuador</span></div></main>
 <dialog id="modal"><div class="dialog-head"><h2 id="modal-title"></h2><button id="close" class="close" aria-label="Cerrar">×</button></div><div id="modal-body"></div></dialog><div id="toast" role="status"></div>
-<script src="./app.js?v=e5e721d2c303" type="module" onerror="document.getElementById('map-load-notice').hidden=false;document.getElementById('map-load-message').textContent='No se pudo abrir el mapa interactivo. Se muestra la vista regional.'"></script></body></html>
+<script src="./app.js?v=aa2216932143" type="module" onerror="document.getElementById('map-load-notice').hidden=false;document.getElementById('map-load-message').textContent='No se pudo abrir el mapa interactivo. Se muestra la vista regional.'"></script></body></html>

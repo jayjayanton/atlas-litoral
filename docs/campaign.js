@@ -1,5 +1,6 @@
 import {showAnalysis} from './explorer-ui.js';
-import {distanceKm} from './model.js';
+import {rankSectors} from './campaign-model.js';
+import {initCampaignOutcomes} from './campaign-outcomes.js';
 import {nearestFacility} from './access-model.js';
 import {readCompressedJSON} from './compressed-json.js';
 
@@ -18,31 +19,38 @@ function adsAgeNote(range) {
   return 'Los intervalos de Google Ads que cubren este grupo son '+overlap.map(ageLabel).join(', ')+'. '+(exact?'Juntos cubren el rango elegido.':'Juntos abarcan '+span+'.');
 }
 
-function nearbySectors(rows,project,radius,age,matches,order) {
-  const nearby=[];
-  for(const [code,lat,lon,residents,ages] of rows) {
-    const distance=distanceKm(project.lat,project.lon,[lon,lat]);
-    if(distance<=radius) nearby.push({code,lat,lon,residents,count:ages[age],distance,queries:matches?.[code.slice(0,4)]??0});
-  }
-  nearby.sort((a,b)=>{
-    if(order==='demand' && a.queries!==b.queries) return b.queries-a.queries;
-    if(order==='cohort' && a.count!==b.count) return b.count-a.count;
-    if(order==='population' && a.residents!==b.residents) return b.residents-a.residents;
-    return a.distance-b.distance || a.code.localeCompare(b.code);
-  });
-  return nearby;
-}
+const columns = [
+  'codigo_sector','canton','cabecera_o_parroquia','latitud_interior','longitud_interior','censo',
+  'residentes_totales','edad_residentes','residentes_del_grupo','proporcion_del_sector','proyecto',
+  'radio_comparacion_km','orden','km_recta_al_proyecto','hospital_referencia','hospital_km_recta',
+  'zona_de_prueba','posicion','latitud_proyecto','longitud_proyecto','ubicacion_del_proyecto',
+  'sectores_en_seleccion','sectores_en_radio','residentes_en_seleccion','residentes_en_radio',
+  'proporcion_grupo_en_seleccion','proporcion_grupo_en_radio','criterio_de_medicion',
+  'localidad_del_punto_interior','consultas_compatibles_canton_origen_90d_una_fila_por_canton',
+  'sector_piloto_asociado','diferencia_residentes_referencia_menos_piloto'
+];
 
-export function initCampaign({state,cantons,parishes,selectBuilding,pickOnMap,previewRadius,download}) {
+const metric = 'Gasto publicitario en USD dividido por visitas agendadas en el mismo período';
+const locationType = project => project.reference ? 'Acceso aproximado de referencia' : 'Punto registrado';
+const countLabel = (value, singular, plural) => number.format(value) + ' ' + (value === 1 ? singular : plural);
+
+export function initCampaign({state,cantons,parishes,selectBuilding,pickOnMap,previewRadius,updatePlanMap,matchesForProject,localityFor,showOrigins,download}) {
   const building=$('campaign-building'), radius=$('campaign-radius'), cohort=$('campaign-age');
-  const mode=$('campaign-mode'), rank=$('campaign-rank'), status=$('campaign-status');
+  const mode=$('campaign-mode'), rank=$('campaign-rank'), status=$('campaign-status'), limit=$('campaign-limit');
   const codeInput=$('campaign-code'), adRadius=$('campaign-ad-radius');
+  const outcomes = initCampaignOutcomes($('campaign-outcomes'));
   const names=new Map([...cantons,...(parishes||[])].map(f=>[f.properties.code,f.properties.name]));
-  const codeLabel=code=>(names.get(code.slice(0,4))||code.slice(0,4))+' · Zona '+code.slice(6,9)+' · Sector '+code.slice(9);
-  let data,byCode,loading=false,failed=false,optionsList,exportRows=[],lastView;
-  let hospitals=null,facilitiesReady=false,selectedCode='';
+  const areaName=code=>names.get(code.slice(0,6)) || names.get(code.slice(0,4)) || code.slice(0,4);
+  const locality=row=>localityFor?.(row) || areaName(row.code);
+  const codeLabel=row=>locality(row)+' · Zona '+row.code.slice(6,9)+' · Sector '+row.code.slice(9);
+  let data,byCode,loading=false,failed=false,optionsList,lastView,exportPlan;
+  let hospitals=null,facilitiesReady=false,selectedCode='',mapKey='';
   const initial=new URL(location.href).searchParams;
-  if(initial.has('sectorCampana')) selectedCode=codeInput.value=initial.get('sectorCampana').trim();
+  if (matchMedia('(max-width:570px)').matches && !initial.has('sectorCampana')) $('campaign-settings-panel').open = false;
+  if(initial.has('sectorCampana')) {
+    selectedCode=codeInput.value=initial.get('sectorCampana').trim();
+    mode.value='sector';
+  }
 
   const catalogDetails=$('campaign-catalog'), places=$('campaign-google-place'), placeNote=$('campaign-place-note');
   const types={City:'Ciudad',District:'Distrito',Neighborhood:'Barrio',Province:'Provincia',Municipality:'Municipio','City Region':'Zona urbana','Postal Code':'Código postal',Canton:'Cantón'};
@@ -82,10 +90,9 @@ export function initCampaign({state,cantons,parishes,selectBuilding,pickOnMap,pr
       const json=await readCompressedJSON('./data/campaign-residents.json.gz');
       if(json.unit!=='residents') throw Error('Unidad censal desconocida');
       byCode=new Map(json.sectors.map(row=>[row[0],row]));
-      cohort.replaceChildren(...json.cohorts.map((range,i)=>new Option(ageLabel(range),i)));
-      const desired=initial.get('edad')||'45-54';
-      const index=json.cohorts.findIndex(range=>range.join('-')===desired);
-      cohort.value=String(index>=0?index:json.cohorts.findIndex(([lo,hi])=>lo===45&&hi===54));
+      cohort.replaceChildren(new Option('Todas las edades','all'),...json.cohorts.map((range,i)=>new Option(ageLabel(range),String(i))));
+      const index=json.cohorts.findIndex(range=>range.join('-')===initial.get('edad'));
+      cohort.value=index<0?'all':String(index);
       cohort.disabled=false;data=json;
     } catch {failed=true;}
     finally {loading=false;refresh();}
@@ -94,77 +101,208 @@ export function initCampaign({state,cantons,parishes,selectBuilding,pickOnMap,pr
     selectedCode=codeInput.value=code.trim();mode.value='sector';refresh();
     if(scroll)showAnalysis('campana',true);
   }
-  function exportRow(project,studyRadius,order,row,age,matches,hospital) {
-    return [row.code,names.get(row.code.slice(0,4)),names.get(row.code.slice(0,6)),row.lat,row.lon,
-      data.year,row.residents,ageLabel(data.cohorts[age]),row.count,row.count/row.residents,
-      project?.name||'',studyRadius,order,row.distance==null?'':Number(row.distance.toFixed(2)),
-      matches?row.queries:'',hospital?.item.name||'',hospital?Number(hospital.km.toFixed(2)):''];
+  function writeExport() {
+    if(!exportPlan) return;
+    const {project, radiusKm, order, age, plan, rows, hospital, matches}=exportPlan;
+    const pilotSize=plan?.shortlist.length ?? 0;
+    const paired=new Map(plan?.pairs.map(pair=>[pair.reference.code,pair.pilot]) ?? []);
+    const seenCantons=new Set();
+    const lines=rows.map((row,index)=>{
+      const canton=row.code.slice(0,4);
+      const queries=matches && !seenCantons.has(canton) ? (matches[canton]??0) : null;
+      const partner=paired.get(row.code);
+      seenCantons.add(canton);
+      return [
+        row.code,names.get(row.code.slice(0,4)),areaName(row.code),row.lat,row.lon,data.year,
+        row.residents,age ?? 'Todas las edades',row.count,row.count/row.residents,project?.name,radiusKm,
+        order,row.distance==null?null:Number(row.distance.toFixed(2)),hospital?.item.name,
+        hospital?Number(hospital.km.toFixed(2)):null,plan?(index<pilotSize?'Selección':'Resto del radio'):'Sector consultado',
+        plan?index+1:null,project?.lat,project?.lon,project?locationType(project):null,pilotSize||null,
+        plan?.rows.length,plan?.pilot,plan?.total,plan?plan.pilotGroup/plan.pilot:null,
+        plan?plan.group/plan.total:null,plan?metric:null,locality(row),queries,partner?.code,
+        partner?row.residents-partner.residents:null
+      ];
+    });
+    download(plan?'atlas_litoral_plan_de_campana.csv':'atlas_litoral_sector.csv',[columns,...lines]);
   }
+
+  function updateGeographies(project,radiusKm,plan) {
+    const references=plan?.pairs.map(pair=>pair.reference) ?? [];
+    const key=plan?JSON.stringify([project.id,project.lat,project.lon,project.name,radiusKm,plan.shortlist.map(row=>row.code),references.map(row=>row.code)]):'';
+    if(key!==mapKey) {
+      mapKey=key;
+      updatePlanMap?.(plan?{project,radius:radiusKm,shortlist:plan.shortlist,references}:null);
+    }
+    outcomes.setPlan(references.length?JSON.stringify([key,rank.value,limit.value,cohort.value,project.price,project.rooms,project.sector]):null);
+  }
+
+  function unavailable(message) {
+    status.textContent=message;
+    $('campaign-results').hidden=true;
+    $('campaign-export').disabled=true;
+    exportPlan=null;
+    updateGeographies(null,null,null);
+  }
+
+  function drawSingle(age,ageIndex) {
+    if(!selectedCode) return unavailable('Elige un sector en el mapa o ingresa su código censal.');
+    const row=byCode.get(selectedCode);
+    if(!row) return unavailable('Ese código no tiene un sector censal con población en el atlas. Revisa los 12 dígitos o elige el sector en el mapa.');
+    const [code,lat,lon,residents,ages]=row, count=ageIndex===null?residents:ages[ageIndex];
+    $('campaign-result-title').textContent=codeLabel({code,lat,lon});
+    $('campaign-summary').textContent=(code.startsWith('09')?'Guayas':'Santa Elena')+' · '+(names.get(code.slice(0,4))||code.slice(0,4))+' · Código INEC '+code;
+    $('campaign-announcement').textContent='Sector '+code+' · '+countLabel(residents,'residente','residentes')+'.';
+    $('campaign-pop').textContent=number.format(residents);
+    $('campaign-single-age').hidden=ageIndex===null;
+    $('campaign-count').textContent=number.format(count);
+    $('campaign-age-label').textContent=age;
+    $('campaign-share').textContent=percent.format(count/residents)+' de la población del sector';
+    $('campaign-location').textContent='Punto interior del sector: '+lat.toFixed(5)+', '+lon.toFixed(5)+'. Compara el polígono con un radio de referencia y verifica qué ubicación admite Google Ads.';
+    $('campaign-google-age').hidden=ageIndex===null;
+    if(age) $('campaign-google-age').textContent=adsAgeNote(data.cohorts[ageIndex]);
+    showCatalog();
+    updateGeographies(null,null,null);
+    exportPlan={age,order:'Sector elegido',rows:[{code,lat,lon,residents,count}]};
+  }
+
+  function renderRows(rows, age) {
+    const body=$('campaign-rows');
+    body.replaceChildren();
+    $('campaign-age-column').hidden=!age;
+    if(age) $('campaign-age-column').textContent=age;
+    for(const row of rows) {
+      const tr=body.insertRow(), first=tr.insertCell(), button=document.createElement('button');
+      button.type='button';button.className='linkbutton';button.textContent=codeLabel(row);
+      button.onclick=()=>useSector(row.code);
+      const small=document.createElement('small');small.textContent=row.code;
+      first.append(button,small);
+      tr.insertCell().textContent=km(row.distance);
+      tr.insertCell().textContent=number.format(row.residents);
+      if(age) tr.insertCell().textContent=number.format(row.count)+' ('+percent.format(row.count/row.residents)+')';
+    }
+  }
+
+  function renderReferences(plan) {
+    const {pairs,shortlist}=plan;
+    $('campaign-references').hidden=!pairs.length;
+    if(!pairs.length) return;
+    const body=$('campaign-reference-rows');
+    body.replaceChildren();
+    let pilotTotal=0,referenceTotal=0;
+    for(const {pilot,reference} of pairs) {
+      const tr=body.insertRow();
+      for(const row of [pilot,reference]) {
+        const cell=tr.insertCell(),button=document.createElement('button');
+        button.className='linkbutton';button.type='button';button.textContent=codeLabel(row);
+        button.onclick=()=>useSector(row.code);
+        const note=document.createElement('small');
+        note.textContent=row.code+' · '+countLabel(row.residents,'residente','residentes');
+        cell.append(button,note);
+      }
+      const delta=reference.residents-pilot.residents;
+      tr.insertCell().textContent=(delta>0?'+':'')+number.format(delta);
+      pilotTotal+=pilot.residents;
+      referenceTotal+=reference.residents;
+    }
+    $('campaign-reference-summary').textContent='Sectores piloto con referencia: '+number.format(pairs.length)+' de '+number.format(shortlist.length)+'. En estos pares se censaron '+number.format(pilotTotal)+' residentes en el piloto y '+number.format(referenceTotal)+' en la referencia.';
+  }
+
+  function renderObserved(shortlist,matches) {
+    const target=$('campaign-observed');
+    $('campaign-all-origins').hidden=!matches;
+    if(!matches) {
+      target.textContent='Importa tus consultas para ver desde qué cantones preguntaron por una vivienda compatible con este proyecto.';
+      return;
+    }
+    const ranked=Object.entries(matches).sort(([codeA,countA],[codeB,countB])=>countB-countA || codeA.localeCompare(codeB));
+    if(!ranked.length) {
+      target.textContent='Tu archivo no registra consultas compatibles con el sector, los dormitorios y el precio del proyecto en los últimos 90 días.';
+      return;
+    }
+    const pilotCantons=new Set(shortlist.map(row=>row.code.slice(0,4)));
+    const origins=ranked.slice(0,3).map(([code,count])=>(names.get(code)||code)+' ('+number.format(count)+')');
+    const outside=ranked.filter(([code])=>!pilotCantons.has(code)).reduce((sum,[,count])=>sum+count,0);
+    target.textContent='Principales cantones de origen en tu muestra de los últimos 90 días: '+origins.join(', ')+'. '+
+      (outside?countLabel(outside,'consulta proviene','consultas provienen')+' de cantones distintos a los del piloto. ':'')+
+      'Los conteos corresponden a cantones completos. Cada solicitud se cuenta una sola vez.';
+  }
+
+  function drawPlan(project,age,ageIndex,matches) {
+    if(!project) return unavailable('Agrega un proyecto para comparar los sectores cercanos.');
+    if(!radius.validity.valid) return unavailable('Ingresa un radio entre 0,1 y 250 km.');
+    const radiusKm=radius.valueAsNumber;
+    const plan=rankSectors(data.sectors,project,radiusKm,rank.value,Number(limit.value),ageIndex);
+    if(!plan.rows.length) return unavailable('No hay sectores censados dentro de este radio. Amplía el radio o elige otro proyecto.');
+
+    const {rows,shortlist,total,pilot,group,pilotGroup}=plan;
+    const order=rank.selectedOptions[0].textContent;
+    const paired=plan.pairs.length;
+    $('campaign-result-title').textContent='Selección para '+project.name;
+    $('campaign-summary').textContent=km(radiusKm)+' desde el '+locationType(project).toLowerCase()+' · '+order+'.';
+    $('campaign-announcement').textContent=countLabel(shortlist.length,'sector seleccionado','sectores seleccionados')+' de '+number.format(rows.length)+'. '+countLabel(pilot,'residente en la selección','residentes en la selección')+'.';
+    $('campaign-pilot-size').textContent=number.format(shortlist.length);
+    $('campaign-area-size').textContent='de '+countLabel(rows.length,'sector en el radio','sectores en el radio');
+    $('campaign-pilot-pop').textContent=number.format(pilot);
+    $('campaign-pilot-coverage').textContent=percent.format(pilot/total)+' de la población del radio';
+    $('campaign-area-pop').textContent=number.format(total);
+    $('campaign-rest-pop').textContent=number.format(total-pilot)+' fuera de la selección';
+    $('campaign-age-benchmark').hidden=!age;
+    if(age) $('campaign-age-benchmark').textContent=age+' · '+number.format(pilotGroup)+' residentes en la selección ('+percent.format(pilotGroup/pilot)+') y '+number.format(group)+' en todo el radio ('+percent.format(group/total)+').';
+    $('campaign-google-age').hidden=true;
+    renderRows(shortlist,age);
+
+    renderReferences(plan);
+    $('campaign-measure').hidden=!paired;
+    const test=$('campaign-test-area');
+    test.textContent=paired?'Prueba el mismo anuncio y la misma oferta con presupuestos equivalentes en la zona piloto y en la de referencia. Revisa los pares sugeridos y verifica que ambas zonas de pauta estén disponibles y no se superpongan.':'La selección cubre todos los sectores disponibles. Amplía el radio o reduce la selección para obtener otra zona de comparación.';
+    if(paired && paired<shortlist.length) test.textContent+=' Hay menos sectores de referencia que sectores piloto. Compara los pares disponibles o amplía el radio.';
+
+    const hospital=hospitals?.length?nearestFacility(project.lat,project.lon,hospitals):null;
+    $('campaign-hospital').hidden=!hospital;
+    if(hospital) $('campaign-hospital').textContent='Un dato para el anuncio: '+hospital.item.name+' figura a '+km(hospital.km)+' en línea recta desde el proyecto. Verifica el trayecto antes de ofrecer tiempos de viaje.';
+    renderObserved(shortlist,matches);
+    updateGeographies(project,radiusKm,plan);
+    exportPlan={project,radiusKm,order,age,plan,rows,hospital,matches};
+  }
+
   function refresh() {
-    const {project,buildings,matches}=state();
+    const {project:active,buildings,matches,sample,localities}=state();
+    const project=active ?? buildings[0];
     if(optionsList!==buildings) {
       optionsList=buildings;
-      const placeholder=new Option('Seleccionar edificio','');placeholder.disabled=true;
-      building.replaceChildren(placeholder,...buildings.map(b=>new Option(b.name,b.id)));
-      building.disabled=false;
+      building.replaceChildren(...buildings.map(b=>new Option(b.name+(b.reference?' · referencia':''),b.id)));
+      if(!buildings.length) building.add(new Option('Sin proyectos registrados',''));
+      building.disabled=!buildings.length;
     }
     building.value=project?.id||'';
     const single=mode.value==='sector';
-    $('campaign-specific').hidden=!single;$('campaign-near').hidden=single;
-    rank.querySelector('[value="demand"]').disabled=!matches;
-    if(!matches && rank.value==='demand') rank.value='cohort';
-    const key=[single,selectedCode,project,matches,rank.value,radius.value,cohort.value,data,failed,hospitals,facilitiesReady];
+    $('campaign-specific').hidden=!single;
+    $('campaign-near').hidden=single;
+    const ageIndex=cohort.value==='all'?null:Number(cohort.value);
+    rank.querySelector('[value="cohort"]').disabled=ageIndex===null;
+    if(ageIndex===null && rank.value==='cohort') rank.value='population';
+    const key=[single,selectedCode,project,matches,sample,localities,rank.value,radius.value,limit.value,cohort.value,data,failed,hospitals,facilitiesReady];
     if(lastView && key.every((v,i)=>v===lastView[i])) return;
     lastView=key;
-    $('campaign-results').hidden=true;$('campaign-export').disabled=true;
-    $('campaign-retry').hidden=!failed;exportRows=[];
+    $('campaign-retry').hidden=!failed;
     if(!data) {
-      status.textContent=failed?'No se pudo cargar la base censal.':'Cargando los conteos de residentes…';
+      unavailable(failed?'No se pudo cargar la base censal.':'Cargando los conteos de residentes…');
       if(!loading && !failed) loadData();
       return;
     }
-    const age=Number(cohort.value), range=data.cohorts[age];
-    $('campaign-single').hidden=!single;$('campaign-list').hidden=single;
-    $('campaign-google-age').textContent=adsAgeNote(range);
-    const header=['codigo_sector','canton','cabecera_o_parroquia','latitud_interior','longitud_interior','censo','residentes_totales','edad_residentes','residentes_del_grupo','proporcion_del_sector','proyecto','radio_comparacion_km','orden','km_recta_al_proyecto','consultas_canton_origen_90_dias','hospital_referencia','hospital_km_recta'];
-    if(single) {
-      if(!selectedCode){status.textContent='Elige un polígono en el mapa o ingresa su código censal.';return;}
-      const row=byCode.get(selectedCode);
-      if(!row){status.textContent='Ese código no tiene un sector censal con población en el atlas. Revisa los 12 dígitos o elige el sector en el mapa.';return;}
-      const [code,lat,lon,residents,ages]=row, count=ages[age], share=count/residents;
-      $('campaign-result-title').textContent=codeLabel(code);
-      $('campaign-summary').textContent=(code.startsWith('09')?'Guayas':'Santa Elena')+' · '+(names.get(code.slice(0,6))||code.slice(0,6))+' · Código INEC '+code;
-      $('campaign-pop').textContent=number.format(residents);
-      $('campaign-count').textContent=number.format(count);$('campaign-age-label').textContent=ageLabel(range);
-      $('campaign-share').textContent=percent.format(share)+' de la población del sector';
-      $('campaign-location').textContent='Punto interior del sector: '+lat.toFixed(5)+', '+lon.toFixed(5)+'. Compara el límite del INEC con un radio alrededor de este punto y verifica la disponibilidad del área en Google Ads.';
-      showCatalog();
-      exportRows=[header,exportRow(null,'','Sector elegido',{code,lat,lon,residents,count},age,null,null)];
-    } else {
-      if(!project){status.textContent='Selecciona el edificio para comparar los sectores cercanos.';return;}
-      if(!radius.validity.valid){status.textContent='Ingresa un radio entre 0,1 y 250 km.';return;}
-      const nearby=nearbySectors(data.sectors,project,radius.valueAsNumber,age,matches,rank.value);
-      if(!nearby.length){status.textContent='No hay sectores censados dentro de este radio. Amplía el radio o elige otro edificio.';return;}
-      const total=nearby.reduce((n,row)=>n+row.residents,0), group=nearby.reduce((n,row)=>n+row.count,0);
-      $('campaign-result-title').textContent='Primeros sectores para comparar';
-      $('campaign-summary').textContent=project.name+' · '+km(radius.valueAsNumber)+'. '+number.format(nearby.length)+' sectores con '+number.format(total)+' residentes. En 2022, '+number.format(group)+' tenían '+ageLabel(range)+'.';
-      const hospital=hospitals?.length?nearestFacility(project.lat,project.lon,hospitals):null;
-      $('campaign-hospital').textContent=hospital?hospital.item.name+' figura a '+km(hospital.km)+' en línea recta desde '+(project.reference?'el acceso aproximado':'el punto registrado')+' de '+project.name+'. Verifica el trayecto antes de anunciar tiempos de viaje.':facilitiesReady?'Sin referencia hospitalaria disponible.':'Cargando hospitales…';
-      const body=$('campaign-rows');body.replaceChildren();exportRows=[header];
-      for(const row of nearby.slice(0,5)) {
-        const tr=body.insertRow(), first=tr.insertCell(), button=document.createElement('button');
-        button.type='button';button.className='linkbutton';button.textContent=codeLabel(row.code);
-        button.onclick=()=>useSector(row.code);
-        const small=document.createElement('small');small.textContent=(names.get(row.code.slice(0,6))||'')+' · '+row.code;
-        first.append(button,small);
-        for(const value of [km(row.distance),number.format(row.residents),number.format(row.count),percent.format(row.count/row.residents),matches?number.format(row.queries):'Sin muestra']) tr.insertCell().textContent=value;
-        exportRows.push(exportRow(project,radius.valueAsNumber,rank.selectedOptions[0].textContent,row,age,matches,hospital));
-      }
-    }
-    status.textContent='';$('campaign-results').hidden=false;$('campaign-export').disabled=false;
+    status.textContent='';
+    exportPlan=null;
+    $('campaign-single').hidden=!single;
+    $('campaign-list').hidden=single;
+    const age=ageIndex===null?null:ageLabel(data.cohorts[ageIndex]);
+    if(single) drawSingle(age,ageIndex);
+    else drawPlan(project,age,ageIndex,project && (matchesForProject?matchesForProject(project):matches));
+    $('campaign-results').hidden=!exportPlan;
+    $('campaign-export').disabled=!exportPlan;
   }
   building.onchange=()=>selectBuilding(building.value);
-  radius.oninput=mode.onchange=cohort.onchange=rank.onchange=refresh;
+  radius.oninput=mode.onchange=cohort.onchange=rank.onchange=limit.onchange=refresh;
+  $('campaign-back').onclick=()=>{mode.value='near';refresh(); mode.focus();};
   $('campaign-code-form').onsubmit=e=>{e.preventDefault();useSector(codeInput.value,false);};
   $('campaign-pick').onclick=pickOnMap;
   $('campaign-preview').onclick=()=>{
@@ -173,7 +311,8 @@ export function initCampaign({state,cantons,parishes,selectBuilding,pickOnMap,pr
     if(row) previewRadius(row[0],row[1],row[2],adRadius.valueAsNumber);
   };
   $('campaign-retry').onclick=()=>{failed=false;lastView=null;refresh();};
-  $('campaign-export').onclick=()=>{if(exportRows.length) download('atlas_sectores_por_edad.csv',exportRows);};
+  $('campaign-export').onclick=writeExport;
+  $('campaign-all-origins').onclick=()=>showOrigins(exportPlan.project);
   refresh();
   return {refresh,useSector,setHospitals(items){facilitiesReady=true;hospitals=items;refresh();}};
 }

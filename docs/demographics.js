@@ -283,8 +283,7 @@ export function initDemographics({map,data,cantons,parishCatalog,index,state,col
     const kind=stats.kind;activate(kind);frameScope(false);state().territory.open(kind,code,true);
     $('explorar').scrollIntoView({block:'start'});
   };
-  $('age-start').onclick=()=>{activate(preferred,true);$('explorar').scrollIntoView({block:'start'});};
-  $('age-map').onclick=$('age-start').onclick;
+  $('age-map').onclick=()=>{activate(preferred,true);$('explorar').scrollIntoView({block:'start'});};
   map.on('moveend',paint);
   new MutationObserver(refresh).observe($('demografia'),{attributes:true,attributeFilter:['hidden']});
   if(query.get('capa')==='ages'){
@@ -297,7 +296,6 @@ export function initDemographics({map,data,cantons,parishCatalog,index,state,col
     if(query.get('medida')==='numero')config.metric='count';
     if(availableScopes.has(query.get('ambito')))config.scope=query.get('ambito');
   }
-  $('age-start').disabled=false;
   return {refresh,legend,ageRange:()=>[Number(config.from),config.to===''?120:Number(config.to)],
   async residentCount(code,lo,hi){
     const whole=all.get(code);
