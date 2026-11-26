@@ -1,3 +1,4 @@
+import {showAnalysis} from './explorer-ui.js';
 import {distanceKm} from './model.js';
 import {nearestFacility} from './access-model.js';
 import {readCompressedJSON} from './compressed-json.js';
@@ -91,7 +92,7 @@ export function initCampaign({state,cantons,parishes,selectBuilding,pickOnMap,pr
   }
   function useSector(code,scroll=true) {
     selectedCode=codeInput.value=code.trim();mode.value='sector';refresh();
-    if(scroll) $('campana').scrollIntoView({block:'start'});
+    if(scroll)showAnalysis('campana',true);
   }
   function exportRow(project,studyRadius,order,row,age,matches,hospital) {
     return [row.code,names.get(row.code.slice(0,4)),names.get(row.code.slice(0,6)),row.lat,row.lon,

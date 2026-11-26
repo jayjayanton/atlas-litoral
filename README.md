@@ -6,7 +6,11 @@ Atlas de acceso a servicios y mercado de vivienda en Guayas y Santa Elena, Ecuad
 
 ## Explorar y compartir territorios
 
-En **Ver por**, selecciona cantón, parroquia, zona censal o sector censal. El mapa encuadra la geometría seleccionada y atenúa el exterior. La ficha muestra la población de esa unidad cuando se dispone de un desglose. Los conteos de zona y sector incluyen residentes con código sectorial publicable. En las parroquias urbanas municipales de Guayaquil, el selector ofrece los sectores cuyo punto interior cae dentro del polígono municipal; cada conteo corresponde al sector o zona completos. Los límites urbanos se consultan en el servicio municipal y se incluye una copia de respaldo del [servicio de Guayaquil](https://services7.arcgis.com/NWWHhu45fOJtCgG3/arcgis/rest/services/LIMITE_PARROQUIAS_URBANAS/FeatureServer/0).
+En **Nivel territorial**, elige cantón, parroquia, zona censal o sector censal. Al tocar el mapa se actualiza la ficha del área y se conserva el encuadre. **Buscar un área** permite navegar por nombre o código y **Acercar al área** encuadra la selección. La ficha muestra población y cuatro grupos de edad del Censo 2022 cuando hay desglose. El ingreso mediano mensual corresponde a la provincia, según la ENIGHUR 2024–25.
+
+En **Mostrar en el mapa**, los focos de escuelas y de hospitales MSP muestran establecimientos por 10.000 habitantes en cada cantón. El contorno discontinuo identifica los focos estadísticamente significativos. La capa escolar identifica Balzar y El Empalme. La hospitalaria no registra focos significativos entre los 28 cantones. Abre **Herramientas de análisis** para ver las pruebas, preparar una campaña o comparar unidades.
+
+Los límites de zona se reconstruyen desde la cartografía oficial del INEC con `/usr/bin/python3 scripts/build_zone_outlines.py sectores_anonimizados.gpkg` en un entorno con GDAL. El mapa usa el polígono sectorial para identificar la zona en el punto consultado.
 
 **Compartir área** abre un enlace que conserva la selección, incluso sin edificio. Ejemplos: [parroquia Manglaralto](https://jayjayanton.github.io/atlas-litoral/?area=240154#explorar), [zona 001](https://jayjayanton.github.io/atlas-litoral/?area=240154001#explorar) y [sector 002](https://jayjayanton.github.io/atlas-litoral/?area=240154001002#explorar). Los edificios admiten las mismas cuatro escalas de zoom.
 

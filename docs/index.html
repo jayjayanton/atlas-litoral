@@ -1,39 +1,38 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#132f39"><title>Atlas Litoral · Mercado de vivienda</title><link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./style.css"><script src="./vendor/leaflet.js"></script></head>
 <body>
-<header class="mast"><div class="mast-in"><div class="brand"><svg viewBox="0 0 34 34" aria-hidden="true"><g fill="none" stroke="#9de3cb" stroke-width="1.8"><path d="M2 24 12 14l6 3L31 4M2 30l11-11 6 3L32 9M2 18l9-10 6 3L28 1"/></g></svg><span>Atlas <b>Litoral</b></span></div><nav aria-label="Secciones"><a href="#explorar">Explorar</a><a href="#campana">Campaña</a><a href="#demografia">Demografía</a><a href="#sectores">Sectores censales</a><a href="#credito">Crédito</a><a href="#aptitud">Aptitud</a><a href="#infra">Accesibilidad</a><a href="#colegiaturas">Colegiaturas</a><a href="#comparar">Cantones</a><a href="#datos">Fuentes</a></nav><button class="mast-button" id="import-open">Importar CSV</button></div></header>
+<header class="mast"><div class="mast-in"><div class="brand"><svg viewBox="0 0 34 34" aria-hidden="true"><g fill="none" stroke="#9de3cb" stroke-width="1.8"><path d="M2 24 12 14l6 3L31 4M2 30l11-11 6 3L32 9M2 18l9-10 6 3L28 1"/></g></svg><span>Atlas <b>Litoral</b></span></div><nav aria-label="Secciones"><a href="#explorar">Mapa</a><a href="#herramientas">Análisis</a><a href="#datos">Fuentes</a></nav><button class="mast-button" id="import-open">Importar CSV</button></div></header>
 <main>
-<section class="page-heading"><div><div class="eyebrow"><i></i> GUAYAS Y SANTA ELENA</div><h1>Mercado de vivienda</h1><p>Explora los cantones, ubica tu proyecto y <a href="#campana">compara zonas para una campaña</a>.</p></div><button id="add-building" class="button primary" disabled><span aria-hidden="true">＋</span> Agregar edificio</button></section>
+<section class="page-heading"><div><div class="eyebrow"><i></i> GUAYAS Y SANTA ELENA</div><h1>Mercado de vivienda</h1><p>Consulta la población, las edades y el ingreso de referencia de un área.</p></div></section>
 <section class="workspace" id="explorar">
-<div class="mapcard"><div class="map-head"><div><span class="kicker">EXPLORADOR</span><h2 id="map-heading">Mapa territorial</h2></div><label class="selectwrap"><span class="sr">Provincia en el mapa</span><select id="province"><option value="">Ambas provincias</option><option>Guayas</option><option>Santa Elena</option></select></label></div>
-<div class="building-bar">
+<div class="mapcard">
+<div class="geo-switch"><h2 id="map-heading">Explorar el mapa</h2><span id="level-label">Nivel territorial</span>
+<div class="level-buttons" role="group" aria-labelledby="level-label"><button type="button" data-level="canton" aria-pressed="true" disabled>Cantón</button><button type="button" data-level="parish" aria-pressed="false" disabled>Parroquia</button><button type="button" data-level="zone" aria-pressed="false" disabled>Zona censal</button><button type="button" data-level="sector" aria-pressed="false" disabled>Sector censal</button></div>
+<select id="geo-level" aria-label="Nivel territorial" hidden disabled><option value="canton">Cantón</option><option value="parish">Parroquia</option><option value="zone">Zona censal</option><option value="sector">Sector censal</option></select></div>
+<div class="map-options"><label class="theme-label">Mostrar en el mapa<select id="layer"><option id="site-opt" value="site" disabled>Aptitud en un punto</option><option value="population">Población por cantón</option><option id="hs-opt" value="hot-school" disabled>Focos de escuelas</option><option id="hh-opt" value="hot-hospital" disabled>Focos de hospitales MSP</option><option value="income">Ingreso mediano · provincias</option><option id="sector-income-option" value="sector-income" disabled>Ingresos por tramo · sectores censales</option><option value="sectors" id="sector-option" disabled>Sectores censales · hogares e ingresos</option><option value="ages" id="age-option" disabled>Edad de la población por parroquia</option><option value="demand">Solicitudes compatibles por origen</option><option value="credit">Crédito de vivienda por umbral</option><option value="loans">Operaciones de crédito publicadas</option><option id="suit-opt" value="suitability" disabled>Aptitud ponderada por densidad y vías</option><option id="grid-opt" value="access" disabled>Aptitud por accesibilidad</option><option id="regional-fee-opt" value="regional-fees" disabled>Pensión cantonal de bachillerato · mayo 2026</option><option id="fee-opt" value="fees" disabled>Pensiones escolares documentadas</option></select></label>
+<details id="geo-search"><summary>Buscar un área</summary><div class="search-fields"><label>Provincia<select id="province"><option value="">Ambas provincias</option><option>Guayas</option><option>Santa Elena</option></select></label><label>Cantón<select id="canton" aria-label="Seleccionar cantón"></select></label>
+<div id="parish-field"><label><span id="parish-label">Parroquia</span><select id="parish-select" disabled></select></label><small id="parish-note"></small></div>
+<div id="geo-children" hidden><label>Zona censal<select id="geo-zone"></select></label><label id="geo-sector-field">Sector censal<select id="geo-sector"></select></label></div></div></details></div>
+<p id="map-hint"></p><p id="geo-status" role="status"></p>
+<div class="income-controls" id="income-controls" hidden><label for="income-band">Ingreso mensual del hogar</label><select id="income-band"></select><small>Color según el porcentaje estimado de hogares en el tramo elegido. Censo 2022 y ENIGHUR 2024–2025.</small></div>
+<div class="mapstage"><div class="map-canvas"><div id="map" aria-label="Mapa interactivo de Guayas y Santa Elena"></div><div class="maptools"><button id="all-map" title="Volver a la vista general" aria-label="Volver a la vista general">⛶</button></div><div class="map-selection"><span id="selection-label" role="status"></span><a href="#ficha" id="profile-link">Ver ficha ↓</a></div></div><div class="maplegend"><b id="legend-title"></b><div id="legend"></div><div class="admin-boundary-keys"><small id="geo-boundary-key" hidden></small><small class="canton-key">Límite cantonal</small><small class="province-key">Límite provincial</small></div></div><div id="pin-tip" hidden>Toca el mapa para ubicar el edificio. <button id="cancel-pick">Cancelar</button></div></div>
+
+
+<details class="map-extras"><summary>Edificios, servicios y vías</summary><div class="building-bar"><button id="add-building" class="button primary" disabled><span aria-hidden="true">＋</span> Agregar edificio</button>
 <button type="button" class="button subtle" id="site-start" disabled>Analizar un punto</button>
 <label for="building-select">Edificios</label>
 <select id="building-select" autocomplete="off" disabled><option>Cargando…</option></select>
 <button id="edit" class="linkbutton" disabled>Editar</button>
 <button id="share-building" class="linkbutton" disabled>Compartir ubicación</button>
 </div>
-<div class="territory-bar">
-<label>Ver por<select id="geo-level" disabled><option value="region">Vista regional</option><option value="canton">Cantón</option><option value="parish">Parroquia</option><option value="zone">Zona censal</option><option value="sector">Sector censal</option></select></label>
-<label>Cantón<select id="canton" aria-label="Seleccionar cantón"></select></label>
-</div>
-<div class="parish-bar">
-<label for="parish-select" id="parish-label">Parroquia</label>
-<select id="parish-select" disabled><option>Todo el cantón</option></select>
-<label class="parish-toggle"><input type="checkbox" id="parish-outlines" disabled>Ver límites</label>
-<small id="parish-note" role="status"></small></div>
-<div class="territory-foot"><div id="geo-children" class="geo-children" hidden><label>Zona censal<select id="geo-zone"></select></label><label id="geo-sector-field">Sector censal<select id="geo-sector"></select></label></div>
-<button type="button" id="geo-pin" class="linkbutton" hidden>Ubicar mi pin en esta división</button><button type="button" id="geo-share" class="linkbutton" hidden>Compartir área</button>
-<small id="geo-status" role="status"></small></div>
 <div class="infra-toolbar" aria-label="Capas de infraestructura" id="overlay-toolbar">
 <label><input type="checkbox" id="ol-school" disabled><i class="geo-symbol school"></i>Escuelas</label>
 <label><input type="checkbox" id="ol-public" disabled><i class="geo-symbol public"></i>Hospitales públicos</label>
 <label><input type="checkbox" id="ol-private" disabled><i class="geo-symbol private"></i>Hospitales privados</label>
 <label id="unknown-label" hidden><input type="checkbox" id="ol-unknown" disabled><i class="geo-symbol unknown"></i>Sin clasificar</label>
-<label><input type="checkbox" id="ol-roads" disabled checked><i class="geo-symbol roads"></i>Vías principales</label></div>
-<div class="income-controls" id="income-controls" hidden><label for="income-band">Ingreso mensual del hogar</label><select id="income-band"></select><small>Color según el porcentaje estimado de hogares en el tramo elegido. Censo 2022 y ENIGHUR 2024–2025.</small></div>
-<div class="mapstage"><div id="map" aria-label="Mapa interactivo de Guayas y Santa Elena"></div><div class="maptools"><button id="all-map" title="Ver las dos provincias" aria-label="Ver las dos provincias">⛶</button></div><div class="maplegend"><b id="legend-title"></b><div id="legend"></div><div class="admin-boundary-keys"><small id="geo-boundary-key" hidden></small><small class="canton-key">Límite cantonal</small><small class="province-key">Límite provincial</small></div></div><div id="pin-tip" hidden>Toca el mapa para ubicar el edificio. <button id="cancel-pick">Cancelar</button></div></div>
-<div class="map-foot"><span class="kicker">CAPA</span><label class="selectwrap"><span class="sr">Capa del mapa</span><select id="layer"><option id="site-opt" value="site" disabled>Aptitud en un punto</option><option value="population">Población censada</option><option value="income">Ingreso mediano · provincias</option><option id="sector-income-option" value="sector-income" disabled>Ingresos por tramo · sectores censales</option><option value="sectors" id="sector-option" disabled>Sectores censales · hogares e ingresos</option><option value="ages" id="age-option" disabled>Edad de la población por parroquia</option><option value="demand">Solicitudes compatibles por origen</option><option value="credit">Crédito de vivienda por umbral</option><option value="loans">Operaciones de crédito publicadas</option><option id="suit-opt" value="suitability" disabled>Aptitud ponderada por densidad y vías</option><option id="grid-opt" value="access" disabled>Aptitud por accesibilidad</option><option id="regional-fee-opt" value="regional-fees" disabled>Pensión cantonal de bachillerato · mayo 2026</option><option id="fee-opt" value="fees" disabled>Pensiones escolares documentadas</option><option id="hs-opt" value="hot-school" disabled>Focos de escuelas</option><option id="hh-opt" value="hot-hospital" disabled>Focos de hospitales MSP</option></select></label><button class="textbtn" id="focus-project" hidden>Ver proyecto</button></div>
+<label><input type="checkbox" id="ol-roads" disabled><i class="geo-symbol roads"></i>Vías principales</label></div>
+<label class="extra-outlines"><input type="checkbox" id="parish-outlines" disabled> Límites parroquiales del cantón</label>
+<button class="textbtn" id="focus-project" hidden>Ver proyecto</button></details>
 <section class="site-card" id="site-card" hidden aria-labelledby="site-heading">
 <div class="sectionbar"><h3 id="site-heading">Aptitud en un punto</h3><a href="#aptitud">Ajustar pesos y radio</a></div>
 <p>Toca el mapa para colocar o mover el pin, o ingresa sus coordenadas.</p>
@@ -41,14 +40,21 @@
 <div id="site-result" hidden><p id="site-location"></p><strong id="site-summary" role="status"></strong><p id="site-counts"></p><details id="site-breakdown"><summary>Aportes al puntaje</summary><ul id="site-parts"></ul></details><ul id="site-nearest"></ul>
 <small id="site-distance-note">Distancias en línea recta a los registros disponibles. Turismo se mide hasta el punto registrado del atractivo y se muestra como referencia. <a href="https://www.iedg.gob.ec/servicios/descargas/" target="_blank" rel="noopener">Inventario turístico IEDG, 2026</a></small></div>
 </section></div>
-<aside class="detail"><div id="canton-facts"><div class="detail-top"><span class="eyebrow">FICHA CANTONAL</span><h2 id="canton-name"></h2><div class="detail-prov" id="detail-prov"></div></div>
-<div class="keymetric"><span>Población censada</span><strong id="pop">—</strong><small>habitantes · Censo 2022</small></div>
-<div class="metric"><div><h3>Ingreso mensual mediano</h3><small id="income-scale"></small><button type="button" class="linkbutton" id="province-income-map">Ver mapa provincial</button></div><strong id="income">—</strong></div>
-<div class="metric"><div><h3>Mediana del préstamo</h3><small id="loan-note"></small></div><strong id="loan">—</strong></div>
-</div><div id="geo-facts" hidden><div class="detail-top"><span id="geo-kind" class="eyebrow"></span><h2 id="geo-name"></h2><div class="detail-prov" id="geo-path"></div></div>
+<aside class="detail" id="ficha" aria-label="Ficha del área"><div id="profile-empty" class="detail-top" hidden><span class="eyebrow">FICHA DEL ÁREA</span><h2>Selecciona un área</h2><p id="profile-prompt"></p></div>
+<div id="canton-facts"><div class="detail-top"><span class="eyebrow">FICHA DE CANTÓN</span><h2 id="canton-name"></h2><div class="detail-prov" id="detail-prov"></div></div>
+<div class="keymetric"><span>Población censada</span><strong id="pop">—</strong><small>habitantes · Censo 2022</small></div></div>
+<div id="geo-facts" hidden><div class="detail-top"><span id="geo-kind" class="eyebrow"></span><h2 id="geo-name"></h2><div class="detail-prov" id="geo-path"></div></div>
 <div class="keymetric"><span>Población censada</span><strong id="geo-pop"></strong><small id="geo-source"></small></div></div>
+<div id="profile-stats"><section class="profile-block"><h3>Edad de los residentes</h3><ul id="profile-ages"></ul><small id="age-profile-note"></small></section>
+<section class="profile-block income-block"><h3>Ingreso mediano mensual del hogar</h3><strong id="income">—</strong><small id="income-scale"></small><button type="button" class="linkbutton" id="province-income-map">Ver mapa provincial</button></section>
+<section id="profile-hot" class="profile-block" hidden><h3 id="profile-hot-title"></h3><p id="profile-hot-value"></p></section>
+<details id="loan-block" class="profile-block"><summary>Crédito de vivienda del cantón</summary><div class="metric"><div><h3>Mediana del préstamo</h3><small id="loan-note"></small></div><strong id="loan">—</strong></div></details>
+</div><div class="profile-actions"><button type="button" id="geo-zoom" class="linkbutton" hidden>Acercar al área</button><button type="button" id="geo-share" class="linkbutton" hidden>Compartir área</button><button type="button" id="geo-pin" class="linkbutton" hidden>Ubicar mi pin</button></div>
 <div class="detail-bottom" id="active-project" hidden><div class="kicker">PROYECTO ACTIVO</div><button id="p-link" class="project-link"><span class="pin-glyph" aria-hidden="true">●</span><span><b id="project-name"></b><small id="project-where"></small></span></button></div></aside></section>
-<section id="campana" class="panel age-panel credit-panel">
+<section id="herramientas" class="analysis-navigation"><h2>Herramientas de análisis</h2>
+<label><span class="sr">Elegir herramienta</span><select id="tool-choice">
+<option value="">Elegir una herramienta…</option><option value="demografia">Demografía por edad</option><option value="sectores">Hogares e ingresos por sector</option><option value="campana">Preparar una campaña</option><option value="credito">Crédito de vivienda</option><option value="aptitud">Aptitud de una ubicación</option><option value="infra">Accesibilidad y focos de servicios</option><option value="colegiaturas">Pensiones escolares</option><option value="mercado">Demanda y escenario financiero</option><option value="comparar">Comparar cantones</option></select></label></section>
+<section id="campana" class="panel age-panel credit-panel" data-analysis hidden>
 <div class="sectionbar"><h2>Campaña por sector y edad</h2><button id="campaign-export" class="button subtle" disabled>Descargar CSV</button></div>
 <p>Consulta cuántas personas de una edad vivían en un sector censal de Guayas o Santa Elena. También puedes comparar los sectores próximos a un edificio.</p>
 <div class="age-controls">
@@ -61,7 +67,7 @@
 <div id="campaign-near" class="age-controls" hidden>
 <label>Edificio<select id="campaign-building" disabled><option value="">Seleccionar edificio</option></select></label>
 <label>Radio de comparación (km)<input type="number" id="campaign-radius" min="0.1" max="250" step="any" value="10" required></label>
-<label>Ordenar sectores por<select id="campaign-rank"><option value="cohort">Más residentes de la edad elegida</option><option id="site-opt" value="site" disabled>Aptitud en un punto</option><option value="population">Más residentes totales</option><option value="near">Menor distancia</option><option value="demand" disabled>Consultas compatibles del cantón de origen</option></select></label>
+<label>Ordenar sectores por<select id="campaign-rank"><option value="cohort">Más residentes de la edad elegida</option><option value="population">Más residentes totales</option><option value="near">Menor distancia</option><option value="demand" disabled>Consultas compatibles del cantón de origen</option></select></label>
 </div>
 <p id="campaign-status" role="status"></p><button id="campaign-retry" class="linkbutton" hidden>Reintentar carga</button>
 <div id="campaign-results" hidden><h3 id="campaign-result-title"></h3><p id="campaign-summary"></p>
@@ -81,7 +87,7 @@
 <p>En la comparación por edificio se incluyen sectores con punto interior dentro del radio. La distancia es en línea recta. Las consultas importadas corresponden al cantón de origen completo. Para evaluar el mensaje sobre el hospital, compara las consultas compatibles y las visitas agendadas por zona y anuncio.</p>
 <p><a href="https://support.google.com/google-ads/answer/2580383?hl=es">Edades en Google Ads</a> · <a href="https://support.google.com/google-ads/answer/1722043?hl=es">Ubicaciones y radios</a> · <a href="https://support.google.com/adspolicy/answer/143465?hl=es">Política de anuncios de vivienda</a></p>
 </details></section>
-<section id="demografia" class="panel age-panel">
+<section id="demografia" class="panel age-panel" data-analysis hidden>
 <div class="sectionbar"><h2>Edad de la población</h2><button class="button subtle" id="age-map" disabled>Ver porcentajes en el mapa</button></div>
 <p>Residentes censados por el INEC en 2022. Selecciona una cabecera cantonal o parroquia rural para comparar edades dentro de esa área.</p>
 <p id="age-status" role="status">Cargando población censada…</p>
@@ -98,7 +104,7 @@
 <h3>Los cinco grupos de edad más numerosos</h3><ol id="age-bars"></ol></div></div>
 <details class="infra-method"><summary>Geografía y fuente</summary><p>La base pública de población contiene la edad en años cumplidos. Los conteos se suman por código DPA de 2022. Las parroquias urbanas municipales que el censo reúne en una cabecera comparten esa unidad de publicación. La comparación del mapa utiliza el porcentaje de residentes que pertenece al rango elegido.</p><p>Por debajo de la parroquia, el INEC usa zonas y sectores censales. En áreas amanzanadas, los sectores incluyen manzanas. En áreas dispersas se identifican localidades. En la publicación más detallada algunos códigos y variables están anonimizados.</p>
 <a href="https://www.ecuadorencifras.gob.ec/documentos/web-inec/bd-censo/5.GUIA_BASE_CPV_2022_v6.pdf" target="_blank" rel="noopener">Guía de la base censal del INEC</a> · <a href="https://www.ecuadorencifras.gob.ec/documentos/web-inec/bd-censo/sector/BDD_CPV2022_SECT_CSV.zip">Fuente de población 2022 (ZIP, 595 MB)</a></details></section>
-<section id="sectores" class="panel age-panel credit-panel">
+<section id="sectores" class="panel age-panel credit-panel" data-analysis hidden>
 <div class="sectionbar"><h2>Consultar un sector censal</h2><button class="button subtle" id="sector-map" disabled>Elegir en el mapa</button></div>
 <p>Un sector censal es el área que delimita el INEC para contar viviendas y personas. Dentro de cada cabecera o parroquia, una zona censal agrupa varios sectores. Sus números se repiten en otras zonas.</p>
 <p id="sector-status" role="status">Cargando sectores…</p>
@@ -131,7 +137,7 @@
 <p id="sector-coverage"></p>
 <p><a href="https://www.ecuadorencifras.gob.ec/documentos/web-inec/bd-censo/5.GUIA_BASE_CPV_2022_v6.pdf">Guía censal</a> · <a href="https://www.ecuadorencifras.gob.ec/documentos/web-inec/capa/CapaSectores.zip">Cartografía sectorial del INEC</a> · <a href="https://www.ecuadorencifras.gob.ec/encuesta-nacional-de-ingresos-y-gastos-de-los-hogares-urbanos-y-rurales/">ENIGHUR 2024–2025</a></p>
 </details></section>
-<section id="credito" class="panel credit-panel">
+<section id="credito" class="panel credit-panel" data-analysis hidden>
 <div class="sectionbar"><h2>Crédito de vivienda por destino</h2><button class="button subtle" id="credit-map">Ver en el mapa</button></div>
 <p>Compara el financiamiento observado en Guayas y Santa Elena. El destino indica dónde se usaron los fondos. La residencia del comprador se investiga con consultas o ventas que registren su origen.</p>
 <div class="credit-controls">
@@ -147,7 +153,7 @@
 <div class="table-scroll"><table><thead><tr><th>Destino</th><th>Créditos totales</th><th>Promedio</th><th>Créditos sobre el umbral</th><th>Rango más frecuente</th></tr></thead><tbody id="credit-rows"></tbody></table></div>
 <div class="credit-footer"><button id="credit-csv" class="linkbutton">Descargar comparación (CSV)</button><a href="https://www.superbancos.gob.ec/estadisticas/portalestudios/volumen-de-credito/" target="_blank" rel="noopener">Fuente bancaria</a></div>
 <details class="infra-method"><summary>Cómo leer los conteos</summary><p>Una cifra única indica un conteo exacto. Dos cifras indican el mínimo y el máximo compatibles con los grupos publicados, su número de créditos, su monto total y, cuando existe, el rango de montos. Un préstamo exactamente igual al umbral queda fuera. Los lugares sin registros se muestran en gris. Los conteos corresponden al período y a las entidades indicadas.</p></details></section>
-<section id="aptitud" class="panel suitability">
+<section id="aptitud" class="panel suitability" data-analysis hidden>
 <div class="sectionbar"><h2>Aptitud del sitio</h2><button class="button subtle" id="suit-start" disabled>Analizar un punto en el mapa</button></div>
 <p>Coloca un pin o selecciona un edificio para calcular su aptitud. Ajusta el peso de las escuelas, los hospitales y las vías en el puntaje.</p>
 <p id="suit-status" role="status">Cargando la malla de análisis…</p>
@@ -167,7 +173,7 @@
 <details class="infra-method"><summary>Cómo se calcula la aptitud</summary><p>La malla tiene centros en tierra separados por 500 m. El color entre centros es una estimación por distancia inversa. Al tocar el mapa se consulta la muestra cercana. En cada centro se cuentan las sedes educativas y hospitales registrados dentro del radio elegido, incluso al otro lado de un límite cantonal. La densidad es el conteo dividido por el área total del círculo (π × radio²), incluida el agua en la costa. Dos sedes registradas en el mismo predio cuentan por separado.</p>
 <p>Para cada tipo de establecimiento, la densidad más alta de toda la malla de Guayas y Santa Elena recibe 100 puntos. Los demás valores se puntúan en proporción. Para el pin se cuentan los establecimientos desde sus coordenadas y se usa la misma escala, con un tope de 100. La vía principal más próxima aporta 100 puntos a distancia cero y pierde puntos linealmente hasta el límite vial. La aptitud es el promedio de los tres componentes ponderados. Un peso de cero excluye ese criterio.</p>
 <p>El filtro territorial cambia los puntos que se comparan y conserva la escala regional. Los círculos representan muestras del territorio. Los resultados dependen del inventario cartografiado, del radio y de los pesos. Las distancias son en línea recta. La capacidad de los establecimientos, el tiempo de viaje y la demanda de vivienda requieren datos adicionales.</p></details></div></section>
-<section class="panel infrastructure" id="infra">
+<section class="panel infrastructure" id="infra" data-analysis hidden>
 <div class="sectionbar"><div><span class="kicker">ANÁLISIS ESPACIAL</span><h2>Accesibilidad del proyecto</h2></div><button id="national-roads" class="button subtle" disabled>Ver vías de Ecuador</button></div>
 <div id="infra-status" class="mini" role="status">Cargando los inventarios geográficos…</div>
 <div class="access-layout">
@@ -184,7 +190,7 @@
 <p id="hot-region" class="mini"></p><p id="hotspot-result" aria-live="polite"></p><button id="show-hotspot" class="linkbutton thematic" disabled>Ver focos en el mapa</button>
 </div></div><details class="infra-method"><summary>Datos, descargas y método de cálculo</summary><div id="infra-doc"></div></details>
 </section>
-<section class="panel fee-panel" id="colegiaturas">
+<section class="panel fee-panel" id="colegiaturas" data-analysis hidden>
 <div class="sectionbar"><h2>Pensiones y matrículas</h2><button id="fee-map" class="button subtle" disabled>Ver pensiones en el mapa</button></div>
 <p class="fee-intro">Compara los precios de colegios particulares y fiscomisionales para un mismo grado. Selecciona un plantel para ver cuánto representa en el presupuesto anual.</p>
 <p id="fee-status" role="status">Cargando tarifas escolares…</p>
@@ -197,8 +203,8 @@
 <p>La última columna muestra el promedio cantonal de bachillerato publicado por PRIMICIAS con datos ministeriales de mayo de 2026. La fuente no detalla la ponderación ni el número de escuelas para todos los cantones. <a href="https://www.primicias.ec/sociedad/pensiones-escuelas-colegios-samborondon-daule-quito-ecuador-130816/" target="_blank" rel="noopener noreferrer">Fuente y mapa original</a></p><div class="fee-links"><button class="linkbutton" id="fee-reg-download">Descargar comparación cantonal (CSV)</button><button class="linkbutton" id="fee-download">Descargar tarifas y fuentes (CSV)</button><a href="https://educacion.gob.ec/visualizador-de-transparencia/" rel="noopener noreferrer" target="_blank">Visualizador del Ministerio de Educación</a></div>
 <p>El precio corresponde a la ubicación del plantel. Becas, descuentos y desplazamientos entre cantones cambian su relación con el gasto de los hogares. Para investigar demanda de vivienda, contrasta estos datos con consultas o ventas que registren el lugar de origen del comprador.</p>
 </details></div></section>
-<section class="analysis-grid"><article class="panel"><div class="panel-title"><span class="kicker">SEÑALES DE MERCADO</span><h2>Demanda observada</h2></div><div id="evidence"></div></article><article class="panel"><div class="panel-title"><span class="kicker">CAPACIDAD DE COMPRA</span><h2>Escenario financiero</h2></div><div class="financial-result"><strong id="power">—</strong><span>precio financiable en el escenario</span></div><p id="scenario-note"></p><p class="project-budget" id="project-budget" hidden></p><button class="linkbutton" id="finance-open">Ajustar supuestos</button></article></section>
-<section id="comparar" class="table-panel"><div class="sectionbar"><div><span class="kicker">COMPARACIÓN REGIONAL</span><h2>Directorio de cantones</h2></div><button class="button subtle" id="csv-out">Descargar CSV</button></div><div class="tablefilters"><label><span class="sr">Buscar cantón</span><input type="search" id="search" placeholder="Buscar un cantón"></label><label class="selectwrap"><span class="sr">Orden de los cantones</span><select id="sort"><option id="site-opt" value="site" disabled>Aptitud en un punto</option><option value="population">Mayor población</option><option value="match">Más solicitudes compatibles</option><option value="credit">Más operaciones de crédito</option><option value="distance">Más cercano al proyecto</option><option value="name">Orden alfabético</option></select></label></div>
+<section id="mercado" class="analysis-grid" data-analysis hidden><article class="panel"><div class="panel-title"><span class="kicker">SEÑALES DE MERCADO</span><h2>Demanda observada</h2></div><div id="evidence"></div></article><article class="panel"><div class="panel-title"><span class="kicker">CAPACIDAD DE COMPRA</span><h2>Escenario financiero</h2></div><div class="financial-result"><strong id="power">—</strong><span>precio financiable en el escenario</span></div><p id="scenario-note"></p><p class="project-budget" id="project-budget" hidden></p><button class="linkbutton" id="finance-open">Ajustar supuestos</button></article></section>
+<section id="comparar" class="table-panel" data-analysis hidden><div class="sectionbar"><div><span class="kicker">COMPARACIÓN REGIONAL</span><h2>Directorio de cantones</h2></div><button class="button subtle" id="csv-out">Descargar CSV</button></div><div class="tablefilters"><label><span class="sr">Buscar cantón</span><input type="search" id="search" placeholder="Buscar un cantón"></label><label class="selectwrap"><span class="sr">Orden de los cantones</span><select id="sort"><option value="population">Mayor población</option><option value="match">Más solicitudes compatibles</option><option value="credit">Más operaciones de crédito</option><option value="distance">Más cercano al proyecto</option><option value="name">Orden alfabético</option></select></label></div>
 <p class="table-note" id="rank-note"></p><div class="table-scroll"><table><thead><tr><th>Cantón</th><th>Provincia</th><th>Población</th><th title="Distancia en línea recta entre el pin y un punto interior de referencia de cada cantón">Distancia de referencia</th><th>Solicitudes de origen</th><th>Operaciones de crédito</th></tr></thead><tbody id="rows"></tbody></table></div><div id="table-count"></div></section>
 <section class="sources" id="datos"><details><summary>Fuentes, cobertura y metodología</summary><div id="source-items"></div></details></section>
 <div class="footer"><b>Atlas Litoral</b><span>Guayas y Santa Elena · Ecuador</span></div></main>

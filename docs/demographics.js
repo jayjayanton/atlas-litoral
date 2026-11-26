@@ -33,7 +33,6 @@ export function initDemographics({map,data,cantons,parishCatalog,parishes,state,
   const pane=map.createPane('age-parishes');pane.style.zIndex=407;
   const layers=new Map(),overlay=L.geoJSON(parishCatalog,{pane:'age-parishes',onEachFeature:(f,l)=>{
     const code=f.properties.code;layers.set(code,l);
-    l.on('click',()=>{if(!isPicking())choose(code,false);});
     l.bindTooltip(()=>{const el=document.createElement('span'),s=shares.get(code);
       el.textContent=f.properties.name+(s===undefined?' · Sin dato':' · '+pct.format(s)+' ('+num.format(selectedCounts.get(code))+')');return el;
     },{sticky:true});

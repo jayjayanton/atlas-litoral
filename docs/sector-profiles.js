@@ -1,3 +1,4 @@
+import {showAnalysis} from './explorer-ui.js';
 import {readCompressedJSON} from './compressed-json.js';
 import {isSectorTheme, estimatedShare, shareColor, bandKeys} from './income-map.js';
 import {featureAt, loanPrincipal, normalize} from './model.js';
@@ -76,18 +77,19 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     const {theme,province}=state();
     const bounds=map.getBounds(), zoom=map.getZoom();
     const income=theme==='sector-income';
-    const key=[theme,income?bandIndex():'',currentZone,province,zoom,bounds.toBBoxString()].join('|');
+    const browseSectors=$('geo-level').value==='sector';
+    const key=[theme,browseSectors,income?bandIndex():'',currentZone,province,zoom,bounds.toBBoxString()].join('|');
     if (key===neighborView) return;
     neighborView=key;
     const version=++neighborRevision;
     neighbors.clearLayers();
     neighborState='';
-    if (!isSectorTheme(theme)) {neighbors.remove();return;}
+    if (!isSectorTheme(theme) && !browseSectors) {neighbors.remove();return;}
     neighbors.addTo(map);
     if (zoom<13) {neighborState='zoom';legend();return;}
     const visible=zones.filter(z=>{
       const [,s,w,n,e]=index.zones[z];
-      return z!==currentZone && (!province || provinces[z.slice(0,2)]===province) && bounds.intersects([[s,w],[n,e]]);
+      return (!isSectorTheme(theme)||z!==currentZone) && (!province || provinces[z.slice(0,2)]===province) && bounds.intersects([[s,w],[n,e]]);
     });
     async function draw() {
       const batches=await Promise.all(visible.map(async z=>[z,(await getBlock(z))[z]]));
@@ -233,6 +235,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     map.fitBounds(bounds,{paddingTopLeft:[20,20],paddingBottomRight:[20,bottom],maxZoom:17,animate:false});
   }
   function legend() {
+    if(!sectorMapActive())return;
     $('legend-title').textContent = selectedRow ? zoneNumber()+' · Sector '+selectedRow[0]+' seleccionado' : 'Selecciona un sector censal';
     const where=document.createElement('span');where.className='sector-legend-area';
     where.textContent = parentLabel()+(selectedRow?'':' › '+zoneNumber());
@@ -340,12 +343,8 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
       L.polygon(zoneRings,{...casing,pane:'sector-casing',weight:5.6}).addTo(zoneCasing);
       for (const [id, counts, rings] of rows) {
         sector.add(new Option('Sector '+id,id));
-        const polygon = L.polygon(rings,{...sectorInk,pane:'census-sectors',bubblingMouseEvents:false});
+        const polygon = L.polygon(rings,{...sectorInk,pane:'census-sectors'});
         polygon.bindTooltip(()=>{const label=document.createElement('span');label.textContent='Sector '+id+' · '+zoneNumber()+' · '+cantonNames.get(canton.value)+(incomeTheme()?' · '+shareLabel(rowShare(counts,z)):'');return label;},{sticky:true});
-        polygon.on('click', e => {
-          if (isPicking()) { map.fire('click',{latlng:e.latlng}); return; }
-          lookup++; pickRow(id);
-        });
         layers.set(id,polygon); overlay.addLayer(polygon);
       }
       status.textContent = '';
@@ -397,7 +396,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
       if(version!==lookup || state().theme!==requestedTheme)return;
       if(code){
         await openCode(code,true,place);
-        if(scroll && version===lookup)$('sectores').scrollIntoView({block:'start'});
+        if(scroll && version===lookup)showAnalysis('sectores',true);
         return;
       }
       if (version===lookup) status.textContent='El punto queda fuera de los sectores cartografiados.';

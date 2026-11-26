@@ -9,7 +9,11 @@ const fmt=(n,d=1)=>new Intl.NumberFormat('es-EC',{maximumFractionDigits:d}).form
 const escape=text=>String(text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const symbols={school:['#6562b2','Escuela'],public:['#0d7195','Hospital público'],private:['#bd455e','Hospital privado'],unknown:['#5f6668','Hospital sin sector registrado']};
 const hospitalSources={'MSP / IEDG':'MSP / IEDG · julio de 2026','SNGR':'SNGR · registro 2023','SNGR / ACHPE':'SNGR · registro 2023 / ACHPE · consulta nov. 2026'};
-const clusterColors={hot:'#b84729',cold:'#326b9a',none:'#e1e5df',unknown:'#f3f1ec'};
+const rateColors=['#f1eee4','#d4dfab','#9bc286','#449382','#185c68'];
+const rateScales={
+  school:{cuts:[6,9,12,16],labels:['<6','6–<9','9–<12','12–<16','16 o más']},
+  hospital:{cuts:[0,.05,.10,.20],labels:['0','>0–<0,05','0,05–<0,10','0,10–<0,20','0,20 o más']}
+};
 const clusterText={hot:'Foco de valores altos',cold:'Foco de valores bajos',none:'Sin agrupación significativa',unknown:'Sin datos suficientes'};
 const isHot=theme=>theme==='hot-school'||theme==='hot-hospital';
 const appThemes=t=>isHot(t)||t==='suitability'||t==='access'||t==='site'||t==='fees'||t==='regional-fees';
@@ -54,7 +58,8 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
     roadLayer=L.geoJSON(roads,{pane:'infra-roads',interactive:false,renderer:L.canvas({pane:'infra-roads',padding:.2}),style:f=>{
       const major=/motorway|trunk|primary/i.test(f.properties.class??'');
       return {color:major?'#a85b1b':'#b98554',weight:major?2:1.15,opacity:major?.81:.62};
-    }}).addTo(map);
+    }});
+    if($('ol-roads').checked)roadLayer.addTo(map);
   }
   for(const [kind,ok] of Object.entries(available)){
     const input=$('ol-'+kind);input.disabled=!ok;if(!ok)input.checked=false;
@@ -87,9 +92,15 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
       mark.bindTooltip(escape(label),{direction:'top'});
       mark.on('click',()=>{
         if(isPicking()||state().theme==='site'){map.fire('click',{latlng:mark.getLatLng()});return;}
-        if(!single&&zoom<15){map.setView(pt,Math.min(16,zoom+2));return;}
+        map.fire('click',{latlng:mark.getLatLng()});
+        if(!single&&zoom<15){
+          const box=document.createElement('div'),button=document.createElement('button');
+          box.textContent=label+' · ';button.type='button';button.className='linkbutton';button.textContent='Acercar al grupo';
+          button.onclick=()=>{map.closePopup();map.setView(pt,Math.min(16,zoom+2));};
+          box.append(button);L.popup({autoPan:false}).setLatLng(pt).setContent(box).openOn(map);return;
+        }
         const inner=group.rows.map(p=>'<b>'+escape(p.name)+'</b><br><small>'+escape(symbols[p.kind][1])+' · '+escape(p.sector||'Sin clasificar')+(p.locality?' · '+escape(p.locality):'')+'<br>'+escape(p.kind==='school'?'Ministerio de Educación · ago 2026':hospitalSources[p.source]||p.source||'Ver fuentes del inventario')+'</small>'+(p.kind==='school'&&fees?'<br>'+fees.popup(p):'')).join('<hr>');
-        L.popup({maxHeight:230}).setLatLng(pt).setContent('<div class="address-popup">'+inner+'</div>').openOn(map);
+        L.popup({maxHeight:230,autoPan:false}).setLatLng(pt).setContent('<div class="address-popup">'+inner+'</div>').openOn(map);
       });
     }
   }
@@ -168,7 +179,7 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
       if($('ol-roads').checked&&map.getZoom()>=10){
         const near=nearestRoad(ll.lat,ll.lng,allRoadLines);
         const tolerance=distanceKm(ll.lat,ll.lng,(()=>{const p=map.layerPointToLatLng(map.latLngToLayerPoint(ll).add([8,0]));return [p.lng,p.lat];})());
-        if(near&&near.km<=tolerance)L.popup().setLatLng(ll).setContent('<b>Vía principal</b><br>'+escape(near.item.name||near.item.ref||'Tramo sin nombre')+(near.item.ref?' · '+escape(near.item.ref):'')).openOn(map);
+        if(near&&near.km<=tolerance)L.popup({autoPan:false}).setLatLng(ll).setContent('<b>Vía principal</b><br>'+escape(near.item.name||near.item.ref||'Tramo sin nombre')+(near.item.ref?' · '+escape(near.item.ref):'')).openOn(map);
       }
       return;
     }
@@ -186,11 +197,31 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
     L.popup().setLatLng([best[positions.lat],best[positions.lon]]).setContent('<b>Muestra cercana de la malla · '+(score==null?'Sin dato':fmt(score,0)+'/100')+'</b><br>Escuela: '+km(ds.school)+'<br>Hospital: '+km(ds.hospital)+'<br>Vía principal: '+km(ds.road)).openOn(map);
   }
   function hotspotData(code,kind){return hotspots?.cantons[code]?.[kind];}
+  const hotPane=map.createPane('significant-clusters');hotPane.style.zIndex=424;hotPane.style.pointerEvents='none';
+  const hotLines=L.layerGroup().addTo(map);
+  let hotKey='';
+  function markClusters(theme,province){
+    const key=theme+'|'+province;
+    if(key===hotKey)return;
+    hotKey=key;hotLines.clearLayers();
+    if(!isHot(theme))return;
+    const kind=theme==='hot-school'?'school':'hospital';
+    for(const feature of state().features){
+      if(province&&feature.properties.province!==province)continue;
+      const cluster=hotspotData(feature.properties.code,kind)?.cluster;
+      if(cluster!=='hot'&&cluster!=='cold')continue;
+      L.geoJSON(feature,{pane:'significant-clusters',interactive:false,style:{fill:false,color:cluster==='hot'?'#7a2158':'#3457ae',weight:4,dashArray:'8 5',lineCap:'butt'}}).addTo(hotLines);
+    }
+  }
   function updateHot(){
     const {code,features}=state(),kind=$('hot-kind').value,stat=hotspotData(code,kind),name=features.find(f=>f.properties.code===code)?.properties.name??code;
     const high=features.filter(f=>hotspotData(f.properties.code,kind)?.cluster==='hot').map(f=>f.properties.name);
     const low=features.filter(f=>hotspotData(f.properties.code,kind)?.cluster==='cold').map(f=>f.properties.name);
     $('hot-region').textContent=!hotspots?'':(high.length||low.length)?[high.length?'Focos altos: '+high.join(', '):'',low.length?'Focos bajos: '+low.join(', '):''].filter(Boolean).join('. ')+'.':'Ningún foco significativo en los 28 cantones (q ≤ 0,05).';
+    if(isHot(state().theme)){
+      $('profile-hot-title').textContent=(kind==='school'?'Escuelas':'Hospitales MSP')+' · cantón '+name;
+      $('profile-hot-value').textContent=stat?num(stat.count)+' establecimientos · '+fmt(stat.rate,3)+' por 10.000 habitantes. '+clusterText[stat.cluster]+'.':'Sin datos para este cantón.';
+    }
     if(!stat||stat.cluster==='unknown'){$('hotspot-result').textContent=name+' · sin precisión suficiente para esta prueba.';return;}
     $('hotspot-result').innerHTML='<b>'+escape(name)+' · '+escape(clusterText[stat.cluster])+'</b><br>'+num(stat.count)+' registros · '+fmt(stat.rate,2)+' por 10.000 hab.'+(stat.z!=null&&stat.q!=null?' · z '+fmt(stat.z,2)+' · q '+fmt(stat.q,3):'')+'.';
   }
@@ -198,14 +229,17 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
   function refresh(){
     const {theme,province}=state();
     if(isHot(theme))$('hot-kind').value=theme==='hot-school'?'school':'hospital';
-    drawGrid(theme,province);updatePin();updateHot();fees?.refresh();suitability?.refresh();
+    markClusters(theme,province);drawGrid(theme,province);updatePin();updateHot();fees?.refresh();suitability?.refresh();
   }
   function fill(theme,code){
     if(theme==='fees')return '#e9ece7';
     if(theme==='regional-fees')return fees?.regionalColor(code)??'#e3e7e3';
     if(theme==='access'||theme==='suitability'||theme==='site')return '#e3e9df';
     const kind=theme==='hot-hospital'?'hospital':'school';
-    return clusterColors[hotspotData(code,kind)?.cluster??'unknown'];
+    const rate=hotspotData(code,kind)?.rate;
+    if(rate==null)return '#c2c5c9';
+    const band=rateScales[kind].cuts.filter(cut=>cut===0?rate>0:rate>=cut).length;
+    return rateColors[band];
   }
   function legend(theme){
     if(!appThemes(theme))return false;
@@ -217,9 +251,14 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
       else {$('legend-title').textContent='Aptitud por accesibilidad';$('legend').textContent='Cargando la malla regional…';}
       return true;
     }
-    const items=Object.entries(clusterColors).map(([k,c])=>[c,clusterText[k]]);
-    $('legend-title').textContent='Focos cantonales · '+(theme==='hot-school'?'escuelas':'hospitales');
-    $('legend').innerHTML=items.map(([c,s])=>'<span class="key"><i class="sw" style="background:'+c+'"></i>'+s+'</span>').join('');
+    const kind=theme==='hot-school'?'school':'hospital';
+    $('legend-title').textContent=(kind==='school'?'Escuelas':'Hospitales MSP')+' por 10.000 habitantes · cantones';
+    const keys=rateScales[kind].labels.map((label,i)=>'<span class="key"><i class="sw" style="background:'+rateColors[i]+'"></i>'+label+'</span>');
+    const scope=state().features.filter(f=>!state().province||f.properties.province===state().province);
+    const hot=scope.filter(f=>hotspotData(f.properties.code,kind)?.cluster==='hot');
+    const note=hot.length?'Focos altos significativos: '+hot.map(f=>f.properties.name).join(' y ')+'.':'Sin focos significativos en los '+scope.length+' cantones de la vista.';
+    $('map-hint').textContent=note+' El color indica '+(kind==='school'?'escuelas':'hospitales MSP')+' por 10.000 habitantes.';
+    $('legend').innerHTML=keys.join('')+'<span class="hot-legend-note">'+(hot.length?'<i class="hot-line"></i>':'')+escape(note)+'</span>';
     return true;
   }
   $('hot-kind').onchange=()=>{if(isHot(state().theme))changeTheme('hot-'+$('hot-kind').value);else updateHot();};
