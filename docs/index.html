@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#34212e"><meta name="description" content="Compara sectores censales cerca de tu proyecto en Guayas y Santa Elena y elige dónde probar una campaña inmobiliaria."><title>Atlas Litoral · Planificación de campañas inmobiliarias</title><link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./style.css?v=68407066a526"><link rel="stylesheet" href="./project-selection.css?v=6c0bf7c925a7"><script defer src="./vendor/leaflet.js"></script><style>.map-canvas{position:relative}#map-preview[hidden]{display:none}#map-preview{position:absolute;inset:0;z-index:495;display:grid;place-items:center;overflow:hidden;background:#e2ebe5;pointer-events:none}
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#34212e"><meta name="description" content="Compara sectores censales cerca de tu proyecto en Guayas y Santa Elena y elige dónde probar una campaña inmobiliaria."><title>Atlas Litoral · Planificación de campañas inmobiliarias</title><link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./style.css?v=7381574a762c"><link rel="stylesheet" href="./project-selection.css?v=6c0bf7c925a7"><script defer src="./vendor/leaflet.js"></script><style>.map-canvas{position:relative}#map-preview[hidden]{display:none}#map-preview{position:absolute;inset:0;z-index:495;display:grid;place-items:center;overflow:hidden;background:#e2ebe5;pointer-events:none}
 #map-preview img{width:100%;height:100%;min-height:0;object-fit:contain}
 #map-preview span{position:absolute;bottom:10px;left:10px;padding:4px 8px;border-radius:4px;background:#fffffff0;color:#24484d;font-size:12px}
-</style><link rel="stylesheet" href="./campaign-parish-income.css?v=3489b210b0e6"><script type="importmap">{"imports":{"./access-model.js":"./access-model.js?v=0d26bf0d093c","./app.js":"./app.js?v=56367bb1c0e4","./basemaps.js":"./basemaps.js?v=f6730e4de25a","./building-search.js":"./building-search.js?v=f7c5400bb174","./buildings.js":"./buildings.js?v=dfbbae50db0a","./campaign-map.js":"./campaign-map.js?v=736c7fe3164c","./campaign-model.js":"./campaign-model.js?v=c15069101401","./campaign-outcomes.js":"./campaign-outcomes.js?v=4f8df545dcd8","./campaign-parish-income.js":"./campaign-parish-income.js?v=c0909e503087","./campaign.js":"./campaign.js?v=36ceb485a6f1","./compressed-json.js":"./compressed-json.js?v=ebc8b9c2a627","./credit-map.js":"./credit-map.js?v=4b80fa04531c","./credit-model.js":"./credit-model.js?v=3eea3e7c20eb","./demographics.js":"./demographics.js?v=db0765052a83","./earnings.js":"./earnings.js?v=36c0e0d2552c","./explorer-ui.js":"./explorer-ui.js?v=02d986157c4c","./income-map.js":"./income-map.js?v=5e308330fdcc","./income-range.js":"./income-range.js?v=48c49cd461e4","./infrastructure.js":"./infrastructure.js?v=71d1424581db","./model.js":"./model.js?v=56b3640001bc","./parish-income.js":"./parish-income.js?v=a5c22b25d2e9","./parish-suitability.js":"./parish-suitability.js?v=ed9cd4d4d43f","./parishes.js":"./parishes.js?v=df1da6bff5cf","./project-selection.js":"./project-selection.js?v=90ad7e692fc4","./school-fees.js":"./school-fees.js?v=badcbca5b104","./score-surface.js":"./score-surface.js?v=b9ce45494c9b","./sector-profiles.js":"./sector-profiles.js?v=8a1f656e3089","./site-view.js":"./site-view.js?v=aaceb0290858","./suitability-model.js":"./suitability-model.js?v=13273ffd1d8e","./suitability.js":"./suitability.js?v=4dee28b8289f","./territory.js":"./territory.js?v=5b2f207ec39f"}}</script></head>
+</style><link rel="stylesheet" href="./campaign-parish-income.css?v=3489b210b0e6"><script type="importmap">{"imports":{"./access-model.js":"./access-model.js?v=0d26bf0d093c","./app.js":"./app.js?v=471d8497a2d4","./basemaps.js":"./basemaps.js?v=f6730e4de25a","./building-search.js":"./building-search.js?v=f7c5400bb174","./buildings.js":"./buildings.js?v=dfbbae50db0a","./campaign-map.js":"./campaign-map.js?v=736c7fe3164c","./campaign-model.js":"./campaign-model.js?v=c15069101401","./campaign-outcomes.js":"./campaign-outcomes.js?v=4f8df545dcd8","./campaign-parish-income.js":"./campaign-parish-income.js?v=c0909e503087","./campaign.js":"./campaign.js?v=36ceb485a6f1","./compressed-json.js":"./compressed-json.js?v=ebc8b9c2a627","./credit-map.js":"./credit-map.js?v=4b80fa04531c","./credit-model.js":"./credit-model.js?v=3eea3e7c20eb","./demographics.js":"./demographics.js?v=db0765052a83","./earnings.js":"./earnings.js?v=36c0e0d2552c","./explorer-ui.js":"./explorer-ui.js?v=02d986157c4c","./income-map.js":"./income-map.js?v=5e308330fdcc","./income-range.js":"./income-range.js?v=48c49cd461e4","./infrastructure.js":"./infrastructure.js?v=71d1424581db","./model.js":"./model.js?v=56b3640001bc","./parish-income.js":"./parish-income.js?v=a5c22b25d2e9","./parish-suitability.js":"./parish-suitability.js?v=ed9cd4d4d43f","./parishes.js":"./parishes.js?v=df1da6bff5cf","./project-selection.js":"./project-selection.js?v=90ad7e692fc4","./sales-import.js":"./sales-import.js?v=4f83d0e0a812","./sales-map.js":"./sales-map.js?v=8fb904db0d82","./sales-references.js":"./sales-references.js?v=9c67a2e6ee8c","./school-fees.js":"./school-fees.js?v=badcbca5b104","./score-surface.js":"./score-surface.js?v=b9ce45494c9b","./sector-profiles.js":"./sector-profiles.js?v=8a1f656e3089","./site-view.js":"./site-view.js?v=aaceb0290858","./suitability-model.js":"./suitability-model.js?v=13273ffd1d8e","./suitability.js":"./suitability.js?v=4dee28b8289f","./territory.js":"./territory.js?v=5b2f207ec39f"}}</script></head>
 <body>
 <header class="mast">
   <div class="mast-in">
@@ -23,7 +23,7 @@
 </section>
 <section class="workspace" id="explorar">
 <div class="mapcard">
-<header class="geo-switch"><h2 id="map-heading">Explorar el mapa</h2></header>
+<header class="geo-switch"><h2 id="map-heading">Explorar el mapa</h2><a class="sales-map-link" href="#ventas-costa">Ventas en Vía a la Costa</a></header>
 <section class="project-selection" id="project-selection" aria-labelledby="project-selection-title">
 <div class="project-selection-heading"><h3 id="project-selection-title">Proyectos y puntos</h3>
 <fieldset class="project-mode"><legend class="sr">Modo de selección</legend>
@@ -123,6 +123,7 @@
 <section id="campana" class="campaign-workspace panel age-panel credit-panel" aria-labelledby="campaign-heading">
 <div class="sectionbar"><h2 id="campaign-heading" tabindex="-1">Plan de campaña</h2><button id="campaign-export" class="button subtle" disabled>Descargar plan CSV</button></div>
 <p>Elige los sectores donde probar la campaña. Compara cuántos hogares se estiman en tu tramo de ingreso en esos sectores y en las parroquias que te interesan.</p>
+<p><a href="#ventas-costa">Ver mapa de ventas en Vía a la Costa</a></p>
 <div class="campaign-layout"><div class="campaign-settings"><details id="campaign-settings-panel" open><summary class="campaign-settings-title">Configurar los sectores de prueba</summary>
 <form id="campaign-params">
 <div class="age-controls campaign-controls">
@@ -192,6 +193,36 @@
 <p id="parish-income-urban-note" hidden>En las parroquias urbanas de Guayaquil se asigna cada sector censal completo según dónde cae su punto interior en los límites municipales. Los hogares de sectores sin ubicación asignable quedan fuera del cálculo urbano.</p>
 </details>
 </div></details>
+<details id="ventas-costa" class="campaign-map-panel">
+<summary>Ventas de departamentos en Vía a la Costa</summary>
+<div class="sales-body">
+<h3>¿Dónde se han reportado ventas?</h3>
+<p id="sales-corridor">Cargando el estudio del corredor…</p>
+<figure class="sales-figure">
+<div id="sales-map" role="region" aria-label="Mapa de referencias y ventas importadas en Vía a la Costa"></div>
+<figcaption><span><i class="sales-reference-key" aria-hidden="true">R</i>Urbanización con venta reportada</span>
+<span><i class="sales-close-key" aria-hidden="true">1</i>Cierres del archivo</span>
+<button type="button" id="sales-fit" class="linkbutton">Ver todas las ubicaciones</button></figcaption>
+</figure>
+<p class="sales-reference-note">Las marcas R ubican urbanizaciones con una ficha que la inmobiliaria identifica como vendida. Abre una marca para consultar su fuente. Las fichas de <a href="https://geobienes.com/venta/departamentos/departamento-amoblado-en-venta-bosques-de-la-costa-la-costa-guayaquil" target="_blank" rel="noopener noreferrer">Bosques de la Costa</a> y <a href="https://geobienes.com/venta/departamentos/suite-en-venta-urbanizacion-punta-esmeralda-en-la-costa-guayaquil" target="_blank" rel="noopener noreferrer">Punta Esmeralda</a> muestran el precio y la fecha de la oferta original. El importe pagado y el día del cierre siguen sin confirmar.</p>
+<h3>Comparar precios de cierre</h3>
+<div id="sales-summary" aria-live="polite"></div>
+<form id="sales-form">
+<label for="sales-file">Archivo de ventas cerradas (CSV)<input id="sales-file" type="file" accept=".csv,text/csv" aria-describedby="sales-file-help"></label>
+<p id="sales-file-help">El archivo se usa solo en esta pestaña. <a href="./data/plantilla-ventas.csv" download>Descargar plantilla CSV</a></p>
+<div class="sales-controls">
+<label>Fecha de cierre<select id="sales-period"><option value="12m">Últimos 12 meses</option><option value="all">Todo el archivo</option></select></label>
+<label>Urbanización<select id="sales-area"><option value="">Todas</option></select></label>
+<button type="submit" class="button primary">Mostrar ventas</button>
+<button type="button" class="linkbutton" id="sales-clear" hidden>Quitar archivo</button></div>
+<p id="sales-import-status" role="status"></p></form>
+<div id="sales-table-wrap" class="table-scroll campaign-table" hidden><table><caption class="sr">Ventas del archivo que coinciden con la consulta</caption>
+<thead><tr><th scope="col">Inmueble</th><th scope="col">Fecha de cierre</th><th scope="col">Precio de cierre</th><th scope="col">Área útil</th><th scope="col">USD/m²</th><th scope="col">Fuente</th></tr></thead><tbody id="sales-table"></tbody></table></div>
+<details class="sales-method"><summary>Qué datos pedir y cómo llenar la plantilla</summary>
+<p>Pide al corredor o promotor una fila por compraventa, con identificador anónimo, edificio, fecha de escritura, precio final en USD, coordenadas del inmueble y referencia que respalde el cierre. Agrega el área útil interior para comparar USD/m² y la urbanización para filtrar por zona.</p>
+<p>Usa <code>departamento</code> en tipo, <code>cierre_verificado</code> en estado y fechas en formato AAAA-MM-DD. Guarda las coordenadas en grados decimales WGS84. Comprueba que cada edificio pertenezca al corredor. El atlas revisa el formato y calcula las medianas a partir de los cierres que documentes.</p>
+<p><a href="https://mls.acbir.com.ec/" target="_blank" rel="noopener noreferrer">MLS ACBIR Guayas</a> · <a href="https://blog.4srealestate.com/4s-noticias/redi-la-solucion-de-big-data" target="_blank" rel="noopener noreferrer">Datos de proyectos de REDI</a></p>
+</details></div></details>
 <div id="campaign-results" hidden><span id="campaign-announcement" class="sr" role="status"></span><h3 id="campaign-result-title"></h3><p id="campaign-summary"></p>
 <div id="campaign-income-result" class="campaign-stat" hidden><span id="campaign-income-heading"></span><strong id="campaign-income-estimate"></strong><small id="campaign-income-base"></small></div>
 <div id="campaign-single" hidden>
@@ -373,7 +404,7 @@
 <p>La última columna muestra el promedio cantonal de bachillerato publicado por PRIMICIAS con datos ministeriales de mayo de 2026. La fuente no detalla la ponderación ni el número de escuelas para todos los cantones. <a href="https://www.primicias.ec/sociedad/pensiones-escuelas-colegios-samborondon-daule-quito-ecuador-130816/" target="_blank" rel="noopener noreferrer">Fuente y mapa original</a></p><div class="fee-links"><button class="linkbutton" id="fee-reg-download">Descargar comparación cantonal (CSV)</button><button class="linkbutton" id="fee-download">Descargar tarifas y fuentes (CSV)</button><a href="https://educacion.gob.ec/visualizador-de-transparencia/" rel="noopener noreferrer" target="_blank">Visualizador del Ministerio de Educación</a></div>
 <p>El precio corresponde a la ubicación del plantel. Becas, descuentos y desplazamientos entre cantones cambian su relación con el gasto de los hogares. Para investigar demanda de vivienda, contrasta estos datos con consultas o ventas que registren el lugar de origen del comprador.</p>
 </details></div></section>
-<section id="mercado" class="panel" data-analysis hidden><div class="panel-title"><span class="kicker">SEÑALES DE MERCADO</span><h2>Demanda observada</h2></div><div id="evidence"></div>
+<section id="mercado" class="panel" data-analysis hidden><div class="panel-title"><span class="kicker">SEÑALES DE MERCADO</span><h2>Demanda observada</h2></div><p><a href="#ventas-costa">Ver mapa de departamentos vendidos en Vía a la Costa</a></p><div id="evidence"></div>
 <div class="analysis-map-actions"><button class="button subtle" id="import-open" type="button">Importar archivo de consultas o créditos</button><button type="button" class="linkbutton" data-map-theme="demand">Ver solicitudes por cantón de origen</button><button type="button" class="linkbutton" data-map-theme="loans">Ver operaciones de crédito por cantón</button></div></section>
 <section id="escenario" class="panel" data-analysis hidden><div class="panel-title"><span class="kicker">CAPACIDAD DE COMPRA</span><h2>Escenario financiero</h2></div><div class="financial-result"><strong id="power">—</strong><span>precio financiable en el escenario</span></div><p id="scenario-note"></p><p class="project-budget" id="project-budget" hidden></p><button class="linkbutton" id="finance-open">Ajustar supuestos</button></section>
 <section id="comparar" class="table-panel" data-analysis hidden><div class="sectionbar"><div><span class="kicker">COMPARACIÓN REGIONAL</span><h2>Directorio de cantones</h2></div><button class="button subtle" id="csv-out">Descargar CSV</button></div><div class="tablefilters"><label><span class="sr">Buscar cantón</span><input type="search" id="search" placeholder="Buscar un cantón"></label><label class="selectwrap"><span class="sr">Orden de los cantones</span><select id="sort"><option value="population">Mayor población</option><option value="match">Más solicitudes compatibles</option><option value="credit">Más operaciones de crédito</option><option value="distance">Más cercano al proyecto</option><option value="name">Orden alfabético</option></select></label></div>
@@ -382,4 +413,4 @@
 <section class="sources" id="datos"><details><summary>Fuentes, cobertura y metodología</summary><div id="source-items"></div></details></section>
 <div class="footer"><b>Atlas Litoral</b><span>Guayas y Santa Elena · Ecuador</span></div></main>
 <dialog id="modal"><div class="dialog-head"><h2 id="modal-title"></h2><button id="close" class="close" aria-label="Cerrar">×</button></div><div id="modal-body"></div></dialog><div id="toast" role="status"></div>
-<script src="./app.js?v=56367bb1c0e4" type="module" onerror="document.getElementById('map-load-notice').hidden=false;document.getElementById('map-load-message').textContent='No se pudo abrir el mapa interactivo. Se muestra la vista regional.'"></script></body></html>
+<script src="./app.js?v=471d8497a2d4" type="module" onerror="document.getElementById('map-load-notice').hidden=false;document.getElementById('map-load-message').textContent='No se pudo abrir el mapa interactivo. Se muestra la vista regional.'"></script></body></html>

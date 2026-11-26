@@ -761,3 +761,43 @@ input[type=checkbox],input[type=radio] { accent-color:var(--wine); }
 #parish-suit-adjust > summary { color:var(--wine); cursor:pointer; font-size:.9rem; font-weight:600; }
 #parish-suit-adjust .mini { margin:.75em 0; }
 .parish-score-link:not([hidden]) { display:inline-block; margin:0 16px 12px; font-weight:650; }
+
+#ventas-costa { scroll-margin-top:1rem; }
+#ventas-costa > summary { font-size:1rem; }
+.sales-body { padding:4px clamp(12px,2vw,20px) 16px; }
+.sales-body h3 { margin:12px 0 6px; }
+#sales-corridor, .sales-reference-note { line-height:1.5; }
+.sales-figure { margin:14px 0 6px; }
+#sales-map { width:100%; height:clamp(290px,44vh,420px); isolation:isolate; background:#dce8eb; border:1px solid var(--outline); }
+.sales-figure figcaption, .sales-controls { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; }
+.sales-figure figcaption { margin-top:8px; font-size:.88rem; }
+.sales-figure figcaption span { display:inline-flex; align-items:center; gap:6px; }
+.sales-reference-marker, .sales-close-marker, .sales-reference-key, .sales-close-key {
+  display:inline-grid; place-items:center; box-sizing:border-box; border:2px solid white;
+  font:700 .88rem/1 system-ui,sans-serif; font-style:normal; color:white;
+}
+.sales-reference-marker, .sales-reference-key { background:#245d63; border-radius:3px; box-shadow:0 0 0 1px #245d63; }
+.sales-close-marker, .sales-close-key { background:var(--wine); border-radius:50%; box-shadow:0 0 0 1px var(--wine); }
+.sales-reference-key, .sales-close-key { width:19px; height:19px; font-size:.7rem; }
+.sales-reference-note, #sales-file-help, #sales-import-status, .sales-method p { font-size:.9rem; }
+#sales-summary { margin-bottom:12px; }
+.sales-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px 16px; margin:12px 0 8px; }
+.sales-metrics div { border-top:2px solid var(--outline); padding-top:8px; }
+.sales-metrics dt { font-size:.88rem; }
+.sales-metrics dd { margin:5px 0 0; color:var(--night); font-weight:700; font-size:1.15rem; }
+#sales-form { border-block:1px solid var(--outline); padding:12px 0; }
+#sales-form label { display:grid; gap:4px; font-size:.94rem; font-weight:600; }
+#sales-file { max-width:100%; min-width:0; font:inherit; }
+#sales-file-help { margin:6px 0 12px; }
+.sales-controls { align-items:end; }
+#sales-import-status:empty { margin:0; }
+.sales-method { margin-top:8px; }
+#ventas-costa .sales-method summary { padding:8px 0; }
+.sales-method code { overflow-wrap:anywhere; }
+#sales-table { overflow-wrap:anywhere; }
+@media (max-width:600px) {
+  .sales-controls { align-items:stretch; flex-direction:column; }
+  .sales-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+.geo-switch .sales-map-link { font-size:.9rem; color:var(--wine); text-underline-offset:3px; }

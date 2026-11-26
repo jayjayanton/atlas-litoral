@@ -2,6 +2,7 @@ import {initBasemap, osmCredit} from './basemaps.js';
 import {initProjectSelection} from './project-selection.js';
 import {buildingSearch} from './building-search.js';
 import {initCampaignMap} from './campaign-map.js';
+import {initSalesMap} from './sales-map.js';
 import {initEarnings} from './earnings.js';
 import {showAnalysis} from './explorer-ui.js';
 import {initProvinceIncome,isSectorTheme} from './income-map.js';
@@ -500,6 +501,23 @@ async function main(){
    const labels=['mapa base','calles','provincias','edificios','ingresos','ventas','créditos','parroquias','edades','sectores'];
    mapNotice('Datos pendientes de carga: '+unavailable.map(k=>labels[names.indexOf(k)]).join(', ')+'.');
  }
+ const corridor = sales.find(item => item.area === 'Vía a la Costa' && item.kind === 'Ventas del corredor');
+ const corridorNote = $('sales-corridor');
+ if (corridor) {
+   const source = document.createElement('a');
+   source.textContent = corridor.sourceName;
+   source.href = corridor.url;
+   source.target = '_blank';
+   source.rel = 'noopener noreferrer';
+   const count = document.createElement('strong');
+   count.textContent = num(corridor.value) + ' departamentos vendidos';
+   corridorNote.replaceChildren(count, ' en proyectos monitoreados · ' + corridor.period + '. ');
+   if (Number.isFinite(corridor.availableAtCutoff)) corridorNote.append(num(corridor.availableAtCutoff) + ' unidades disponibles al cierre. ');
+   corridorNote.append('El estudio publica un total para el corredor. ', source);
+ } else {
+   corridorNote.textContent = 'El total del corredor no está disponible.';
+ }
+ initSalesMap({context, streets:streetGeo});
  addMapContext(context,streetGeo,provinces);
  catalog=publishedBuildings.filter(validBuilding);
  const example=catalog.find(building=>building.reference);

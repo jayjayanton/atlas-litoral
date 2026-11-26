@@ -4,6 +4,7 @@
     "area": "Vía a la Costa",
     "kind": "Ventas del corredor",
     "value": 427,
+    "availableAtCutoff": 219,
     "units": "departamentos vendidos",
     "period": "Ene 2025 – jun 2026",
     "sourceName": "TERRATÉVERE · REDI Analytics",
