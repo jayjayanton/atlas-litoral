@@ -10,6 +10,18 @@ Atlas de acceso a servicios y mercado de vivienda en Guayas y Santa Elena, Ecuad
 
 Para reconstruir los conteos por edad cumplida, ejecuta `python scripts/build_census_ages.py BDD_CPV2022_SECT_CSV.zip docs/data/census-ages.json` con el archivo público nacional de población por sector del INEC.
 
+## Hogares e ingreso por sector censal
+
+[Explorar un sector de Durán](https://jayjayanton.github.io/atlas-litoral/?capa=sectors&sector=090750001001#sectores). Elige una zona y un sector, toca el mapa o ubica el edificio activo. Los 12.497 sectores con edades publicables cubren Guayas y Santa Elena. Se incluyen todas las partes y huecos de sus polígonos, simplificados a cinco metros para visualización. Hay 1.447 personas y 418 hogares con código sectorial reservado que solo se pueden asignar a niveles superiores.
+
+Para los grupos de hasta 24, 25–45, 46–59 y 60 o más años, la base censal cuenta hogares particulares por edad de su representante (P01 y P03). La tabla Hogar controla el total de hogares particulares. Los hogares sin representante identificable se incluyen en el total y se omiten de la ponderación por edad. En la ENIGHUR 2024–2025 se enlazan las dos tablas de la misma encuesta por Identif_hog, se selecciona el representante con P05 y se usa su edad P04. Cada provincia aporta una distribución de ingreso corriente monetario mensual del hogar (ing_mon_cor, peso Fexp) por grupo de edad. Se conservan los ingresos cero y se omiten las respuestas sin ingreso informado. El atlas calcula la proporción sectorial estimada en cada tramo de ingreso multiplicando las proporciones provinciales por la composición local de hogares. La tabla presenta los cuartiles ponderados, el tamaño de la muestra y el principal de una anualidad de cuota fija bajo los supuestos elegidos. La encuesta y el censo tienen períodos distintos. El modelo supone que dentro de la provincia los hogares del mismo grupo tienen la misma distribución de ingresos.
+
+Para reconstruir los archivos, usa Python 3 con los enlaces de GDAL. Descarga la [base censal sectorial](https://www.ecuadorencifras.gob.ec/documentos/web-inec/bd-censo/sector/BDD_CPV2022_SECT_CSV.zip), la [cartografía sectorial anonimizada](https://www.ecuadorencifras.gob.ec/documentos/web-inec/capa/CapaSectores.zip) y las [bases abiertas ENIGHUR](https://www.ecuadorencifras.gob.ec/documentos/web-inec/Estadisticas_Sociales/enighur/2024-2025/DATOS_ABIERTOS_ENIGHUR_v1.zip). Extrae el GeoPackage y los dos CSV de la encuesta, y ejecuta:
+
+```sh
+python scripts/build_sector_profiles.py BDD_CPV2022_SECT_CSV.zip sectores_anonimizados.gpkg ENIGHUR25_HOGARES_AGREGADOS.csv ENIGHUR_F1_PERSONAS.csv docs/data/sectors
+```
+
 ## Comparar crédito de vivienda
 
 [Abre la comparación por umbral](https://jayjayanton.github.io/atlas-litoral/?capa=credit#credito) para consultar el número de créditos sobre un monto o las áreas cuyo préstamo promedio lo supera. Escribe tu propio umbral en USD. El navegador recuerda el último monto válido, incluso con centavos. Al borrar el campo se elimina esa preferencia. La opción **Usar precio menos entrada del proyecto** ajusta el umbral al escenario del edificio activo.

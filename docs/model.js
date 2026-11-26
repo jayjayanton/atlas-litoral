@@ -5,10 +5,13 @@ export function median(values){
  if(!n)return null;
  return n%2?v[(n-1)/2]:(v[n/2-1]+v[n/2])/2;
 }
-export function maxPrice(income, scenario){
+export function loanPrincipal(income, scenario){
  const monthly=scenario.rate/1200, n=scenario.years*12;
  const factor=monthly===0?n:-Math.expm1(-n*Math.log1p(monthly))/monthly;
- return income*(scenario.share/100)*factor/(1-scenario.down/100);
+ return income*(scenario.share/100)*factor;
+}
+export function maxPrice(income, scenario){
+ return loanPrincipal(income,scenario)/(1-scenario.down/100);
 }
 function ringContains([x,y],ring){
  let inside=false;

@@ -77,3 +77,13 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
   .mast nav{min-width:0;overflow-x:auto;gap:14px;white-space:nowrap}
   .mast nav a,.mast .brand,.mast-button{flex-shrink:0}
 }
+
+#sector-status:empty,#sector-caution:empty{display:none}
+#sector-bands{max-width:560px;padding:0;list-style:none}
+#sector-bands li{display:grid;grid-template-columns:minmax(115px,auto) 1fr 58px;align-items:center;gap:10px;margin:6px 0;font-size:14px}
+#sector-bands li>span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+#sectores td,#sectores th{text-align:left}
+#sector-controls label{min-width:0}
+#sector-parish{width:min(22em,100%)}
+#sectores .table-scroll{max-width:100%;overflow-x:auto}
+#sector-rows td small{white-space:nowrap}
