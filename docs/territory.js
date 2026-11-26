@@ -1,3 +1,4 @@
+import {estimatedShare} from './income-map.js';
 import {featureAt} from './model.js';
 import {readCompressedJSON} from './compressed-json.js';
 
@@ -14,6 +15,21 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
   const level=$('geo-level'), parish=$('parish-select'), zones=$('geo-zone'), ids=$('geo-sector');
   const buttons=[...document.querySelectorAll('[data-level]')];
   const zoneCodes=Object.keys(index?.zones||{}).sort();
+  const incomeBand=$('sector-profile-band');
+  if(index){
+    const cuts=index.incomeCuts;
+    const labels=['Menos de $'+fmt.format(cuts[0]),...cuts.slice(0,-1).map((n,i)=>'$'+fmt.format(n)+' a menos de $'+fmt.format(cuts[i+1])),'$'+fmt.format(cuts.at(-1))+' o más'];
+    incomeBand.replaceChildren(...labels.map((label,i)=>new Option(label,String(i))));
+    incomeBand.value='1';
+  }
+  function incomeEstimate(){
+    const visible=current?.level==='sector'&&!!current.homes;
+    $('sector-income-card').hidden=!visible;
+    if(!visible)return;
+    const share=estimatedShare(current.homes,index.provinces[current.code.slice(0,2)],Number(incomeBand.value));
+    $('sector-profile-estimate').textContent=share===null?'Sin hogares con edad del representante publicada.':percent.format(share)+' de los hogares con edad del representante publicada se estima en este tramo.';
+  }
+  incomeBand.onchange=incomeEstimate;
   const group=L.layerGroup().addTo(map), boundaries=L.layerGroup().addTo(map);
   for(const [name,z] of [['territory-boundaries',417],['territory-focus',425]]){
     const pane=map.createPane(name);pane.style.zIndex=z;pane.style.pointerEvents='none';
@@ -37,11 +53,13 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
   }
   function paintBorders(){
     const kind=level.value, view=map.getBounds(), province=$('province').value;
-    const key=[kind,province,map.getZoom(),view.toBBoxString(),parishes?.urbanFeatures().length].join('|');
+    const agesActive=$('layer').value==='ages';
+    const key=[kind,agesActive,province,map.getZoom(),view.toBBoxString(),parishes?.urbanFeatures().length].join('|');
     if(key===lastBorders)return;
     lastBorders=key;
     const ticket=++outlineRevision;
     boundaries.clearLayers();
+    if(agesActive)return;
     const style={pane:'territory-boundaries',renderer:canvas,interactive:false,fill:false,color:'#594563',weight:1.4,opacity:.85};
     if(kind==='parish'&&parishCatalog){
       const areas=[...parishCatalog.features,...parishes.urbanFeatures()].filter(f=>!province||cantons.get(f.properties.canton)?.properties.province===province);
@@ -79,7 +97,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     const pop=current?current.population:cantons.get(cantonCode()).properties.population;
     $('selection-label').textContent=empty?'Selecciona '+articles[kind]:title+(pop==null?'':' · '+fmt.format(pop)+' hab.');
     $('profile-link').hidden=empty;
-    paintBorders();
+    incomeEstimate();paintBorders();
   }
   function displayAges(bands){
     const list=$('profile-ages');list.replaceChildren();
@@ -186,7 +204,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
       zoneList(q.code,eligible,zone);options(ids,'Elegir sector',children,'Sector',9,kind==='sector'?code:'');
       const bands=selectedRows.reduce((s,row)=>s.map((n,i)=>n+row[1][i]),[0,0,0,0]);
       $('geo-status').textContent='';
-      render(L.polygon(outlines?.[zone]||selectedRows.flatMap(row=>row[2])),{level:kind,code,canton:parent,municipal,name:names[kind]+' '+code.slice(kind==='zone'?6:9),path:path+' › '+q.name+(kind==='sector'?' › Zona '+zone.slice(6):''),bands,population:total(bands),source:'residentes con código sectorial publicado · Censo 2022'},zoom);
+      render(L.polygon(outlines?.[zone]||selectedRows.flatMap(row=>row[2])),{level:kind,code,canton:parent,municipal,name:names[kind]+' '+code.slice(kind==='zone'?6:9),path:path+' › '+q.name+(kind==='sector'?' › Zona '+zone.slice(6):''),bands,homes:kind==='sector'?selectedRows[0][1].slice(4):null,population:total(bands),source:'residentes con código sectorial publicado · Censo 2022'},zoom);
     }catch{
       if(ticket===revision)missing('No se pudo cargar esta área. Vuelve a seleccionarla.');
     }
@@ -196,8 +214,9 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     if(kind==='canton'){
       if(location.canton)return open(kind,location.canton.code,zoom);
     }else if(kind==='parish'){
-      let area=location.parish;
-      if(parishes?.needsUrban(area)){
+      const census=$('layer').value==='ages';
+      let area=census?featureAt(parishCatalog.features,point.lat,point.lon):location.parish;
+      if(!census&&parishes?.needsUrban(area)){
         await parishes.loadUrban();if(ticket!==revision)return;
         area=parishes.at(point.lat,point.lon);
       }
@@ -261,6 +280,6 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     url.hash='explorar';share(url,current.name);
   };
   level.disabled=false;clear();
-  return {clear,reset,open,browse,atPoint,chooseCanton,parentParish,controls,
+  return {clear,reset,open,browse,atPoint,chooseCanton,parentParish,controls,zoneOutlines,
     get level(){return level.value;},get current(){return current;}};
 }

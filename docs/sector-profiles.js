@@ -77,7 +77,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     const {theme,province}=state();
     const bounds=map.getBounds(), zoom=map.getZoom();
     const income=theme==='sector-income';
-    const browseSectors=$('geo-level').value==='sector';
+    const browseSectors=$('geo-level').value==='sector'&&theme!=='ages';
     const key=[theme,browseSectors,income?bandIndex():'',currentZone,province,zoom,bounds.toBBoxString()].join('|');
     if (key===neighborView) return;
     neighborView=key;

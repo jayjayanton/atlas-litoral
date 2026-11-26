@@ -54,10 +54,12 @@ function breaks(){return $('layer').value==='population'?[0,50000,100000,200000,
 function fill(f){if($('layer').value==='population'&&territory&&territory.level!=='canton')return '#b8d7ca';if(['ages','sectors','sector-income','income','site'].includes($('layer').value))return '#e5e9e8';if(creditMap && $('layer').value==='credit')return creditMap.fill(f.properties.code);if(infrastructure?.supports($('layer').value))return infrastructure.fill($('layer').value,f.properties.code);const v=metricValue(f);if(v==null)return empty;const ix=breaks().filter(x=>v>=x).length-1;return colors[Math.max(0,ix)];}
 function style(f){return {stroke:false,fillColor:fill(f),fillOpacity:withinProvince(f)?(['access','suitability'].includes($('layer').value)?.24:.65):.16};}
 function cantonLine(f){
+ if($('layer').value==='ages'&&territory?.level!=='canton')return {fill:false,color:'#465f65',weight:1,opacity:.65};
  const active=f.properties.code===selected&&(!territory||territory.level==='canton');
  return {fill:false,color:active?'#113c55':'#34556a',weight:active?3.5:2.1,opacity:withinProvince(f)?1:.4};
 }
 function cantonHalo(f){
+ if($('layer').value==='ages'&&territory?.level!=='canton')return {fill:false,color:'#fff',weight:2,opacity:.65};
  return {fill:false,color:'#fff',weight:f.properties.code===selected?6.5:4.4,opacity:withinProvince(f)?.95:.4};
 }
 function setSelection(code,move=false,keepArea=false){if(!byCode(code))return;
@@ -445,8 +447,8 @@ async function main(){
    parishes=parishTools.initParishes(map,parishCatalog.features,()=>byCode(selected).properties,setSelection,()=>{demographics?.refresh();sectors?.refresh();});
  }else $('parish-note').textContent='No se pudieron cargar los límites parroquiales.';
  if(censusAges&&parishes&&ageTools){
-   demographics=ageTools.initDemographics({map,data:censusAges,cantons:features,parishCatalog,parishes,
-     state:()=>({theme:$('layer').value,province:$('province').value,code:selected}),selectCanton:setSelection,colorize,isPicking:()=>picking});
+   demographics=ageTools.initDemographics({map,data:censusAges,cantons:features,parishCatalog,index:sectorIndex,
+     state:()=>({theme:$('layer').value,province:$('province').value,code:selected,territory,sectors}),colorize});
    $('age-option').disabled=false;$('age-body').hidden=false;$('age-status').hidden=true;
  }else $('age-status').textContent='No se pudo cargar la demografía censal. Recarga para reintentar.';
  if(sectorIndex&&parishes&&sectorTools){
@@ -468,7 +470,7 @@ async function main(){
  if(!navigation){render();mapNotice('Puedes consultar cantones. Reintenta para cargar los demás niveles.');return;}
  territory=navigation.initTerritory({map,cantons:new Map(features.map(f=>[f.properties.code,f])),parishes,parishCatalog,sectors,index:sectorIndex,ages:censusAges?.agesByDpa,
    cantonCode:()=>selected,setCanton:code=>setSelection(code,false,true),fitRegion,alignSector,updateLegend:colorize,
-   share:(url,name)=>shareMapLink(url,'Compartir área','El enlace abre la vista de '+name+'.')});
+   share:(url,name)=>{demographics?.addFilters(url);shareMapLink(url,'Compartir área','El enlace abre la vista de '+name+'.');}});
  $('parish-select').onchange=()=>territory.parentParish($('parish-select').value);
  if(campaignTools)campaign=campaignTools.initCampaign({cantons:features,parishes:parishCatalog?.features,
    state:()=>({project,buildings,matches:hasDemand()?matches:null}),
@@ -542,7 +544,7 @@ async function main(){
    if(kind)territory.open(kind,areaLink,true,new URL(location.href).searchParams.get('parroquia')||'');
    else $('geo-status').textContent='El código del área no es válido.';
  }
- if(!shared && initialTheme==='ages')demographics?.openParish(new URL(location.href).searchParams.get('parroquia'));
+ if(!shared && initialTheme==='ages')demographics?.startLink();
  infrastructure=await import('./infrastructure.js').then(({initInfrastructure})=>initInfrastructure({
    map, land:context.features.filter(f=>f.properties.kind==='land'), state:()=>({theme:$('layer').value,province:$('province').value,code:selected,features,project,projectInCoverage:!!dest,site:studyPin||project,siteCanton:studyPin?studyCanton:dest}),
    changeTheme:theme=>{$('layer').value=theme;colorize();},isPicking:()=>picking,fitRegion,selectCanton:code=>setSelection(code),download

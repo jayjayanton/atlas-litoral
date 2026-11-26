@@ -28,9 +28,13 @@ Para comparar varios sectores, selecciona un edificio y un radio. La ficha lista
 
 ## Demografía
 
-[Consulta las edades por parroquia](https://jayjayanton.github.io/atlas-litoral/?capa=ages#demografia). El rango incluye ambos extremos. Dejar vacío el máximo incluye todas las edades a partir del mínimo. La ficha presenta población total, conteo y porcentaje del rango elegido, y los cinco grupos quinquenales más numerosos. Las 65 unidades con datos en Guayas y Santa Elena son cabeceras cantonales y parroquias rurales del Censo 2022. Una parroquia urbana municipal sin código censal independiente muestra la cobertura disponible.
+[Abrir el mapa de sectores con residentes de 25 a 45 años](https://jayjayanton.github.io/atlas-litoral/?capa=ages&nivel=sector&desde=25&hasta=45#explorar). **Explorar por edad** abre el mapa con ambos extremos incluidos. Elige número de residentes o porcentaje de la población del área. Puedes comparar las dos provincias, una provincia o un cantón, fijar un mínimo de residentes del grupo y cambiar entre cantón, parroquia censal, zona y sector. La tabla ordena las áreas por la misma medida y abre la ficha del área elegida.
 
-Para reconstruir los conteos por edad cumplida, ejecuta `python scripts/build_census_ages.py BDD_CPV2022_SECT_CSV.zip docs/data/census-ages.json` con el archivo público nacional de población por sector del INEC.
+La fuente es el Censo 2022 del INEC. Los 12.497 sectores cartografiados cuentan residentes por edad cumplida. Las zonas suman esos sectores. Las parroquias y cantones incluyen también residentes con código sectorial reservado. Las parroquias urbanas de Guayaquil se publican juntas en la cabecera censal. Los quintiles del mapa se calculan entre las unidades que pasan el filtro. El porcentaje depende del total de habitantes de cada unidad.
+
+La ficha del sector también permite consultar la proporción estimada de hogares de cada tramo de ingreso. Esta estimación combina la distribución provincial de ENIGHUR con las edades de los representantes de los hogares de ese sector. La medida se refiere al conjunto de hogares y es independiente del grupo de residentes seleccionado.
+
+Para reconstruir los conteos, ejecuta `python scripts/build_census_ages.py BDD_CPV2022_SECT_CSV.zip docs/data/census-ages.json` y `python scripts/build_sector_ages.py BDD_CPV2022_SECT_CSV.zip` con la base nacional del INEC y las dependencias indicadas en la sección de sectores.
 
 ## Mapa descriptivo de ingresos
 

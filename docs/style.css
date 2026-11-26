@@ -260,3 +260,21 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 @media(max-width:760px){.map-selection{font-size:12px;padding:7px 9px}.theme-label{width:100%}.map-options{gap:0}.map-options #geo-search summary{min-height:32px}}
 #map-load-notice{padding:8px 16px;background:#fff8e7;color:#614925;font-size:14px}
 #map-load-notice .linkbutton{font-size:inherit}
+
+.cohort-map-controls{margin:12px 18px;padding:12px 14px;border:1px solid #c4dbd1;border-radius:8px;background:#f1f7f3}
+.cohort-fields{display:flex;align-items:end;flex-wrap:wrap;gap:8px 12px}
+.cohort-fields label,#sector-income-card label{display:grid;gap:3px;font-size:13px;color:#385951;font-weight:650;max-width:100%}
+.cohort-fields select,.cohort-fields input,#sector-profile-band{max-width:100%;min-height:35px;font-size:14px;background:#fff;color:#193a35;border:1px solid #abc5bb;border-radius:5px;padding:5px 7px}
+.cohort-fields input{width:7em}
+.cohort-hint,.cohort-pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 14px;font-size:13px;margin-top:8px}
+#cohort-tool-fields{margin:16px 0}#age-warning:not(:empty){margin:12px 0;color:#704721}
+#age-ranking td:not(:first-child){font-variant-numeric:tabular-nums}#age-ranking button{text-align:left}
+#age-ranking td small{display:block;color:var(--dim)}
+#cohort-profile{background:#eff6ee}#cohort-profile-value,#sector-profile-estimate{color:#174a41;font-size:15px;margin:5px 0}
+#sector-profile-band{width:100%}#sector-income-card label{margin-top:8px}
+@media(max-width:760px){.cohort-map-controls{margin:8px;padding:10px}.cohort-fields{gap:6px 8px}.cohort-fields input{width:6em}.cohort-fields label{font-size:12px}.cohort-fields select{max-width:100%}#age-start{padding:7px 12px}}
+.cohort-fields select,#sector-profile-band{appearance:auto}
+#cohort-leaders-list{padding-left:20px;margin:8px 0}
+#cohort-leaders-list li{padding:5px 0;color:var(--dim);font-size:13px}
+#cohort-leaders-list .linkbutton{margin:0;text-align:left;font-size:14px;min-height:28px}
+#cohort-leaders a{font-size:13px}

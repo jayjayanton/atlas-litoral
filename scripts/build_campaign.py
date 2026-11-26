@@ -5,7 +5,6 @@ from collections import defaultdict
 from pathlib import Path
 from zipfile import ZipFile
 
-from osgeo import ogr, osr
 from build_sector_profiles import compact
 
 # Inclusive ranges, with standard adult age bands and additional census comparisons.
@@ -34,6 +33,7 @@ def census_residents(archive):
 
 
 def build(archive, gpkg, out):
+    from osgeo import ogr, osr
     residents = census_residents(archive)
     ogr.UseExceptions()
     ds = ogr.Open(str(gpkg))
