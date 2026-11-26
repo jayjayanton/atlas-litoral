@@ -87,7 +87,7 @@ export function initParishes(map, catalog, getCanton, setCanton) {
   }
   select.onchange=zoom;toggle.onchange=paint;
   select.disabled=false;toggle.disabled=false;refresh();
-  return {refresh,at,highlight,loadUrban,
+  return {refresh,at,highlight,loadUrban,urbanFeatures:()=>urbans,
     needsUrban:feature=>feature?.properties.code==='090150' && ['idle','loading'].includes(municipalState)
   };
 }

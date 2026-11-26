@@ -42,3 +42,18 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 
 .scorebox[hidden] {display:none}
 .suit-layout:has(.suit-pin[hidden]) {grid-template-columns:minmax(0,1fr)}
+
+.credit-controls,.credit-footer{display:flex;align-items:flex-end;gap:12px 18px;flex-wrap:wrap}
+.credit-controls label{display:grid;gap:4px;font-size:14px;font-weight:650}
+.credit-controls input,.credit-controls select{max-width:100%;min-height:38px}
+.credit-controls input{width:10em}
+.credit-panel{min-width:0}
+.credit-panel td small{display:block;color:var(--dim)}
+.credit-panel .table-scroll{max-width:100%;overflow:auto}
+.credit-panel th{white-space:normal}
+.credit-panel [hidden]{display:none}
+.credit-footer{align-items:center;margin-top:12px;font-size:14px}
+.credit-filter{font-size:14px}
+#credit-data{padding:8px 14px;background:var(--light);margin:12px 0}
+#credit-data input{max-width:100%}
+#credit-import-status{display:block}
