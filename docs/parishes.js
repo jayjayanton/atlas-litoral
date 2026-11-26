@@ -5,9 +5,15 @@ import {featureAt} from './model.js';
 const guayaquilService = 'https://services7.arcgis.com/NWWHhu45fOJtCgG3/arcgis/rest/services/LIMITE_PARROQUIAS_URBANAS/FeatureServer/0';
 async function municipalParishes() {
   const query = new URLSearchParams({where:'1=1',outFields:'Nam',outSR:'4326',maxAllowableOffset:'.00008',geometryPrecision:'5',f:'geojson'});
-  const response = await fetch(guayaquilService+'/query?'+query, {signal:AbortSignal.timeout(8000)});
-  if (!response.ok) throw Error('Parroquias municipales');
-  const json = await response.json();
+  async function read(url,options){
+    const response=await fetch(url,options);
+    if(!response.ok)throw Error('Parroquias municipales');
+    const data=await response.json();
+    if(!data.features?.length)throw Error('Sin límites municipales');
+    return data;
+  }
+  const json=await read(guayaquilService+'/query?'+query,{signal:AbortSignal.timeout(8000)})
+    .catch(()=>read('./data/guayaquil-urban.json'));
   const groups = new Map();
   for (const f of json.features) {
     const name = f.properties.Nam.trim();
@@ -88,7 +94,7 @@ export function initParishes(map, catalog, getCanton, setCanton, onSelectionChan
   }
   select.onchange=zoom;toggle.onchange=paint;
   select.disabled=false;toggle.disabled=false;refresh();
-  return {refresh,at,highlight,loadUrban,urbanFeatures:()=>urbans,
+  return {refresh,at,highlight,loadUrban,available:()=>visible,urbanFeatures:()=>urbans,
     needsUrban:feature=>feature?.properties.code==='090150' && ['idle','loading'].includes(municipalState)
   };
 }

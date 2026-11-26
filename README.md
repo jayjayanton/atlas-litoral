@@ -4,6 +4,12 @@
 
 Atlas de acceso a servicios y mercado de vivienda en Guayas y Santa Elena, Ecuador. Selecciona un cantón para consultar sus indicadores o combina escuelas, hospitales y vías en el panel **Aptitud territorial ponderada**. Puedes comparar cómo cambia el resultado al modificar los pesos de cada criterio. La puntuación describe el acceso a servicios. Para evaluar la demanda de vivienda, consulta la fuente, el período y la cobertura de los indicadores de mercado.
 
+## Explorar y compartir territorios
+
+En **Ver por**, selecciona cantón, parroquia, zona censal o sector censal. El mapa encuadra la geometría seleccionada y atenúa el exterior. La ficha muestra la población de esa unidad cuando se dispone de un desglose. Los conteos de zona y sector incluyen residentes con código sectorial publicable. En las parroquias urbanas municipales de Guayaquil, el selector ofrece los sectores cuyo punto interior cae dentro del polígono municipal; cada conteo corresponde al sector o zona completos. Los límites urbanos se consultan en el servicio municipal y se incluye una copia de respaldo del [servicio de Guayaquil](https://services7.arcgis.com/NWWHhu45fOJtCgG3/arcgis/rest/services/LIMITE_PARROQUIAS_URBANAS/FeatureServer/0).
+
+**Compartir área** abre un enlace que conserva la selección, incluso sin edificio. Ejemplos: [parroquia Manglaralto](https://jayjayanton.github.io/atlas-litoral/?area=240154#explorar), [zona 001](https://jayjayanton.github.io/atlas-litoral/?area=240154001#explorar) y [sector 002](https://jayjayanton.github.io/atlas-litoral/?area=240154001002#explorar). Los edificios admiten las mismas cuatro escalas de zoom.
+
 ## Aptitud desde un punto
 
 En [Aptitud en un punto](https://jayjayanton.github.io/atlas-litoral/?capa=site#explorar), toca el mapa, ingresa latitud y longitud o selecciona un edificio. El pin temporal se puede mover con otro toque y se borra al recargar. La ficha usa esas coordenadas para contar escuelas y hospitales dentro del radio elegido (2, 5 o 10 km), medir la distancia a la vía principal más cercana y calcular el puntaje con los pesos actuales. El perfil identifica también la escuela, el hospital de la red elegida y el atractivo turístico más próximos. Selecciona un resultado para ver su posición y la línea desde el pin. Las distancias se expresan en línea recta.

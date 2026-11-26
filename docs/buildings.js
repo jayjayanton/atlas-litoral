@@ -34,7 +34,8 @@ export function buildingURL(href, b) {
   url.searchParams.set('edificio', b.name);
   url.searchParams.set('lat', b.lat);
   url.searchParams.set('lon', b.lon);
-  if (b.focusArea) url.searchParams.set('nivel', b.focusArea==='parish'?'parroquia':'canton');
+  const level={parish:'parroquia',canton:'canton',zone:'zona',sector:'sector'}[b.focusArea];
+  if (level) url.searchParams.set('nivel',level);
   url.hash = 'explorar';
   return url;
 }
@@ -45,6 +46,6 @@ export function buildingFromURL(href) {
   const point = parseCoordinates([params.get('lat'), params.get('lon')].join(','));
   if (!name || name.length > 80 || !point) return null;
   const level = params.get('nivel');
-  const focusArea = level==='canton'?'canton':level==='parroquia'?'parish':undefined;
+  const focusArea = level==='canton'?'canton':level==='parroquia'?'parish':level==='zona'?'zone':level==='sector'?'sector':undefined;
   return focusArea ? {name, ...point, focusArea} : {name, ...point};
 }

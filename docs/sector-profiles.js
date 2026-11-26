@@ -377,25 +377,28 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     syncCanton(code); setZones(code.slice(0,6));
     return openZone(z,code.slice(9),zoom,place);
   }
+  async function codeAt(lat,lon) {
+    for (const z of zones) {
+      const [,s,w,n,e]=index.zones[z];
+      if(lat<s || lat>n || lon<w || lon>e)continue;
+      const block=await getBlock(z);
+      for(const [id,,rings] of block[z]){
+        const geometry={type:'MultiPolygon',coordinates:rings.map(poly=>poly.map(ring=>ring.map(([y,x])=>[x,y])))};
+        if(featureAt([{geometry}],lat,lon))return z+id;
+      }
+    }
+    return null;
+  }
   async function locate(lat, lon, scroll = false, place) {
-    const version = ++lookup, requestedTheme=state().theme;
-    const possible = zones.filter(z => {
-      const [,s,w,n,e] = index.zones[z];
-      return lat>=s && lat<=n && lon>=w && lon<=e;
-    });
+    const version=++lookup, requestedTheme=state().theme;
     status.textContent='Localizando el sector…';
     try {
-      for (const z of possible) {
-        const block = await getBlock(z);
-        if (version!==lookup || state().theme!==requestedTheme) return;
-        for (const [id, , rings] of block[z]) {
-          const geometry = {type:'MultiPolygon',coordinates:rings.map(poly=>poly.map(ring=>ring.map(([y,x])=>[x,y])))};
-          if (featureAt([{geometry}],lat,lon)) {
-            await openCode(z+id,true,place);
-            if (scroll && version===lookup) $('sectores').scrollIntoView({block:'start'});
-            return;
-          }
-        }
+      const code=await codeAt(lat,lon);
+      if(version!==lookup || state().theme!==requestedTheme)return;
+      if(code){
+        await openCode(code,true,place);
+        if(scroll && version===lookup)$('sectores').scrollIntoView({block:'start'});
+        return;
       }
       if (version===lookup) status.textContent='El punto queda fuera de los sectores cartografiados.';
     } catch { if (version===lookup) status.textContent='No se pudieron consultar los límites del punto. Intenta de nuevo.'; }
@@ -448,7 +451,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     adCircle=L.circle([lat,lon],{pane:'sector-place',radius:km*1000,color:'#2351ae',weight:3,dashArray:'8 5',fill:false,interactive:false}).addTo(map);
     legend();fit(adCircle.getBounds().extend(layers.get(sector.value).getBounds()));
   }
-  return {refresh, openCode, locate, previewRadius, frame:(theme='sectors')=>showMap(true,false,theme), legend, setFacilities(schools,hospitals) {
+  return {refresh, openCode, locate, codeAt, selectedCode:()=>currentZone+(selectedRow?.[0]||''), readZone:async z=>(await getBlock(z))[z], previewRadius, frame:(theme='sectors')=>showMap(true,false,theme), legend, setFacilities(schools,hospitals) {
     facilities = [[schools,'Escuela'],[hospitals,'Hospital']].flatMap(([list,kind])=>(list||[])
       .filter(p=>cantonNames.has(p.code)).map(p=>({...p,kind})));
     buildPointIndex();
