@@ -16,7 +16,7 @@ function offsets(series){
   return cumulative;
 }
 
-export function initDemographics({map,data,cantons,parishCatalog,index,state,colorize}){
+export function initDemographics({map,data,cantons,parishCatalog,index,state,colorize,onAgesChanged}){
   const cantonShapes=new Map(cantons.map(f=>[f.properties.code,f]));
   const parishShapes=new Map(parishCatalog.features.map(f=>[f.properties.code,f]));
   const all=new Map();
@@ -81,6 +81,7 @@ export function initDemographics({map,data,cantons,parishCatalog,index,state,col
     if(key==='preset'&&presets[el.value]){
       const [a,b]=presets[el.value];config.from=String(a);config.to=b===120?'':String(b);
     }else if(key==='from'||key==='to')config.preset='custom';
+    if(['preset','from','to'].includes(key)&&agesValid())onAgesChanged?.(Number(config.from),config.to===''?120:Number(config.to));
     if(key==='scope'&&state().theme==='ages')frameScope();
     refresh();
   }
@@ -297,7 +298,17 @@ export function initDemographics({map,data,cantons,parishCatalog,index,state,col
     if(availableScopes.has(query.get('ambito')))config.scope=query.get('ambito');
   }
   $('age-start').disabled=false;
-  return {refresh,legend,addFilters(url){
+  return {refresh,legend,ageRange:()=>[Number(config.from),config.to===''?120:Number(config.to)],
+  async residentCount(code,lo,hi){
+    const whole=all.get(code);
+    if(whole)return whole[hi+1]-whole[lo];
+    if(!/^\d{9}(?:\d{3})?$/.test(code))return null;
+    let count=null;
+    for(const [id,sums] of await loadAges(code.slice(0,2))){
+      if(id.startsWith(code))count=(count??0)+sums[hi+1]-sums[lo];
+    }
+    return count;
+  },addFilters(url){
     if(state().theme!=='ages'||!fieldsValid())return;
     const p=url.searchParams;
     p.set('capa','ages');p.set('nivel',level());p.set('desde',config.from);p.set('hasta',config.to||'120');

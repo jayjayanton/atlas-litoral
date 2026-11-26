@@ -14,13 +14,13 @@ export function initSiteView(map){
   }
   function legend(){
     $('legend-title').textContent=current?.canton?'Aptitud del punto · '+current.score+' / 100':'Aptitud del sitio';
-    $('legend').textContent=current?.canton?'Radio de conteo · '+current.radius+' km':current?'Punto fuera de cobertura':'Toca una ubicación en el mapa.';
+    $('legend').textContent=current?.canton?'Servicios contados a '+current.radius+' km':current?'Punto fuera de cobertura':'Toca una ubicación en el mapa.';
   }
   function render(data){
     current=data;overlay.clearLayers();connection.clearLayers();
     $('site-result').hidden=!data;$('site-nearest').replaceChildren();
     if(!data)return;
-    const {site,canton,score,counts,near,parts,radius}=data;
+    const {site,canton,score,counts,near,parts}=data;
     const ll=[site.lat,site.lon];
     if(site.temporary)L.marker(ll,{interactive:false,keyboard:false,title:'Punto de análisis',icon:L.divIcon({className:'',html:'<span class="pm">●</span>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(overlay);
     $('site-location').textContent=[site.name,canton?.name,canton?.province,site.lat.toFixed(5)+', '+site.lon.toFixed(5)].filter(Boolean).join(' · ');
@@ -32,7 +32,6 @@ export function initSiteView(map){
     }));
     $('site-distance-note').hidden=!canton;
     if(!canton)return;
-    L.circle(ll,{radius:radius*1000,interactive:false,color:'#216b66',weight:2,dashArray:'6 5',fillOpacity:.045}).addTo(overlay);
     for(const [key,title] of Object.entries(titles)){
       const row=document.createElement('li'),record=near[key];
       if(record){

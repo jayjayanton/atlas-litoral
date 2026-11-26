@@ -12,7 +12,7 @@ En **Mostrar en el mapa**, los focos de escuelas y de hospitales MSP muestran es
 
 Los límites de zona se reconstruyen desde la cartografía oficial del INEC con `/usr/bin/python3 scripts/build_zone_outlines.py sectores_anonimizados.gpkg` en un entorno con GDAL. El mapa usa el polígono sectorial para identificar la zona en el punto consultado.
 
-**Compartir área** abre un enlace que conserva la selección, incluso sin edificio. Ejemplos: [parroquia Manglaralto](https://jayjayanton.github.io/atlas-litoral/?area=240154#explorar), [zona 001](https://jayjayanton.github.io/atlas-litoral/?area=240154001#explorar) y [sector 002](https://jayjayanton.github.io/atlas-litoral/?area=240154001002#explorar). Los edificios admiten las mismas cuatro escalas de zoom.
+**Compartir área** abre un enlace que conserva la selección, incluso sin edificio. Ejemplos: [parroquia Manglaralto](https://jayjayanton.github.io/atlas-litoral/?area=240154#explorar), [zona 001](https://jayjayanton.github.io/atlas-litoral/?area=240154001#explorar) y [sector 002](https://jayjayanton.github.io/atlas-litoral/?area=240154001002#explorar). Los enlaces de edificios centran el mapa en las coordenadas del pin.
 
 ## Aptitud desde un punto
 
@@ -31,6 +31,10 @@ Para comparar varios sectores, selecciona un edificio y un radio. La ficha lista
 [Abrir el mapa de sectores con residentes de 25 a 45 años](https://jayjayanton.github.io/atlas-litoral/?capa=ages&nivel=sector&desde=25&hasta=45#explorar). **Explorar por edad** abre el mapa con ambos extremos incluidos. Elige número de residentes o porcentaje de la población del área. Puedes comparar las dos provincias, una provincia o un cantón, fijar un mínimo de residentes del grupo y cambiar entre cantón, parroquia censal, zona y sector. La tabla ordena las áreas por la misma medida y abre la ficha del área elegida.
 
 La fuente es el Censo 2022 del INEC. Los 12.497 sectores cartografiados cuentan residentes por edad cumplida. Las zonas suman esos sectores. Las parroquias y cantones incluyen también residentes con código sectorial reservado. Las parroquias urbanas de Guayaquil se publican juntas en la cabecera censal. Los quintiles del mapa se calculan entre las unidades que pasan el filtro. El porcentaje depende del total de habitantes de cada unidad.
+
+**Ingreso laboral por edad** calcula qué porcentaje supera un monto mensual en USD para edades cumplidas de 15 años en adelante, en Guayas o Santa Elena. El rango incluye ambos extremos. Cambiar las edades en el mapa también actualiza la ficha. La cifra local contigua cuenta residentes del grupo en el Censo 2022. La proporción de ingresos se estima solo a escala provincial.
+
+La fuente es la [ENEMDU anual 2025 del INEC](https://www.ecuadorencifras.gob.ec/enemdu-anual/). El cálculo usa `p03`, `prov`, `condact`, `ingrl` y el factor anual `fexp`. La opción de todas las personas incluye desempleados e inactivos. El empleo no remunerado y las pérdidas cuentan por debajo de cualquier umbral permitido. Los ingresos faltantes o desconocidos de otros ocupados se excluyen. La ficha muestra la base muestral en registros y requiere al menos 30. Para reconstruir la tabla provincial agregada, ejecuta `python scripts/build_earnings.py 2_BDD_DATOS_ABIERTOS_ENEMDU_2025_CSV.zip` con la base anual en CSV del INEC.
 
 La ficha del sector también permite consultar la proporción estimada de hogares de cada tramo de ingreso. Esta estimación combina la distribución provincial de ENIGHUR con las edades de los representantes de los hogares de ese sector. La medida se refiere al conjunto de hogares y es independiente del grupo de residentes seleccionado.
 
@@ -64,9 +68,11 @@ En **Parroquia · SEPS**, carga el archivo de texto tabulado descomprimido de la
 
 ## Agregar un edificio
 
-En **Agregar edificio**, escribe un nombre y pega la latitud y la longitud en grados decimales, por ejemplo `-2.18376, -79.97990`. En **Zoom al guardar**, elige **Parroquia** o **Cantón**. El formulario identifica el área y, al guardar, el mapa ajusta el encuadre a su límite y muestra el pin. Fuera de las dos provincias, el mapa se centra en las coordenadas. Cada vez que recargas la página, el mapa vuelve a la vista regional sin un proyecto activo. Usa **Edificios** para volver a un punto guardado o **Compartir ubicación** para abrir el mismo edificio en otro navegador. La aptitud y la accesibilidad se calculan dentro de Guayas y Santa Elena.
+En **Agregar edificio**, busca por nombre en tus edificios, el catálogo de proyectos y los edificios residenciales colectivos, comerciales y de uso público con nombre en OpenStreetMap en Guayas y Santa Elena. Cuando se repite un nombre, elige la coincidencia por cantón y coordenadas. Para un edificio nuevo, ingresa sus coordenadas o elige el punto en el mapa. El mapa se centra en el pin a escala de calle. La ficha de la derecha muestra provincia, cantón, parroquia, zona y sector censal según los polígonos disponibles. **Ver ficha del sector** abre sus estadísticas. El radio de los cálculos de accesibilidad se puede ajustar en Aptitud. Al recargar la página se borra la selección activa. **Compartir ubicación** abre el pin en otro navegador.
 
 Los edificios que agregas desde el mapa se guardan en tu navegador. Para mostrar uno a todos los visitantes, agrega una entrada al [catálogo público de edificios](docs/data/buildings.json) con un `id` único, `name`, `lat` y `lon`, y guarda el cambio en la rama `main`.
+
+El índice local de edificios se obtiene de las huellas cartografiadas con nombre en el extracto de Ecuador del 24 de noviembre de 2026. Cada ubicación OSM es un punto sobre la superficie del edificio. Para reconstruirlo, usa GDAL y ejecuta `python3 scripts/build_named_buildings.py ecuador-261124.osm.pbf`. [Extracto de Geofabrik](https://download.geofabrik.de/south-america/ecuador/) · [© OpenStreetMap contributors, ODbL](https://www.openstreetmap.org/copyright).
 
 ## Abrir en tu computadora
 

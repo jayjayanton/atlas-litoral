@@ -1,3 +1,5 @@
+import {buildingSearch} from './building-search.js';
+import {initEarnings} from './earnings.js';
 import {showAnalysis} from './explorer-ui.js';
 import {initProvinceIncome,isSectorTheme} from './income-map.js';
 import {parseCoordinates, validBuilding, sameBuilding, buildingList, buildingURL, buildingFromURL} from './buildings.js';
@@ -13,7 +15,7 @@ function save(key,value){try{localStorage.setItem(store+key,JSON.stringify(value
 let studyPin=null,studyCanton=null;
 let project=null,catalog,buildings,buildingState,otherMarkers;
 let finance=load('finance',initialFinance),requests=load('demand',[]),userLoans=load('loans',[]);
-let territory,campaign,sectors,provinceIncome,demographics,creditMap,infrastructure,parishes,projectParish,viewRevision=0;
+let territory,campaign,sectors,provinceIncome,demographics,creditMap,infrastructure,parishes,projectParish,earnings,parishIndex,pinSector,pinLookup;
 let features,inc={},observed=[],bank={rows:[]},polys,cantonLines,cantonCasing,selected='0901',map,marker,labels,streets,selectedPopup,picking=false,pending=null,matches={},dest=null;
 const layers={},colors=['#d6e8dc','#9fcab7','#5fa592','#2b7c73','#155b56'],empty='#e3e7e3';
 const financingURL='https://www.superbancos.gob.ec/estadisticas/portalestudios/volumen-de-credito/';
@@ -29,16 +31,13 @@ function locate(lat,lon){
  const canton=(parish && byCode(parish.properties.canton)) || featureAt(features,lat,lon);
  return {parish,canton:canton?.properties};
 }
-function areaLabel(canton,parish,level){
- if(!canton)return 'Fuera de Guayas y Santa Elena · Se mostrará el pin.';
- const region=canton.province+' · Cantón '+canton.name;
- if(level==='zone'||level==='sector')return region+' · '+(level==='zone'?'Zona censal':'Sector censal');
- if(level!=='parish')return region;
- return region+' · '+(parish ? parish.properties.kind+' '+parish.properties.name : 'Sin límite parroquial disponible. Se mostrará el cantón.');
+function areaLabel(canton,parish){
+ if(!canton)return 'Fuera de la cobertura territorial del atlas';
+ return [canton.province,canton.name,parish?.properties.name].filter(Boolean).join(' · ');
 }
 function projectState(){
  const current=project ? locate(project.lat,project.lon) : {};
- dest=current.canton;projectParish=current.parish;
+ dest=current.canton || (pinSector && byCode(pinSector.slice(0,4))?.properties);projectParish=current.parish;
  matches=hasDemand()?recentMatches(requests,project,dest.code):{};
 }
 function hasDemandInputs(){return !!(dest && project.sector && project.price>0 && project.rooms>0);}
@@ -63,7 +62,7 @@ function cantonHalo(f){
  return {fill:false,color:'#fff',weight:f.properties.code===selected?6.5:4.4,opacity:withinProvince(f)?.95:.4};
 }
 function setSelection(code,move=false,keepArea=false){if(!byCode(code))return;
- viewRevision++;selected=code;
+ selected=code;
  if(!keepArea && (territory?.current?.canton!==code||move))territory?.clear();
  if($('province').value&&!withinProvince(byCode(code))){$('province').value='';for(const option of $('canton').options)option.hidden=false;}$('canton').value=code;render();if(move)map.fitBounds(layers[code].getBounds(),{padding:[22,22],maxZoom:11});}
 function colorize(){polys.setStyle(style);cantonCasing.setStyle(cantonHalo);cantonLines.setStyle(cantonLine);if(layers[selected])layers[selected].bringToFront();
@@ -77,7 +76,7 @@ function colorize(){polys.setStyle(style);cantonCasing.setStyle(cantonHalo);cant
  $('profile-hot').hidden=!['hot-school','hot-hospital'].includes(theme);
  if(theme==='site')$('map-hint').textContent='Toca el mapa para analizar un punto. Elige un nivel territorial para volver a consultar áreas.';
  else territory?.controls();
- creditMap?.refresh();demographics?.refresh();sectors?.refresh();
+ earnings?.refresh();creditMap?.refresh();demographics?.refresh();sectors?.refresh();
  provinceIncome?.refresh(provinceView,$('province').value);
  if(infrastructure){infrastructure.refresh();if(infrastructure.legend(theme))return;}
  if(theme==='population'&&territory&&territory.level!=='canton'){
@@ -92,30 +91,7 @@ function colorize(){polys.setStyle(style);cantonCasing.setStyle(cantonHalo);cant
  $('legend-title').textContent=$('layer').value==='population'?'Habitantes · 2022':$('layer').value==='loans'?'Créditos por destino · ene–sep 2026':'Solicitudes de origen · 90 días';
  $('legend').innerHTML=choices.map((c,i)=>'<span class="key"><i class="sw" style="background:'+colors[i]+'"></i>'+c+'</span>').join('')+($('layer').value==='population'?'':'<span class="key"><i class="sw" style="background:'+empty+'"></i>S/d</span>');
 }
-function fitRegion(){viewRevision++;const fs=features.filter(withinProvince);const b=L.latLngBounds([]);fs.forEach(f=>b.extend(layers[f.properties.code].getBounds()));map.fitBounds(b,{padding:[12,12],maxZoom:9});}
-function frameBuilding(){
- const pin=[project.lat,project.lon];
- if(!dest || !project.focusArea){
-   parishes?.highlight(null);
-   map.setView(pin,12,{animate:false});
-   return;
- }
- if((project.focusArea==='zone'||project.focusArea==='sector')&&sectors){
-   map.setView(pin,13,{animate:false});
-   territory.atPoint(project.focusArea,project,{canton:dest,parish:projectParish});
-   return;
- }
- const parish=project.focusArea==='parish'?projectParish:null;
- if(territory && (parish||project.focusArea==='canton')){
-   territory.open(parish?'parish':'canton',parish?.properties.code||dest.code);return;
- }
- parishes?.highlight(parish);
- const area=parish?L.geoJSON(parish).getBounds():layers[dest.code].getBounds();
- const bounds=L.latLngBounds([area.getSouthWest(),area.getNorthEast(),pin]);
- const legendHeight=$('legend').parentElement.offsetHeight;
- const bottomPadding=Math.min(legendHeight+20,map.getSize().y*.35);
- map.fitBounds(bounds,{paddingTopLeft:[20,24],paddingBottomRight:[20,bottomPadding],maxZoom:parish?16:13,animate:false});
-}
+function fitRegion(){const fs=features.filter(withinProvince);const b=L.latLngBounds([]);fs.forEach(f=>b.extend(layers[f.properties.code].getBounds()));map.fitBounds(b,{padding:[12,12],maxZoom:9});}
 function openSiteMap(){
  const site=studyPin||project;
  if(site)territory?.clear();
@@ -131,28 +107,46 @@ function placeStudyPin(point){
  if(studyCanton)setSelection(studyCanton.code);else colorize();
  map.setView([point.lat,point.lon],Math.max(13,map.getZoom()),{animate:false});
 }
+function showBuildingAddress(){
+ if(!project)return;
+ const censusParish=pinSector && parishIndex?.get(pinSector.slice(0,6));
+ const parish=projectParish?.properties || censusParish;
+ $('project-where').textContent=project.lat.toFixed(5)+', '+project.lon.toFixed(5)+(project.reference?' · Acceso aproximado':project.source==='osm'?' · Edificio cartografiado en OSM':'');
+ $('project-province').textContent=dest?.province||'Sin cobertura';
+ $('project-canton').textContent=dest?dest.name+' · '+dest.code:'Sin cobertura';
+ $('project-parish').textContent=parish ? parish.name+' · '+parish.kind : 'Sin límite disponible';
+ const status=pinLookup==='loading'?'Buscando…':pinLookup==='error'?'Consulta no disponible':'Sin polígono en este punto';
+ $('project-zone').textContent=pinSector?.slice(0,9)||status;
+ $('project-sector').textContent=pinSector||status;
+ $('project-sector-open').hidden=!pinSector;
+ $('project-location-retry').hidden=pinLookup!=='error';
+}
+function resolveBuildingAddress(){
+ const building=project;
+ pinSector=null;pinLookup=sectors?'loading':'error';showBuildingAddress();
+ if(parishes?.needsUrban(projectParish))parishes.loadUrban().then(()=>{
+   if(project!==building)return;
+   projectState();refreshMarker();showBuildingAddress();
+ });
+ if(!sectors)return;
+ sectors.codeAt(building.lat,building.lon).then(code=>{
+   if(project!==building)return;
+   pinSector=code;pinLookup='ready';projectState();showBuildingAddress();refreshMarker();earnings?.refresh();
+ }).catch(()=>{
+   if(project!==building)return;
+   pinLookup='error';showBuildingAddress();earnings?.refresh();
+ });
+}
 function projectFocus(){
  if(!project)return;
- const building=project;
- territory?.clear();
  studyPin=studyCanton=null;
- $('site-error').textContent='';$('site-coords').value=building.lat+', '+building.lon;
- if(!$('site-opt').disabled)$('layer').value='site';
- if(!dest)colorize();
- if(dest)setSelection(dest.code);
- viewRevision++;
+ $('site-error').textContent='';$('site-coords').value=project.lat+', '+project.lon;
+ sectors?.focusPin();
+ territory?.showPoint(project.name);
+ if(dest)setSelection(dest.code,false,true);else render();
+ map.closePopup();
+ map.setView([project.lat,project.lon],16,{animate:false});
  $('map').scrollIntoView({block:'center'});
- frameBuilding();
- marker.openPopup();
- if(project.focusArea==='parish' && parishes?.needsUrban(projectParish)){
-   const revision=viewRevision;
-   parishes.loadUrban().then(()=>{
-     if(project!==building)return;
-     projectState();refreshMarker();
-     if(revision===viewRevision && selected===dest?.code &&
-        $('parish-outlines').checked && projectParish?.properties.kind==='Parroquia urbana')frameBuilding();
-   });
- }
 }
 function refreshMarker(){
  if(!project)return;
@@ -160,14 +154,14 @@ function refreshMarker(){
    marker=L.marker([project.lat,project.lon],{zIndexOffset:1000,title:'Proyecto activo',icon:L.divIcon({className:'',html:'<span class="pm">●</span>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
    marker.on('click',()=>{if(picking)pick(marker.getLatLng());});
  }
- marker.setLatLng([project.lat,project.lon]);const sub=project.reference?'Acceso aproximado a Torres del Salado':'Punto elegido por el usuario';
+ marker.setLatLng([project.lat,project.lon]);const sub=project.reference?'Acceso aproximado a Torres del Salado':project.source==='osm'?'Punto interior del edificio · OpenStreetMap':'Ubicación del edificio';
  const coords=project.lat.toFixed(5)+', '+project.lon.toFixed(5);
  const osm='https://www.openstreetmap.org/?mlat='+project.lat+'&mlon='+project.lon+'#map=17/'+project.lat+'/'+project.lon;
- const area=areaLabel(dest,projectParish,project.focusArea);
+ const area=areaLabel(dest,projectParish);
  const popup='<b>'+esc(project.name)+'</b><br>'+esc(area)+'<br>'+sub+'<br>'+coords+'<br>'+link(osm,'Abrir en OpenStreetMap');
  if(marker.getPopup())marker.setPopupContent(popup);
  else marker.bindPopup(popup,{autoPan:false});
- marker.getElement().title=project.name;marker.getElement().setAttribute('aria-label',project.name);$('project-name').textContent=project.name;$('project-where').textContent=area+(project.reference?' · Acceso aproximado':'');
+ marker.getElement().title=project.name;marker.getElement().setAttribute('aria-label',project.name);$('project-name').textContent=project.name;
 }
 function mapInit(){
  map=L.map('map',{zoomAnimation:false,zoomSnap:.15,zoomDelta:.75,minZoom:4,maxZoom:19,scrollWheelZoom:true,zoomControl:false,attributionControl:false});
@@ -181,7 +175,6 @@ function mapInit(){
  const cantonBorders={pane:'canton-outlines',interactive:false};
  cantonCasing=L.geoJSON(features,{...cantonBorders,style:cantonHalo}).addTo(map);
  cantonLines=L.geoJSON(features,{...cantonBorders,style:cantonLine}).addTo(map);
- map.on('movestart zoomstart',()=>{viewRevision++;});
  const staticLabels=[['Guayaquil',-2.205,-79.88],['Daule',-1.86,-79.98],['Milagro',-2.125,-79.59],['Santa Elena',-2.165,-80.81],['Balzar',-1.367,-79.91],['Playas',-2.63,-80.39],['El Triunfo',-2.34,-79.39]];
  labels=L.layerGroup(staticLabels.map(([s,lat,lon])=>L.marker([lat,lon],{interactive:false,keyboard:false,pane:'labels',icon:L.divIcon({className:'map-label',html:s,iconSize:[70,16],iconAnchor:[35,2]})}))).addTo(map);
  L.marker([-2.54,-81.12],{interactive:false,keyboard:false,pane:'labels',icon:L.divIcon({className:'sea-label',html:'Océano Pacífico',iconSize:[135,22],iconAnchor:[70,15]})}).addTo(map);
@@ -300,8 +293,7 @@ function activateBuilding(building, writeItem=false) {
  buildingState=next;
  buildings=buildingList(catalog,next);
  project=buildings.find(b=>b.id===building.id) || building;
- projectState();renderBuildings();
- if(!dest)render();
+ pinSector=null;projectState();renderBuildings();resolveBuildingAddress();
  if(writeItem)close();
  projectFocus();return true;
 }
@@ -320,11 +312,11 @@ function shareMapLink(url,title,description){
 function settings(p = project, coordinates = Number.isFinite(p.lat) ? p.lat + ', ' + p.lon : '') {
  const adding = !p.id;
  dialog(adding ? 'Agregar edificio' : 'Editar edificio', '<form id="project-form">' +
-   field('f-name','Nombre del edificio',p.name,'maxlength="80" required') +
-   field('f-coordinates','Coordenadas (latitud, longitud)',coordinates,'placeholder="-2.18376, -79.97990" aria-describedby="coord-help" required') +
-   '<p id="coord-help">Pega las coordenadas de Google Maps en grados decimales o elige el punto en el mapa.</p>' +
+   field('f-name','Nombre del edificio',p.name,'maxlength="80" autocomplete="off"') +
+   '<div id="building-matches" aria-label="Edificios encontrados"></div>' +
+   field('f-coordinates','Coordenadas (latitud, longitud)',coordinates,'placeholder="-2.18376, -79.97990" aria-describedby="coord-help"') +
+   '<p id="coord-help">Busca por nombre en tus edificios y en el catálogo de <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>. También puedes pegar las coordenadas o elegir el punto.</p>' +
    '<button class="linkbutton" type="button" id="pick">Elegir en el mapa</button>' +
-   '<label for="f-level">Zoom al guardar</label><select id="f-level"><option value="parish">Parroquia</option><option value="canton">Cantón</option>'+(sectors?'<option value="zone">Zona censal</option><option value="sector">Sector censal</option>':'')+'</select>' +
    '<p id="f-location" role="status"></p>' +
    '<details id="building-details"><summary>Datos de venta opcionales</summary>' +
    field('f-sector','Sector buscado en las solicitudes',p.sector,'maxlength="80"') +
@@ -332,33 +324,47 @@ function settings(p = project, coordinates = Number.isFinite(p.lat) ? p.lat + ',
    '</div><div>'+field('f-rooms','Dormitorios',p.rooms,'type="number" min="1" max="50" step="1"')+'</div></div></details>' +
    '<p>Se guarda en este navegador. Puedes compartir el pin mediante un enlace.</p>' +
    '<p class="err" id="form-msg" role="alert"></p><div class="actions"><button class="button primary" type="submit">Guardar edificio</button></div></form>');
- const level=$('f-level'), coordinateInput=$('f-coordinates'), locationText=$('f-location');
- level.value=p.focusArea || 'parish';
+ const coordinateInput=$('f-coordinates'), locationText=$('f-location');
  function preview(){
    const point=parseCoordinates(coordinateInput.value);
    if(!point){locationText.textContent='';return;}
    const {canton,parish}=locate(point.lat,point.lon);
-   locationText.textContent=areaLabel(canton,parish,level.value);
-   if(level.value==='parish' && parishes?.needsUrban(parish)){
-     parishes.loadUrban().then(()=>{if(locationText.isConnected)preview();});
-   }
+   locationText.textContent=areaLabel(canton,parish);
  }
- coordinateInput.oninput=preview;level.onchange=preview;preview();
+ coordinateInput.oninput=preview;preview();
+ const search=adding?buildingSearch(buildings,code=>byCode(code)?.properties.name||code):null;
  function draft() {
-   return {...p,focusArea:level.value,name:$('f-name').value.trim(),sector:$('f-sector').value.trim(),
+   return {...p,name:$('f-name').value.trim(),sector:$('f-sector').value.trim(),
      price:$('f-price').valueAsNumber || null,rooms:$('f-rooms').valueAsNumber || null};
  }
  $('pick').onclick=()=>{
    pending={building:draft(),coordinates:$('f-coordinates').value};
    close();map.closePopup();picking=true;$('pin-tip').hidden=false;$('map').classList.add('pick-mode');$('explorar').scrollIntoView({block:'start'});
  };
- $('project-form').onsubmit=e=>{
+ $('project-form').onsubmit=async e=>{
    e.preventDefault();
-   const point=parseCoordinates($('f-coordinates').value),building=draft();
-   if(!building.name)return err('Indica el nombre del edificio.');
+   const form=e.currentTarget,building=draft(),typed=coordinateInput.value;
+   let point=parseCoordinates(typed),candidate=search?.chosen;
+   if(adding && !typed.trim() && building.name){
+     const known=await search.exact(building.name);
+     if(!form.isConnected || !$('modal').open || coordinateInput.value!==typed || $('f-name').value.trim()!==building.name)return;
+     if(known.length!==1){
+       return err(known.length?'Hay varios edificios con ese nombre. Elige una coincidencia o indica las coordenadas.':search.failed?'No se pudo cargar el catálogo. Ingresa las coordenadas o elige el punto.':'Nombre sin ubicación en el catálogo. Agrega las coordenadas o elige el punto en el mapa.');
+     }
+     candidate=known[0];point={lat:candidate.lat,lon:candidate.lon};building.name=candidate.name;
+   }
    if(!point)return err('Revisa las coordenadas. Ejemplo: -2.18376, -79.97990. La latitud va primero (−90 a 90) y la longitud después (−180 a 180).');
+   if(!building.name)building.name='Edificio · '+point.lat+', '+point.lon;
    Object.assign(building,point,{reference:!!p.reference && point.lat===p.lat && point.lon===p.lon});
+   if((candidate?.source==='osm' && point.lat===candidate.lat && point.lon===candidate.lon) ||
+      (p.source==='osm' && point.lat===p.lat && point.lon===p.lon))building.source='osm';
+   else delete building.source;
    const duplicate=buildings.find(b=>b.id!==p.id && sameBuilding(building,b));
+   if(duplicate&&adding){
+     if(building.sector||building.price||building.rooms)activateBuilding({...duplicate,sector:building.sector||duplicate.sector,price:building.price||duplicate.price,rooms:building.rooms||duplicate.rooms},true);
+     else {close();activateBuilding(duplicate);}
+     return;
+   }
    if(duplicate)return err('Ya existe un edificio con ese nombre y esas coordenadas. Selecciónalo en el mapa.');
    building.id=p.id || crypto.randomUUID();
    if(!activateBuilding(building,true))return;
@@ -443,17 +449,19 @@ async function main(){
  }else{
    $('layer').querySelector('[value="income"]').disabled=true;$('province-income-map').disabled=true;
  }
+ parishIndex=new Map((parishCatalog?.features||[]).map(({properties:p})=>[p.code,p]));
  if(parishCatalog&&parishTools){
    parishes=parishTools.initParishes(map,parishCatalog.features,()=>byCode(selected).properties,setSelection,()=>{demographics?.refresh();sectors?.refresh();});
  }else $('parish-note').textContent='No se pudieron cargar los límites parroquiales.';
  if(censusAges&&parishes&&ageTools){
-   demographics=ageTools.initDemographics({map,data:censusAges,cantons:features,parishCatalog,index:sectorIndex,
+   demographics=ageTools.initDemographics({map,data:censusAges,cantons:features,parishCatalog,index:sectorIndex,onAgesChanged:(lo,hi)=>earnings?.setAges(lo,hi),
      state:()=>({theme:$('layer').value,province:$('province').value,code:selected,territory,sectors}),colorize});
    $('age-option').disabled=false;$('age-body').hidden=false;$('age-status').hidden=true;
  }else $('age-status').textContent='No se pudo cargar la demografía censal. Recarga para reintentar.';
  if(sectorIndex&&parishes&&sectorTools){
    sectors=sectorTools.initSectorProfiles({map,index:sectorIndex,parishCatalog,cantons:features,
      state:()=>({theme:$('layer').value,province:$('province').value,canton:selected,parish:$('parish-select').value,finance,project,buildings}),
+     focusBuilding:id=>{const b=buildings.find(item=>item.id===id);if(b)activateBuilding(b);},
      selectArea:code=>{
        const area=territory?.current;
        const contained=area && code.startsWith(area.code);
@@ -471,6 +479,23 @@ async function main(){
  territory=navigation.initTerritory({map,cantons:new Map(features.map(f=>[f.properties.code,f])),parishes,parishCatalog,sectors,index:sectorIndex,ages:censusAges?.agesByDpa,
    cantonCode:()=>selected,setCanton:code=>setSelection(code,false,true),fitRegion,alignSector,updateLegend:colorize,
    share:(url,name)=>{demographics?.addFilters(url);shareMapLink(url,'Compartir área','El enlace abre la vista de '+name+'.');}});
+ earnings=initEarnings(()=>{
+   if(territory.isPoint){
+     if(!dest)return null;
+     return {province:dest.code.slice(0,2),code:pinSector,label:pinSector?'Sector '+pinSector:'',pending:pinLookup==='loading'};
+   }
+   const area=territory.current;
+   if(!area && !$('profile-empty').hidden)return null;
+   const code=area?.code||selected;
+   return {province:(area?.canton||selected).slice(0,2),code,label:area?.name||byCode(selected).properties.name};
+ },(code,lo,hi)=>demographics?.residentCount(code,lo,hi));
+ if(demographics)earnings.setAges(...demographics.ageRange());
+ $('project-location-retry').onclick=resolveBuildingAddress;
+ $('project-sector-open').onclick=()=>{
+   if(!pinSector)return;
+   if($('layer').value==='site')$('layer').value='population';
+   territory.open('sector',pinSector,false);
+ };
  $('parish-select').onchange=()=>territory.parentParish($('parish-select').value);
  if(campaignTools)campaign=campaignTools.initCampaign({cantons:features,parishes:parishCatalog?.features,
    state:()=>({project,buildings,matches:hasDemand()?matches:null}),
@@ -486,8 +511,7 @@ async function main(){
  $('source-items').innerHTML=sourceHTML()+'<p class="mini">Distancia de referencia: línea recta del pin a un punto interior de cada cantón; se usa para exploración geográfica. La distancia de viaje depende de la red vial.</p>';render();
  if(shared){
    const known=buildings.find(b=>sameBuilding(b,shared));
-   const changed=!!known && !!shared.focusArea && shared.focusArea!==known.focusArea;
-   activateBuilding(known?{...known,...shared}:{...shared,id:crypto.randomUUID()},!known || changed);
+   activateBuilding(known||{...shared,id:crypto.randomUUID()},!known);
  }else if(sharedRequest)say('El enlace contiene coordenadas o un nombre no válidos.');
  if(sharedRequest){
    const url=new URL(location.href);
@@ -508,9 +532,9 @@ async function main(){
  }
  $('province-income-map').onclick=()=>{territory.clear();$('layer').value='income';chooseLayer();$('explorar').scrollIntoView({block:'start'});};
  $('geo-pin').onclick=()=>{
-   const point=studyPin||project;if(!point)return;
-   const kind=territory.level==='region'?'parish':territory.level;
-   territory.atPoint(kind,point,locate(point.lat,point.lon));
+   if(!studyPin){projectFocus();return;}
+   map.setView([studyPin.lat,studyPin.lon],16,{animate:false});
+   $('map').scrollIntoView({block:'center'});
  };
  $('site-start').onclick=$('suit-start').onclick=openSiteMap;
  $('site-form').onsubmit=e=>{
@@ -553,7 +577,7 @@ async function main(){
  if(infrastructure){
    sectors?.setFacilities(infrastructure.schools,infrastructure.hospitals);
    const requested=new URL(location.href).searchParams.get('capa');
-   if((requested==='site'||(project&&!requested)) && !$('site-opt').disabled)$('layer').value='site';
+   if(requested==='site' && !$('site-opt').disabled)$('layer').value='site';
    if(['access','suitability','hot-school','hot-hospital'].includes(requested) && !$('layer').querySelector('[value="'+requested+'"]').disabled)$('layer').value=requested;
    colorize();
  }

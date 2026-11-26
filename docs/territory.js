@@ -35,7 +35,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     const pane=map.createPane(name);pane.style.zIndex=z;pane.style.pointerEvents='none';
   }
   const canvas=L.canvas({pane:'territory-boundaries',padding:.1});
-  let current=null,shape,noMatch=false,revision=0,outlineRevision=0,zoneTask,pointsTask,lastBorders='';
+  let pointName=null,current=null,shape,noMatch=false,revision=0,outlineRevision=0,zoneTask,pointsTask,lastBorders='';
   const municipalSectors=new Map();
   function zoneOutlines(){
     zoneTask??=readCompressedJSON('./data/zone-outlines.json.gz').catch(e=>{zoneTask=null;throw e;});
@@ -84,9 +84,9 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     $('parish-field').hidden=kind==='canton';
     $('geo-children').hidden=!fine;$('geo-sector-field').hidden=kind!=='sector';
     const empty=!current&&(kind!=='canton'||noMatch);
-    $('profile-empty').hidden=!empty;$('profile-stats').hidden=empty;
+    $('profile-empty').hidden=!!pointName||!empty;$('profile-stats').hidden=!!pointName||empty;
     $('geo-facts').hidden=!current||current.level==='canton';
-    $('canton-facts').hidden=empty||!$('geo-facts').hidden;
+    $('canton-facts').hidden=!!pointName||empty||!$('geo-facts').hidden;
     $('geo-share').hidden=$('geo-zoom').hidden=!current;
     $('geo-boundary-key').hidden=!current;
     if(current)$('geo-boundary-key').textContent='Área seleccionada';
@@ -95,8 +95,8 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     $('profile-prompt').textContent=hint;
     const title=current?(kind==='zone'||kind==='sector'?names[kind]+' '+current.code:names[kind]+' · '+current.name):('Cantón · '+cantons.get(cantonCode()).properties.name);
     const pop=current?current.population:cantons.get(cantonCode()).properties.population;
-    $('selection-label').textContent=empty?'Selecciona '+articles[kind]:title+(pop==null?'':' · '+fmt.format(pop)+' hab.');
-    $('profile-link').hidden=empty;
+    $('selection-label').textContent=pointName?'Edificio · '+pointName:empty?'Selecciona '+articles[kind]:title+(pop==null?'':' · '+fmt.format(pop)+' hab.');
+    $('profile-link').hidden=!pointName&&empty;
     incomeEstimate();paintBorders();
   }
   function displayAges(bands){
@@ -116,7 +116,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     return children.length?children.reduce((sum,[,series])=>ageBands(series).map((n,i)=>n+sum[i]),[0,0,0,0]):null;
   }
   function clear(kind='canton'){
-    revision++;noMatch=false;current=shape=null;group.clearLayers();level.value=names[kind]?kind:'canton';
+    revision++;pointName=null;noMatch=false;current=shape=null;group.clearLayers();level.value=names[kind]?kind:'canton';
     $('geo-status').textContent='';controls();
     if(level.value==='canton')displayAges(cantonAges(cantonCode()));
   }
@@ -127,7 +127,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     if(layer)map.fitBounds(layer.getBounds(),{padding:[22,22],maxZoom:18,animate:false});
   }
   function render(layer,details,zoom){
-    noMatch=false;current=details;shape=layer;group.clearLayers();
+    pointName=null;noMatch=false;current=details;shape=layer;group.clearLayers();
     const rings=layer.getLatLngs();
     for(const [color,weight] of [['#fff',6],['#864214',3.4]]){
       L.polygon(rings,{pane:'territory-focus',interactive:false,color,weight,fill:false,smoothFactor:.5}).addTo(group);
@@ -281,5 +281,6 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
   };
   level.disabled=false;clear();
   return {clear,reset,open,browse,atPoint,chooseCanton,parentParish,controls,zoneOutlines,
+    showPoint(name){clear(level.value);pointName=name;controls();},get isPoint(){return !!pointName;},
     get level(){return level.value;},get current(){return current;}};
 }
