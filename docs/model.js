@@ -1,4 +1,3 @@
-export const initialProject = {name:'VELIN Tower',lat:-2.18376,lon:-79.97990,reference:true,sector:'Vía a la Costa',price:180000,rooms:3};
 export const initialFinance={down:20,rate:8,years:20,share:30};
 export const normalize = value => String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 export function median(values){

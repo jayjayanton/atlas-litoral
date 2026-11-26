@@ -68,6 +68,7 @@ export function initSuitability({map,state,changeTheme,selectCanton,grid,density
   }
   function projectSummary(project){
     $('suit-pin-name').textContent=project.name;
+    if(!state().projectInCoverage){$('suit-score').textContent='—';$('suit-pin-facts').textContent='Edificio fuera de la cobertura de Guayas y Santa Elena.';return;}
     if(!valid){$('suit-score').textContent='—';$('suit-pin-facts').textContent='Ajusta los parámetros del escenario.';return;}
     const coord=project.lat+','+project.lon;
     const key=[coord,radius,scope].join('|');

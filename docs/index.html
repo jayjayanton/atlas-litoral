@@ -3,16 +3,22 @@
 <body>
 <header class="mast"><div class="mast-in"><div class="brand"><svg viewBox="0 0 34 34" aria-hidden="true"><g fill="none" stroke="#9de3cb" stroke-width="1.8"><path d="M2 24 12 14l6 3L31 4M2 30l11-11 6 3L32 9M2 18l9-10 6 3L28 1"/></g></svg><span>Atlas <b>Litoral</b></span></div><nav aria-label="Secciones"><a href="#explorar">Explorar</a><a href="#aptitud">Aptitud</a><a href="#infra">Accesibilidad</a><a href="#colegiaturas">Colegiaturas</a><a href="#comparar">Cantones</a><a href="#datos">Fuentes</a></nav><button class="mast-button" id="import-open">Importar CSV</button></div></header>
 <main>
-<section class="page-heading"><div><div class="eyebrow"><i></i> GUAYAS Y SANTA ELENA</div><h1>Mercado de vivienda</h1><p>Explora los cantones, ubica tu proyecto y compara la evidencia de demanda.</p></div><button id="edit" class="button primary"><span aria-hidden="true">⌖</span> Configurar proyecto</button></section>
+<section class="page-heading"><div><div class="eyebrow"><i></i> GUAYAS Y SANTA ELENA</div><h1>Mercado de vivienda</h1><p>Explora los cantones, ubica tu proyecto y compara la evidencia de demanda.</p></div><button id="add-building" class="button primary" disabled><span aria-hidden="true">＋</span> Agregar edificio</button></section>
 <section class="workspace" id="explorar">
 <div class="mapcard"><div class="map-head"><div><span class="kicker">EXPLORADOR</span><h2>Mapa cantonal</h2></div><label class="selectwrap"><span class="sr">Provincia en el mapa</span><select id="province"><option value="">Ambas provincias</option><option>Guayas</option><option>Santa Elena</option></select></label></div>
+<div class="building-bar">
+<label for="building-select">Edificio activo</label>
+<select id="building-select" disabled><option>Cargando…</option></select>
+<button id="edit" class="linkbutton" disabled>Editar</button>
+<button id="share-building" class="linkbutton" disabled>Compartir ubicación</button>
+</div>
 <div class="infra-toolbar" aria-label="Capas de infraestructura" id="overlay-toolbar">
 <label><input type="checkbox" id="ol-school" disabled><i class="geo-symbol school"></i>Escuelas</label>
 <label><input type="checkbox" id="ol-public" disabled><i class="geo-symbol public"></i>Hospitales públicos</label>
 <label><input type="checkbox" id="ol-private" disabled><i class="geo-symbol private"></i>Hospitales privados</label>
 <label id="unknown-label" hidden><input type="checkbox" id="ol-unknown" disabled><i class="geo-symbol unknown"></i>Sin clasificar</label>
 <label><input type="checkbox" id="ol-roads" disabled checked><i class="geo-symbol roads"></i>Vías principales</label></div>
-<div class="mapstage"><div id="map" aria-label="Mapa interactivo de cantones"></div><div class="maptools"><button id="all-map" title="Ver las dos provincias" aria-label="Ver las dos provincias">⛶</button></div><div class="maplegend"><b id="legend-title"></b><div id="legend"></div></div><div id="pin-tip" hidden>Toca el mapa para ubicar el proyecto. <button id="cancel-pick">Cancelar</button></div></div>
+<div class="mapstage"><div id="map" aria-label="Mapa interactivo de cantones"></div><div class="maptools"><button id="all-map" title="Ver las dos provincias" aria-label="Ver las dos provincias">⛶</button></div><div class="maplegend"><b id="legend-title"></b><div id="legend"></div></div><div id="pin-tip" hidden>Toca el mapa para ubicar el edificio. <button id="cancel-pick">Cancelar</button></div></div>
 <div class="map-foot"><span class="kicker">CAPA</span><label class="selectwrap"><span class="sr">Capa del mapa</span><select id="layer"><option value="population">Población censada</option><option value="demand">Solicitudes compatibles por origen</option><option value="loans">Operaciones de crédito publicadas</option><option id="suit-opt" value="suitability" disabled>Aptitud ponderada por densidad y vías</option><option id="grid-opt" value="access" disabled>Aptitud por accesibilidad</option><option id="regional-fee-opt" value="regional-fees" disabled>Pensión cantonal de bachillerato · mayo 2026</option><option id="fee-opt" value="fees" disabled>Pensiones escolares documentadas</option><option id="hs-opt" value="hot-school" disabled>Focos de escuelas</option><option id="hh-opt" value="hot-hospital" disabled>Focos de hospitales MSP</option></select></label><button class="textbtn" id="focus-project">Ver proyecto</button></div></div>
 <aside class="detail"><div class="detail-top"><span class="eyebrow">FICHA CANTONAL</span><label class="selectwrap"><span class="sr">Seleccionar cantón</span><select id="canton"></select></label><div class="detail-prov" id="detail-prov"></div></div>
 <div class="keymetric"><span>Población censada</span><strong id="pop">—</strong><small>habitantes · Censo 2022</small></div>

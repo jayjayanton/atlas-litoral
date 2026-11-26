@@ -1,0 +1,12 @@
+[
+  {
+    "id": "velin-tower",
+    "name": "VELIN Tower",
+    "lat": -2.18376,
+    "lon": -79.97990,
+    "reference": true,
+    "sector": "Vía a la Costa",
+    "price": 180000,
+    "rooms": 3
+  }
+]

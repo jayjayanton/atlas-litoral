@@ -112,7 +112,14 @@ export async function initInfrastructure({map,state,changeTheme,isPicking,fitReg
     if(nearestCache.size>=16)nearestCache.clear();nearestCache.set(key,out);return out;
   }
   function updatePin(){
-    const {project}=state(),near=pinDistances(project),d=Object.fromEntries(Object.entries(near).map(([k,v])=>[k,v?.km??null]));
+    const {project,projectInCoverage}=state();
+    $('show-services').disabled=!projectInCoverage || !points.length;
+    if(!projectInCoverage){
+      $('analysis-project').textContent=project.name;$('access-score').textContent='—';
+      $('access-summary').textContent='Edificio fuera de la cobertura de Guayas y Santa Elena.';
+      $('nearby-list').replaceChildren();return;
+    }
+    const near=pinDistances(project),d=Object.fromEntries(Object.entries(near).map(([k,v])=>[k,v?.km??null]));
     const score=validCriteria?accessibility(d,criteria):null;
     $('analysis-project').textContent=project.name;
     $('access-score').textContent=score==null?'—':fmt(score,0);
@@ -195,7 +202,6 @@ export async function initInfrastructure({map,state,changeTheme,isPicking,fitReg
   $('show-hotspot').disabled=$('hs-opt').disabled=$('hh-opt').disabled=!hotspots;
   function viewTheme(t){changeTheme(t);fitRegion();$('explorar').scrollIntoView({block:'start'});}
   $('show-access').onclick=()=>viewTheme('access');
-  $('show-services').disabled=!points.length;
   $('show-services').onclick=()=>{
     for(const key of Object.keys(symbols))if(available[key])$('ol-'+key).checked=true;
     const p=state().project;map.setView([p.lat,p.lon],13);queuePoints();$('explorar').scrollIntoView({block:'start'});
