@@ -16,6 +16,12 @@ Para comparar varios sectores, selecciona un edificio y un radio. La ficha lista
 
 Para reconstruir los conteos por edad cumplida, ejecuta `python scripts/build_census_ages.py BDD_CPV2022_SECT_CSV.zip docs/data/census-ages.json` con el archivo público nacional de población por sector del INEC.
 
+## Mapa descriptivo de ingresos
+
+El [mapa provincial](https://jayjayanton.github.io/atlas-litoral/?capa=income#explorar) muestra la mediana ponderada del ingreso corriente monetario mensual por hogar en la ENIGHUR 2024–2025. El dominio urbano de Guayaquil tiene su propia cifra de referencia en la ficha cantonal.
+
+En el [mapa sectorial](https://jayjayanton.github.io/atlas-litoral/?capa=sector-income&sector=090150224002#explorar), elige un tramo de ingreso para comparar el porcentaje estimado de hogares. El modelo aplica las distribuciones provinciales por edad del representante a los conteos censales de 2022. La leyenda usa los mismos intervalos para ese tramo en ambas provincias. Gris indica que no hay hogares con edad del representante disponible. Los sectores fuera de la zona consultada se dibujan al acercar el mapa. El ingreso se utiliza como estadística descriptiva y queda fuera de los filtros, el ordenamiento y el CSV de campaña.
+
 ## Hogares e ingreso por sector censal
 
 [Explorar un sector de Durán](https://jayjayanton.github.io/atlas-litoral/?capa=sectors&sector=090750001001#sectores). Busca un edificio, escuela u hospital por nombre, toca un punto del mapa o abre el selector por cantón, parroquia, zona y sector censal. La ficha identifica la provincia, el cantón y la cabecera o parroquia rural. Al acercarte, el mapa distingue el sector elegido de los demás sectores de su zona y de las zonas vecinas. Los 12.497 sectores con edades publicables cubren Guayas y Santa Elena. Se incluyen todas las partes y huecos de sus polígonos, simplificados a cinco metros para visualización. Hay 1.447 personas y 418 hogares con código sectorial reservado que solo se pueden asignar a niveles superiores.

@@ -1,4 +1,5 @@
 import {readCompressedJSON} from './compressed-json.js';
+import {isSectorTheme, estimatedShare, shareColor, bandKeys} from './income-map.js';
 import {featureAt, loanPrincipal, normalize} from './model.js';
 
 const $ = id => document.getElementById(id);
@@ -34,6 +35,15 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
   const cantonNames = new Map(cantons.map(f => [f.properties.code, f.properties.name]));
   const labels = ['Menos de ' + index.ageCuts[0], ...index.ageCuts.slice(0,-1).map((lo,i) => lo+'–'+(index.ageCuts[i+1]-1)), index.ageCuts.at(-1)+' o más'];
   const bands = ['Menos de '+dollars.format(index.incomeCuts[0]), ...index.incomeCuts.slice(0,-1).map((lo,i) => dollars.format(lo)+' a <'+dollars.format(index.incomeCuts[i+1])), dollars.format(index.incomeCuts.at(-1))+' o más'];
+  const bandSelect=$('income-band');
+  bandSelect.replaceChildren(...bands.map((label,i)=>new Option(label,String(i))));
+  const initialBand=new URLSearchParams(location.search).get('tramo');
+  if (/^[0-4]$/.test(initialBand)) bandSelect.value=initialBand;
+  const bandIndex=()=>Number(bandSelect.value);
+  const rowShare=(counts,z)=>estimatedShare(counts.slice(4),index.provinces[z.slice(0,2)],bandIndex());
+  const shareLabel=share=>share===null?'Sin estimación':percent.format(share)+' de los hogares (estimado)';
+  const incomeTheme=()=>state().theme==='sector-income';
+  const sectorMapActive=()=>isSectorTheme(state().theme);
   const parishes = [...new Set(zones.map(z => z.slice(0,6)))];
   for (const province of Object.keys(provinces)) {
     const group = document.createElement('optgroup');
@@ -65,13 +75,14 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
   function updateNeighbors() {
     const {theme,province}=state();
     const bounds=map.getBounds(), zoom=map.getZoom();
-    const key=[theme,currentZone,province,zoom,bounds.toBBoxString()].join('|');
+    const income=theme==='sector-income';
+    const key=[theme,income?bandIndex():'',currentZone,province,zoom,bounds.toBBoxString()].join('|');
     if (key===neighborView) return;
     neighborView=key;
     const version=++neighborRevision;
     neighbors.clearLayers();
     neighborState='';
-    if (theme!=='sectors') {neighbors.remove();return;}
+    if (!isSectorTheme(theme)) {neighbors.remove();return;}
     neighbors.addTo(map);
     if (zoom<13) {neighborState='zoom';legend();return;}
     const visible=zones.filter(z=>{
@@ -79,16 +90,27 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
       return z!==currentZone && (!province || provinces[z.slice(0,2)]===province) && bounds.intersects([[s,w],[n,e]]);
     });
     async function draw() {
-      const batches=await Promise.all(visible.map(async z=>(await getBlock(z))[z]));
+      const batches=await Promise.all(visible.map(async z=>[z,(await getBlock(z))[z]]));
       if(version!==neighborRevision)return;
       const polygons=[];
-      for(const batch of batches) for(const [, , rings] of batch) {
+      const byColor=new Map();
+      for(const [z,batch] of batches) for(const [, counts, rings] of batch) {
         let extent=shapeBounds.get(rings);
         if(!extent){extent=L.latLngBounds(rings);shapeBounds.set(rings,extent);}
-        if(bounds.intersects(extent)) polygons.push(rings);
-        if(polygons.length>420){neighborState='zoom';legend();return;}
+        if(!bounds.intersects(extent)) continue;
+        polygons.push(rings);
+        if(income) {
+          const color=shareColor(rowShare(counts,z),bandIndex());
+          if(!byColor.has(color)) byColor.set(color,[]);
+          byColor.get(color).push(...rings);
+        }
+        if(polygons.length>(income?900:420)){neighborState='zoom';legend();return;}
       }
-      if(polygons.length) {
+      if(income) {
+        for(const [color,rings] of byColor) {
+          L.polygon(rings,{pane:'neighbor-sectors',interactive:false,color:'#574c60',weight:1.2,fillColor:color,fillOpacity:.82}).addTo(neighbors);
+        }
+      } else if(polygons.length) {
         const rings=polygons.flat();
         L.polygon(rings,{...casing,pane:'neighbor-sectors',weight:5}).addTo(neighbors);
         L.polygon(rings,{...outline,pane:'neighbor-sectors',color:'#384554',weight:2.5,dashArray:'6 5',lineCap:'butt'}).addTo(neighbors);
@@ -182,9 +204,10 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
   }
   function paintSelection() {
     selectedBorder.clearLayers();
-    for (const [id, polygon] of layers) {
-      const active = id === sector.value;
-      polygon.setStyle({...sectorInk,fillColor:active?'#e9a34d':'#b8dbd1',fillOpacity:active?.4:.22});
+    for (const [id,counts] of rows) {
+      const polygon=layers.get(id), active=id===sector.value;
+      if (incomeTheme()) polygon.setStyle({color:'#574c60',weight:1.4,fillColor:shareColor(rowShare(counts,currentZone),bandIndex()),fillOpacity:.82});
+      else polygon.setStyle({...sectorInk,fillColor:active?'#e9a34d':'#b8dbd1',fillOpacity:active?.4:.22});
       if (active) {
         const rings=polygon.getLatLngs();
         L.polygon(rings,{...casing,pane:'selected-sector',weight:9}).addTo(selectedBorder);
@@ -192,9 +215,15 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
       }
     }
   }
-  function showMap(zoom, scroll) {
-    changeTheme();
-    const bounds = layers.get(sector.value)?.getBounds() || parishArea();
+  function showMap(zoom, scroll, theme=incomeTheme()?'sector-income':'sectors') {
+    changeTheme(theme);
+    let bounds=layers.get(sector.value)?.getBounds();
+    if (bounds && theme==='sector-income') bounds=bounds.pad(.7);
+    if (!bounds && theme==='sector-income' && currentZone) {
+      const [,south,west,north,east]=index.zones[currentZone];
+      bounds=L.latLngBounds([[south,west],[north,east]]);
+    }
+    if (!bounds) bounds=parishArea();
     if (zoom && bounds.isValid()) fit(bounds);
     if (scroll) $('map').scrollIntoView({block:'center'});
   }
@@ -208,6 +237,18 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     const where=document.createElement('span');where.className='sector-legend-area';
     where.textContent = parentLabel()+(selectedRow?'':' › '+zoneNumber());
     const items=[where];
+    if(incomeTheme()) {
+      $('legend-title').textContent='Hogares con ingreso mensual · '+bands[bandIndex()];
+      items.push(...bandKeys(bandIndex()));
+      const detail=document.createElement('small');detail.className='sector-legend-area';
+      detail.textContent=selectedRow?'Sector '+selectedRow[0]+' · '+shareLabel(rowShare(selectedRow[1],currentZone)):'Toca un sector para consultar su porcentaje.';
+      items.push(detail);
+      const note=document.createElement('small');note.className='sector-legend-area';
+      note.textContent=neighborState==='unavailable'?'No se cargaron las zonas vecinas.':neighborState==='zoom'?'Se muestra la zona elegida. Acércate para ver las zonas vecinas.':'Estimación según la edad del representante y la distribución provincial.';
+      const link=document.createElement('a');link.href='#sectores';link.textContent='Consultar el sector y el método';
+      $('legend').replaceChildren(...items,note,link);
+      return;
+    }
     function key(label,style) {
       const span=document.createElement('span'), chip=document.createElement('i');
       span.className='key';chip.className='sw '+style;span.append(chip,label);items.push(span);
@@ -247,7 +288,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     const list = $('sector-bands');
     list.replaceChildren();
     if (hh) bands.forEach((label,b) => {
-      const share = total(homes.map((n,i) => n / hh * refs[i].shares[b]));
+      const share = estimatedShare(homes,refs,b);
       const li = document.createElement('li'), track = document.createElement('span'), bar = document.createElement('i'), text = document.createElement('span');
       track.className = 'age-track'; bar.style.width = (share*100)+'%'; track.append(bar);
       text.textContent = percent.format(share); li.append(document.createTextNode(label), track, text); list.append(li);
@@ -278,18 +319,18 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     sector.value = id;
     profile(); paintSelection();
     status.textContent=''; $('sector-map').textContent='Ver sector en el mapa';
-    if (state().theme==='sectors') legend();
+    if (sectorMapActive()) legend();
     if (zoom) showMap(true,false);
   }
   async function openZone(z, desired, zoom = false, place) {
-    const version = ++generation;
+    const version = ++generation, requestedTheme=state().theme;
     clearRadius();
     currentZone = z; zone.value = z; selectedRow = undefined; rows = [];
     results.hidden = true; sector.disabled = true; sector.replaceChildren(new Option('Seleccionar sector',''));
     matchedPlace=undefined; placeMarker.clearLayers(); selectedBorder.clearLayers(); zoneCasing.clearLayers(); $('sector-map').textContent='Elegir en el mapa';
     $('sector-map').disabled = false; $('sector-zone-map').disabled = true; overlay.clearLayers(); layers.clear();
     updateNeighbors();
-    if (state().theme==='sectors') legend();
+    if (sectorMapActive()) legend();
     status.textContent = 'Cargando la zona censal…';
     try {
       const block = await getBlock(z);
@@ -297,10 +338,10 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
       rows = block[z];
       const zoneRings=rows.flatMap(row=>row[2]);
       L.polygon(zoneRings,{...casing,pane:'sector-casing',weight:5.6}).addTo(zoneCasing);
-      for (const [id, , rings] of rows) {
+      for (const [id, counts, rings] of rows) {
         sector.add(new Option('Sector '+id,id));
         const polygon = L.polygon(rings,{...sectorInk,pane:'census-sectors',bubblingMouseEvents:false});
-        polygon.bindTooltip(()=>{const label=document.createElement('span');label.textContent='Sector '+id+' · '+zoneNumber()+' · '+cantonNames.get(canton.value);return label;},{sticky:true});
+        polygon.bindTooltip(()=>{const label=document.createElement('span');label.textContent='Sector '+id+' · '+zoneNumber()+' · '+cantonNames.get(canton.value)+(incomeTheme()?' · '+shareLabel(rowShare(counts,z)):'');return label;},{sticky:true});
         polygon.on('click', e => {
           if (isPicking()) { map.fire('click',{latlng:e.latlng}); return; }
           lookup++; pickRow(id);
@@ -310,12 +351,12 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
       status.textContent = '';
       sector.disabled = false; $('sector-zone-map').disabled = false;
       markPlaces();
-      if (desired && layers.has(desired)) pickRow(desired,zoom,place);
+      if (desired && layers.has(desired)) pickRow(desired,zoom && state().theme===requestedTheme,place);
       else {
         status.textContent=desired?'Ese código de sector no figura en la zona. Elige un punto u otro código.':'Elige un lugar, toca el mapa o selecciona un sector por su código.';
         paintSelection();
-        if (state().theme==='sectors') legend();
-        if (zoom) {changeTheme();fit(overlay.getBounds());}
+        if (sectorMapActive()) legend();
+        if (zoom && state().theme===requestedTheme) {changeTheme(incomeTheme()?'sector-income':'sectors');fit(overlay.getBounds());}
       }
     } catch {
       if (version === generation) {
@@ -337,7 +378,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     return openZone(z,code.slice(9),zoom,place);
   }
   async function locate(lat, lon, scroll = false, place) {
-    const version = ++lookup;
+    const version = ++lookup, requestedTheme=state().theme;
     const possible = zones.filter(z => {
       const [,s,w,n,e] = index.zones[z];
       return lat>=s && lat<=n && lon>=w && lon<=e;
@@ -346,7 +387,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     try {
       for (const z of possible) {
         const block = await getBlock(z);
-        if (version!==lookup) return;
+        if (version!==lookup || state().theme!==requestedTheme) return;
         for (const [id, , rings] of block[z]) {
           const geometry = {type:'MultiPolygon',coordinates:rings.map(poly=>poly.map(ring=>ring.map(([y,x])=>[x,y])))};
           if (featureAt([{geometry}],lat,lon)) {
@@ -359,6 +400,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
       if (version===lookup) status.textContent='El punto queda fuera de los sectores cartografiados.';
     } catch { if (version===lookup) status.textContent='No se pudieron consultar los límites del punto. Intenta de nuevo.'; }
   }
+  let paintKey='';
   function refresh() {
     const {canton, parish:p, finance, theme, project} = state();
     if(theme!=='sectors') clearRadius();
@@ -366,8 +408,8 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     $('sector-building').hidden = !project;
     if(project) $('sector-building').textContent='Ubicar '+project.name;
     for (const group of [zoneCasing,overlay,selectedBorder,placeMarker]) {
-      if (theme==='sectors' && !map.hasLayer(group)) group.addTo(map);
-      if (theme!=='sectors' && map.hasLayer(group)) group.remove();
+      if (isSectorTheme(theme) && !map.hasLayer(group)) group.addTo(map);
+      if (!isSectorTheme(theme) && map.hasLayer(group)) group.remove();
     }
     const key = canton+'|'+p;
     if (!synchronizing && key!==locationKey) {
@@ -375,16 +417,21 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
       const code = parishes.includes(p)?p:(parish.value.startsWith(canton)?parish.value:parishes.find(k=>k.startsWith(canton)));
       if (code && !currentZone.startsWith(code)) { setZones(code); openZone(zone.value); }
     }
+    const styleKey=theme+'|'+bandIndex();
+    if (styleKey!==paintKey) {paintKey=styleKey;paintSelection();}
     updateNeighbors();
     if (selectedRow && JSON.stringify(finance)!==financeKey) profile();
   }
   canton.onchange=()=>{setParishes(canton.value);parish.onchange();};
-  parish.onchange=()=>{lookup++; syncCanton(parish.value); setZones(parish.value); openZone(zone.value,undefined,state().theme==='sectors');};
-  zone.onchange=()=>{lookup++; openZone(zone.value,undefined,state().theme==='sectors');};
-  sector.onchange=()=>{lookup++; if(sector.value) pickRow(sector.value,state().theme==='sectors');else openZone(currentZone,undefined,state().theme==='sectors');};
-  $('sector-zone-map').onclick=()=>{changeTheme();fit(overlay.getBounds());$('map').scrollIntoView({block:'center'});};
+  parish.onchange=()=>{lookup++; syncCanton(parish.value); setZones(parish.value); openZone(zone.value,undefined,sectorMapActive());};
+  zone.onchange=()=>{lookup++; openZone(zone.value,undefined,sectorMapActive());};
+  sector.onchange=()=>{lookup++; if(sector.value) pickRow(sector.value,sectorMapActive());else openZone(currentZone,undefined,sectorMapActive());};
+  $('sector-zone-map').onclick=()=>{changeTheme(incomeTheme()?'sector-income':'sectors');fit(overlay.getBounds());$('map').scrollIntoView({block:'center'});};
   $('sector-map').onclick=()=>showMap(true,true);
   $('sector-building').onclick=()=>{const p=state().project;if(p)locate(p.lat,p.lon,true,{...p,kind:'Edificio'});};
+  $('sector-income-map').onclick=()=>showMap(true,true,'sector-income');
+  bandSelect.onchange=()=>{refresh();legend();};
+  $('sector-income-option').disabled=false;
   $('sector-finance').onclick=editFinance;
   $('sector-to-campaign').onclick=()=>{if(selectedRow) useForCampaign(currentZone+selectedRow[0]);};
   $('sector-controls').hidden=false; $('sector-option').disabled=false;
@@ -392,6 +439,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
   $('sector-coverage').textContent = number.format(coverage.mapped)+' sectores con perfiles en Guayas y Santa Elena. El INEC agrupa '+number.format(coverage.pooledResidents)+' personas y '+number.format(coverage.pooledHouseholds)+' hogares bajo códigos sin ubicación sectorial publicable. Se conservan en los totales territoriales del censo. La cartografía incluye '+number.format(coverage.shapes-coverage.mapped)+' polígonos adicionales sin conteo de edades vinculado.';
   refresh();
   async function previewRadius(code,lat,lon,km) {
+    changeTheme('sectors');
     const pending=openCode(code,true);
     const version=generation;
     await pending;
@@ -400,7 +448,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
     adCircle=L.circle([lat,lon],{pane:'sector-place',radius:km*1000,color:'#2351ae',weight:3,dashArray:'8 5',fill:false,interactive:false}).addTo(map);
     legend();fit(adCircle.getBounds().extend(layers.get(sector.value).getBounds()));
   }
-  return {refresh, openCode, locate, previewRadius, frame:()=>showMap(true,false), legend, setFacilities(schools,hospitals) {
+  return {refresh, openCode, locate, previewRadius, frame:(theme='sectors')=>showMap(true,false,theme), legend, setFacilities(schools,hospitals) {
     facilities = [[schools,'Escuela'],[hospitals,'Hospital']].flatMap(([list,kind])=>(list||[])
       .filter(p=>cantonNames.has(p.code)).map(p=>({...p,kind})));
     buildPointIndex();

@@ -130,3 +130,10 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 .sw.campaign-radius-key{width:22px;height:0;border:0;border-top:3px dashed #2351ae;border-radius:0}
 
 .maplegend .sector-campaign-action{pointer-events:auto;font-size:inherit;margin:0}
+
+.income-controls{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;padding:9px 16px;background:#f4f0f7;border-top:1px solid #d6ccdf}
+.income-controls[hidden]{display:none}
+.income-controls label{font-size:14px;font-weight:650}
+.income-controls select{max-width:100%;min-height:36px}
+.income-controls small{flex-basis:100%;color:#50405d}
+#province-income-map{display:block;font-size:13px;margin-top:4px}
