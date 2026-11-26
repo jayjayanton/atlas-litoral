@@ -1,3 +1,4 @@
+import {readCompressedJSON} from './compressed-json.js';
 import {featureAt, loanPrincipal, normalize} from './model.js';
 
 const $ = id => document.getElementById(id);
@@ -6,16 +7,6 @@ const dollars = new Intl.NumberFormat('es-EC', {style:'currency', currency:'USD'
 const percent = new Intl.NumberFormat('es-EC', {style:'percent', maximumFractionDigits:1});
 const total = values => values.reduce((a, b) => a + b, 0);
 const provinces = {'09':'Guayas', '24':'Santa Elena'};
-
-async function readBlock(file) {
-  const response = await fetch('./data/sectors/' + file);
-  if (!response.ok) throw Error('Sectores');
-  const data = new Uint8Array(await response.arrayBuffer());
-  if (data[0] === 31 && data[1] === 139) {
-    return new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('gzip'))).json();
-  }
-  return JSON.parse(new TextDecoder().decode(data));
-}
 
 function cell(row, value, detail) {
   const td = row.insertCell();
@@ -179,7 +170,7 @@ export function initSectorProfiles({map, index, parishCatalog, cantons, state, s
 
   function getBlock(z) {
     const file = index.zones[z][0];
-    if (!cache.has(file)) cache.set(file, readBlock(file).catch(error => { cache.delete(file); throw error; }));
+    if (!cache.has(file)) cache.set(file, readCompressedJSON('./data/sectors/' + file).catch(error => { cache.delete(file); throw error; }));
     return cache.get(file);
   }
   function setZones(code) {

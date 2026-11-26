@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#132f39"><title>Atlas Litoral · Mercado de vivienda</title><link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./style.css"><script src="./vendor/leaflet.js"></script></head>
 <body>
-<header class="mast"><div class="mast-in"><div class="brand"><svg viewBox="0 0 34 34" aria-hidden="true"><g fill="none" stroke="#9de3cb" stroke-width="1.8"><path d="M2 24 12 14l6 3L31 4M2 30l11-11 6 3L32 9M2 18l9-10 6 3L28 1"/></g></svg><span>Atlas <b>Litoral</b></span></div><nav aria-label="Secciones"><a href="#explorar">Explorar</a><a href="#demografia">Demografía</a><a href="#sectores">Sectores censales</a><a href="#credito">Crédito</a><a href="#aptitud">Aptitud</a><a href="#infra">Accesibilidad</a><a href="#colegiaturas">Colegiaturas</a><a href="#comparar">Cantones</a><a href="#datos">Fuentes</a></nav><button class="mast-button" id="import-open">Importar CSV</button></div></header>
+<header class="mast"><div class="mast-in"><div class="brand"><svg viewBox="0 0 34 34" aria-hidden="true"><g fill="none" stroke="#9de3cb" stroke-width="1.8"><path d="M2 24 12 14l6 3L31 4M2 30l11-11 6 3L32 9M2 18l9-10 6 3L28 1"/></g></svg><span>Atlas <b>Litoral</b></span></div><nav aria-label="Secciones"><a href="#explorar">Explorar</a><a href="#campana">Campaña</a><a href="#demografia">Demografía</a><a href="#sectores">Sectores censales</a><a href="#credito">Crédito</a><a href="#aptitud">Aptitud</a><a href="#infra">Accesibilidad</a><a href="#colegiaturas">Colegiaturas</a><a href="#comparar">Cantones</a><a href="#datos">Fuentes</a></nav><button class="mast-button" id="import-open">Importar CSV</button></div></header>
 <main>
-<section class="page-heading"><div><div class="eyebrow"><i></i> GUAYAS Y SANTA ELENA</div><h1>Mercado de vivienda</h1><p>Explora los cantones, ubica tu proyecto y compara la evidencia de demanda.</p></div><button id="add-building" class="button primary" disabled><span aria-hidden="true">＋</span> Agregar edificio</button></section>
+<section class="page-heading"><div><div class="eyebrow"><i></i> GUAYAS Y SANTA ELENA</div><h1>Mercado de vivienda</h1><p>Explora los cantones, ubica tu proyecto y <a href="#campana">compara zonas para una campaña</a>.</p></div><button id="add-building" class="button primary" disabled><span aria-hidden="true">＋</span> Agregar edificio</button></section>
 <section class="workspace" id="explorar">
 <div class="mapcard"><div class="map-head"><div><span class="kicker">EXPLORADOR</span><h2 id="map-heading">Mapa territorial</h2></div><label class="selectwrap"><span class="sr">Provincia en el mapa</span><select id="province"><option value="">Ambas provincias</option><option>Guayas</option><option>Santa Elena</option></select></label></div>
 <div class="building-bar">
@@ -30,6 +30,30 @@
 <div class="metric"><div><h3>Ingreso mensual mediano</h3><small id="income-scale"></small></div><strong id="income">—</strong></div>
 <div class="metric"><div><h3>Mediana del préstamo</h3><small id="loan-note"></small></div><strong id="loan">—</strong></div>
 <div class="detail-bottom" id="active-project" hidden><div class="kicker">PROYECTO ACTIVO</div><button id="p-link" class="project-link"><span class="pin-glyph" aria-hidden="true">●</span><span><b id="project-name"></b><small id="project-where"></small></span></button></div></aside></section>
+<section id="campana" class="panel age-panel credit-panel">
+<div class="sectionbar"><h2>¿Dónde probar la campaña?</h2><button id="campaign-export" class="button subtle" disabled>Descargar comparación</button></div>
+<p>Elige un edificio para comparar posibles zonas de origen y preparar un mensaje sobre el inmueble.</p>
+<div class="age-controls">
+<label>Edificio<select id="campaign-building" disabled><option value="">Seleccionar edificio</option></select></label>
+<label>Radio desde el edificio (km)<input type="number" id="campaign-radius" min="0.1" max="250" step="any" value="10" required></label>
+<label>Edad del representante del hogar<select id="campaign-age" disabled><option value="">45–60 años</option></select></label>
+<label>Ingreso mensual del hogar<select id="campaign-floor"><option value="price">Según precio y financiamiento</option><option value="1000">Desde $1.000</option><option value="2000">Desde $2.000</option><option value="3000">Desde $3.000</option><option value="4000">Desde $4.000</option><option value="5000">Desde $5.000</option></select></label>
+<label>Priorizar sectores por<select id="campaign-rank"><option value="homes">Mayor número de hogares</option><option value="near">Menor distancia</option><option value="demand" disabled>Consultas compatibles del cantón de origen</option></select></label>
+</div>
+<p id="campaign-status" role="status"></p><button id="campaign-retry" class="linkbutton" hidden>Reintentar carga</button>
+<div id="campaign-results" hidden>
+<h3>Primeros sectores para una prueba</h3><p id="campaign-summary"></p>
+<div class="table-scroll"><table><thead><tr><th>Sector de origen</th><th>Distancia</th><th>Hogares censados</th><th>Hogares del grupo de edad</th><th>Consultas del cantón en 90 días</th></tr></thead><tbody id="campaign-rows"></tbody></table></div>
+<h3>¿Qué sabemos del ingreso de ese grupo?</h3><p id="campaign-finance"></p><ul id="campaign-reference"></ul><button id="campaign-edit" class="linkbutton">Ajustar financiamiento</button>
+<h3>Mensaje sobre el proyecto</h3><p id="campaign-hospital"></p>
+</div>
+<details class="infra-method"><summary>Cómo interpretar la prueba y llevarla a Google Ads</summary>
+<p>El radio incluye sectores cuyo punto interior representativo cae dentro del círculo. Las distancias son en línea recta. El atlas muestra hasta cinco sectores con hogares y deja abrir cada polígono. La edad y el umbral de ingreso describen los sectores propuestos. El orden utiliza la distancia, el total de hogares o las consultas, según la prioridad elegida. Los hogares se cuentan una vez por la edad de su representante. Las consultas importadas se conocen por cantón de origen y un mismo conteo puede aparecer en varios sectores. En empates se priorizan los hogares y luego la cercanía.</p>
+<p>El ingreso mensual proviene de la ENIGHUR 2024–2025 y se pondera con el factor de expansión. Se aplica la proporción provincial al grupo censado de 2022 en el radio. Las diferencias entre barrios, el ahorro para la entrada y la intención de compra requieren evidencia adicional. Con menos de 30 hogares encuestados o menos de diez en alguno de los dos tramos de ingreso se muestra el tamaño de muestra y se omite la estimación.</p>
+<p>En Google Ads, comprueba las ciudades disponibles o configura un radio de al menos 1 km, sujeto al volumen mínimo de usuarios. Para una prueba local de búsqueda, la opción de presencia incluye a personas que están o suelen estar en el área. Google usa intervalos como 45–54 y 55–64 y publica una lista de países con segmentación por ingresos. Ecuador queda fuera de esa lista. La edad y el ingreso de esta ficha describen hogares de forma agregada.</p>
+<p>Compara un anuncio que mencione el hospital con otro que destaque el departamento en la misma zona. Registra el gasto, las consultas compatibles y las visitas agendadas por zona y anuncio.</p>
+<p><a href="https://support.google.com/google-ads/answer/2580383?hl=es">Opciones demográficas</a> · <a href="https://support.google.com/google-ads/answer/1722043?hl=es">Opciones geográficas</a> · <a href="https://support.google.com/adspolicy/answer/143465?hl=es">Política de publicidad personalizada</a></p>
+</details></section>
 <section id="demografia" class="panel age-panel">
 <div class="sectionbar"><h2>Edad de la población</h2><button class="button subtle" id="age-map" disabled>Ver porcentajes en el mapa</button></div>
 <p>Residentes censados por el INEC en 2022. Selecciona una cabecera cantonal o parroquia rural para comparar edades dentro de esa área.</p>

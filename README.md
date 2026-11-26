@@ -4,6 +4,12 @@
 
 Atlas de acceso a servicios y mercado de vivienda en Guayas y Santa Elena, Ecuador. Selecciona un cantón para consultar sus indicadores o combina escuelas, hospitales y vías en el panel **Aptitud territorial ponderada**. Puedes comparar cómo cambia el resultado al modificar los pesos de cada criterio. La puntuación describe el acceso a servicios. Para evaluar la demanda de vivienda, consulta la fuente, el período y la cobertura de los indicadores de mercado.
 
+## Prueba geográfica de campaña
+
+[Comparar zonas para un edificio](https://jayjayanton.github.io/atlas-litoral/#campana). Selecciona un proyecto y un radio. La ficha lista hasta cinco sectores ordenados por hogares, cercanía o consultas compatibles del cantón de origen si existe una muestra importada. Puedes abrir sus polígonos y descargar los resultados. El radio se evalúa sobre un punto interior de cada polígono; los conteos cubren el sector completo. El mensaje sobre hospitales usa la distancia en línea recta desde el edificio al establecimiento más próximo del inventario.
+
+La edad corresponde al representante del hogar en el Censo 2022. El grupo 45–60 incluye ambos extremos. El umbral se puede elegir o calcular a partir del precio y del escenario de financiamiento. Las proporciones de ingreso se calculan por provincia y grupo de edad con la ENIGHUR 2024–2025. Para el precio se usa el primer corte publicado de $250 que alcanza el mínimo calculado, hasta $15.000. Se omite la proporción cuando el grupo tiene menos de 30 observaciones o un tramo tiene menos de 10. Con el mismo conjunto de insumos de la sección de sectores, ejecuta `python scripts/build_campaign.py BDD_CPV2022_SECT_CSV.zip sectores_anonimizados.gpkg ENIGHUR25_HOGARES_AGREGADOS.csv ENIGHUR_F1_PERSONAS.csv docs/data/campaign.json.gz`.
+
 ## Demografía
 
 [Consulta las edades por parroquia](https://jayjayanton.github.io/atlas-litoral/?capa=ages#demografia). El rango incluye ambos extremos. Dejar vacío el máximo incluye todas las edades a partir del mínimo. La ficha presenta población total, conteo y porcentaje del rango elegido, y los cinco grupos quinquenales más numerosos. Las 65 unidades con datos en Guayas y Santa Elena son cabeceras cantonales y parroquias rurales del Censo 2022. Una parroquia urbana municipal sin código censal independiente muestra la cobertura disponible.

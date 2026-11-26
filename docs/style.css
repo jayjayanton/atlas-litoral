@@ -118,3 +118,9 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
   .mapstage:has(.sector-legend-area) #map{height:365px}
   .mapstage:has(.sector-legend-area) .maplegend{position:static;max-width:none;border:0;border-bottom:1px solid var(--outline);border-radius:0;background:white;padding:8px 12px}
 }
+
+#campaign-status:empty{display:none}
+#campana td small{display:block;color:var(--dim)}
+#campaign-rows .linkbutton{text-align:left}
+#campaign-reference{padding-left:1.25rem}
+#campana .table-scroll{max-width:100%;overflow-x:auto}

@@ -1,3 +1,4 @@
+import {initCampaign} from './campaign.js';
 import {initSectorProfiles} from './sector-profiles.js';
 import {initDemographics} from './demographics.js';
 import {initCreditMap} from './credit-map.js';
@@ -15,7 +16,7 @@ function load(key,init){try{return JSON.parse(localStorage.getItem(store+key))??
 function save(key,value){try{localStorage.setItem(store+key,JSON.stringify(value));return true;}catch{say('No se pudo guardar en este navegador.');return false;}}
 let project=null,catalog,buildings,buildingState,otherMarkers;
 let finance=load('finance',initialFinance),requests=load('demand',[]),userLoans=load('loans',[]);
-let sectors,demographics,creditMap,infrastructure,parishes,projectParish,viewRevision=0;
+let campaign,sectors,demographics,creditMap,infrastructure,parishes,projectParish,viewRevision=0;
 let features,inc,observed,bank,polys,cantonLines,cantonCasing,selected='0901',map,marker,labels,streets,selectedPopup,picking=false,pending=null,matches={},dest=null;
 const layers={},colors=['#d6e8dc','#9fcab7','#5fa592','#2b7c73','#155b56'],empty='#e3e7e3';
 const financingURL='https://www.superbancos.gob.ec/estadisticas/portalestudios/volumen-de-credito/';
@@ -171,6 +172,7 @@ function table(){
 }
 const numOrDash=n=>n==null?'—':num(n);
 function render(){
+ campaign?.refresh();
  parishes?.refresh();
  const f=byCode(selected),p=f.properties,s=scope(f),v=inc[s],ln=observedLoans(f),custom=userLoans.filter(r=>r.canton_destino===p.code);
  $('detail-prov').textContent=p.province+' · DPA '+p.code;$('pop').textContent=num(p.population);$('income').textContent=money(v.median);$('income-scale').textContent=(p.code==='0901'?'Dominio urbano':'Referencia provincial')+' · '+s;
@@ -352,6 +354,11 @@ async function main(){
      selectArea:code=>{setSelection(code.slice(0,4));parishes.highlight(parishCatalog.features.find(f=>f.properties.code===code.slice(0,6)));},
      editFinance:scenario,changeTheme:()=>{$('layer').value='sectors';colorize();},isPicking:()=>picking});
  }else $('sector-status').textContent='No se pudieron cargar los sectores. Recarga para reintentar.';
+ campaign=initCampaign({cantons:features,parishes:parishCatalog?.features,
+   state:()=>({project,buildings,finance,matches:hasDemand()?matches:null}),
+   selectBuilding:id=>{const b=buildings.find(item=>item.id===id);if(b){activateBuilding(b);$('campana').scrollIntoView({block:'start'});}},
+   selectSector:code=>{if(sectors){sectors.openCode(code);$('explorar').scrollIntoView({block:'start'});}else say('Los límites sectoriales no están disponibles.');},
+   editFinance:scenario,download});
  creditMap=initCreditMap({map,features,parishes,parishCatalog,bankRow:observedLoans,state:()=>({theme:$('layer').value,province:$('province').value,project,projectCanton:dest?.code,down:finance.down}),redraw:colorize,fitRegion,selectCanton:setSelection,download});
  const initialTheme=new URL(location.href).searchParams.get('capa');
  if(initialTheme==='credit'||(initialTheme==='sectors'&&sectors)||(initialTheme==='ages'&&demographics))$('layer').value=initialTheme;
@@ -382,6 +389,7 @@ async function main(){
    map, land:context.features.filter(f=>f.properties.kind==='land'), state:()=>({theme:$('layer').value,province:$('province').value,code:selected,features,project,projectInCoverage:!!dest}),
    changeTheme:theme=>{$('layer').value=theme;colorize();},isPicking:()=>picking,fitRegion,selectCanton:code=>setSelection(code),download
  }).catch(error=>{console.warn('Capas de infraestructura:',error);$('infra-status').textContent='No se pudo iniciar el análisis. Recarga para reintentar.';return null;});
+ campaign?.setHospitals(infrastructure?.hospitals);
  if(infrastructure){
    sectors?.setFacilities(infrastructure.schools,infrastructure.hospitals);
    const requested=new URL(location.href).searchParams.get('capa');
