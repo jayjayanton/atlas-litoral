@@ -1,0 +1,81 @@
+{
+  "layers": [
+    {
+      "title": "Sedes educativas",
+      "period": "Ministerio de Educación, agosto de 2026",
+      "note": "2.798 sedes activas en Guayas y 236 en Santa Elena. Se incluyen 1.805 sedes exteriores hasta 25 km del límite para calcular distancias. Varias instituciones o extensiones pueden compartir predio.",
+      "links": [
+        {
+          "url": "https://www.iedg.gob.ec/wp-content/uploads/2026/09/Educacion.rar",
+          "label": "Inventario nacional (RAR)",
+          "download": false
+        },
+        {
+          "url": "./data/infra/schools.json",
+          "label": "Puntos del atlas (JSON)",
+          "download": true
+        }
+      ]
+    },
+    {
+      "title": "Hospitales fijos con internación",
+      "period": "MSP, julio de 2026 · SNGR, 2023 · ACHPE, consulta de noviembre de 2026",
+      "note": "Guayas cuenta con 25 registros públicos y 27 privados. Santa Elena cuenta con 6 públicos y 2 privados. El inventario incluye 277 hospitales de otras provincias para medir proximidad en los bordes. Cada símbolo identifica su fuente. La cobertura varía según el operador. Las fechas se refieren al registro y la operación actual puede haber cambiado.",
+      "links": [
+        {
+          "url": "https://www.iedg.gob.ec/wp-content/uploads/2026/09/Establecimientos_salud.rar",
+          "label": "Inventario del MSP (RAR)",
+          "download": false
+        },
+        {
+          "url": "https://sgrportal.gestionderiesgos.gob.ec/server/rest/services/Hosted/Establecimientos_de_Salud/FeatureServer",
+          "label": "Registro de la SNGR",
+          "download": false
+        },
+        {
+          "url": "https://achpe.org.ec/mapa-interactivo/",
+          "label": "Directorio ACHPE",
+          "download": false
+        },
+        {
+          "url": "./data/infra/hospitals.json",
+          "label": "Puntos del atlas (JSON)",
+          "download": true
+        }
+      ]
+    },
+    {
+      "title": "Red vial principal de Ecuador",
+      "period": "OpenStreetMap y Geofabrik, 24 de noviembre de 2026",
+      "note": "La capa descargable contiene 28.170 tramos en Ecuador continental y Galápagos. Incluye autopistas, troncales, vías primarias y secundarias con sus enlaces. Las líneas se simplificaron a 18 m. La Red Vial Estatal del Ministerio de Infraestructura y Transporte se consulta en la descarga oficial.",
+      "links": [
+        {
+          "url": "./data/infra/roads.geojson",
+          "label": "Descargar red del atlas (GeoJSON)",
+          "download": true
+        },
+        {
+          "url": "https://www.iedg.gob.ec/wp-content/uploads/2026/09/Red_vial_estatal.rar",
+          "label": "Descargar Red Vial Estatal (MIT, RAR)",
+          "download": false
+        },
+        {
+          "url": "https://download.geofabrik.de/south-america/ecuador/",
+          "label": "Extractos nacionales de Geofabrik",
+          "download": false
+        },
+        {
+          "url": "https://www.openstreetmap.org/copyright",
+          "label": "© OpenStreetMap contributors · ODbL",
+          "download": false
+        }
+      ]
+    }
+  ],
+  "method": [
+    "La malla tiene 2.060 centros terrestres espaciados cada 3 km en UTM 17S. Cada círculo representa una muestra puntual. La cifra del proyecto se calcula en las coordenadas de su pin. Para las vías se mide al punto más cercano de un tramo.",
+    "Cada criterio aporta su peso completo a distancia cero. Su aporte disminuye linealmente hasta cero en el límite elegido. La suma se divide por los pesos activos y se escala de 0 a 100. El escenario inicial asigna 40 % a escuelas (3 km), 40 % a hospitales (10 km) y 20 % a vías (3 km).",
+    "Los focos cantonales usan Gi* de Getis-Ord sobre tasas por 10.000 habitantes del Censo 2022. Se comparan el propio cantón y sus cuatro vecinos más cercanos dentro de las dos provincias. Se aplican 19.999 permutaciones y una corrección Benjamini–Yekutieli por indicador. Un foco cumple q ≤ 0,05. Los resultados dependen de la escala y de los vecinos disponibles en los bordes.",
+    "La proximidad puede cruzar agua o cerramientos. Para valorar tiempos de viaje, cupos escolares, capacidad hospitalaria o demanda de compradores se requieren datos específicos de cada tema."
+  ]
+}

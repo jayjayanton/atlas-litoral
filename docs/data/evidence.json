@@ -1,0 +1,109 @@
+[
+  {
+    "code": "0901",
+    "area": "Vía a la Costa",
+    "kind": "Ventas del corredor",
+    "value": 427,
+    "units": "departamentos vendidos",
+    "period": "Ene 2025 – jun 2026",
+    "sourceName": "TERRATÉVERE · REDI Analytics",
+    "url": "https://es.linkedin.com/pulse/departamentos-en-el-gran-guayaquil-d%C3%B3nde-est%C3%A1-la-y-se-hidalgo-sol%C3%ADs-q7j9e",
+    "note": "Ubicación del inmueble. Muestra de proyectos verticales monitoreados, en todos los precios. La fuente no publica el origen de los compradores."
+  },
+  {
+    "code": "0901",
+    "area": "Los Ceibos",
+    "kind": "Ventas del corredor",
+    "value": 101,
+    "units": "departamentos vendidos",
+    "period": "Ene 2025 – jun 2026",
+    "sourceName": "TERRATÉVERE · REDI Analytics",
+    "url": "https://es.linkedin.com/pulse/departamentos-en-el-gran-guayaquil-d%C3%B3nde-est%C3%A1-la-y-se-hidalgo-sol%C3%ADs-q7j9e",
+    "note": "Ubicación del inmueble. Muestra de proyectos verticales monitoreados, en todos los precios. La fuente no publica el origen de los compradores."
+  },
+  {
+    "code": "0916",
+    "area": "Barranca Apartments · Nuevo Samborondón",
+    "kind": "Ventas del proyecto",
+    "value": 300,
+    "units": "departamentos vendidos",
+    "period": "Acumulado sin fecha de corte",
+    "sourceName": "Galjosa",
+    "url": "https://galjosa.com/barranca-apartments/",
+    "note": "El promotor reporta 300 de los 304 departamentos vendidos. Alcance de un proyecto con varios tipos de unidad. Sin desglose por precio o residencia del comprador."
+  },
+  {
+    "code": "0906",
+    "area": "La Aurora · Urb. Veranera",
+    "kind": "Ventas del proyecto",
+    "value": 50,
+    "units": "casas vendidas",
+    "period": "Primeros cinco meses, a sep 2023",
+    "sourceName": "Vistazo · declaración del promotor",
+    "url": "https://www.vistazo.com/amp/negocios/nuevo-desarrollo-inmobiliario-la-aurora-MM5934853",
+    "note": "El promotor reportó ventas iniciales de casas en un proyecto con precios anunciados de USD 103.000 a 145.000. Es una referencia histórica de otro producto."
+  },
+  {
+    "code": "2403",
+    "area": "Salinas · condominios",
+    "kind": "Muestra de anuncios vendidos",
+    "value": 3,
+    "units": "fichas con venta reportada",
+    "period": "Ene, feb y sep 2026",
+    "sourceName": "Ecuador Realty / MLS Ecuador",
+    "url": "https://ecuador-realty.com/en/real-estate-ecuador/for-sale/condos/rs2500283",
+    "note": "La misma agencia anunció tres ventas en las descripciones de tres propiedades, una en cada mes indicado. No es un conteo cantonal. Muestra puntual de inmuebles distintos. Sin información de residencia del comprador, precio escriturado o préstamo.",
+    "records": [
+      {
+        "id": "RS2500283",
+        "url": "https://ecuador-realty.com/en/real-estate-ecuador/for-sale/condos/rs2500283"
+      },
+      {
+        "id": "RS2500029",
+        "url": "https://ecuador-realty.com/en/real-estate-ecuador/oceanview-properties-in-ecuador-coast/rs2500029"
+      },
+      {
+        "id": "RS2500143",
+        "url": "https://mls.mls-ecuador.com/agencies/ecuadorrealty/listings/rs2500143/"
+      }
+    ]
+  },
+  {
+    "code": "2402",
+    "area": "La Libertad · condominios",
+    "kind": "Muestra de anuncios vendidos",
+    "value": 2,
+    "units": "fichas con venta reportada",
+    "period": "Estado consultado 25 nov 2026 · sin fecha de cierre",
+    "sourceName": "MLS Ecuador",
+    "url": "https://mls-ecuador.com/es/propiedades-recientes/rs1700395",
+    "note": "Dos fichas distintas figuran como vendidas, una de 3 dormitorios y otra de 2. No hay fecha verificable de venta. Muestra puntual de inmuebles distintos. Sin información de residencia del comprador, precio escriturado o préstamo.",
+    "records": [
+      {
+        "id": "RS1700395",
+        "url": "https://mls-ecuador.com/es/propiedades-recientes/rs1700395"
+      },
+      {
+        "id": "RS1700199",
+        "url": "https://mls-ecuador.com/es/ultimas-propiedades/propiedades-recientes/rs1700199"
+      }
+    ]
+  },
+  {
+    "code": "2401",
+    "area": "Punta Blanca · condominio",
+    "kind": "Muestra de anuncios vendidos",
+    "value": 1,
+    "units": "fichas con venta reportada",
+    "period": "Estado consultado 25 nov 2026 · sin fecha de cierre",
+    "sourceName": "MLS Ecuador",
+    "url": "https://mls-ecuador.com/es/ultimas-propiedades/propiedades-recientes/rs1900014",
+    "note": "Una ficha del cantón Santa Elena, con tres dormitorios y precio publicado de USD 180.000, figura como vendida. No hay fecha verificable de venta. Muestra puntual de inmuebles distintos. Sin información de residencia del comprador, precio escriturado o préstamo.",
+    "records": [
+      {
+        "id": "RS1900014",
+        "url": "https://mls-ecuador.com/es/ultimas-propiedades/propiedades-recientes/rs1900014"
+      }
+    ]
+  }
+]

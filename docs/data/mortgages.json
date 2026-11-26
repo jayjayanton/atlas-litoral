@@ -1,0 +1,92 @@
+{
+  "source": "Superintendencia de Bancos del Ecuador",
+  "url": "https://www.superbancos.gob.ec/estadisticas/portalestudios/volumen-de-credito/",
+  "source_file": "Reporte Volumen de Crédito SEPTIEMBRE 2026.zip / REPORTE VOLUMEN DE CREDITO 2026_09.xlsx",
+  "start": "2026-01",
+  "end": "2026-09",
+  "scope": "Bancos privados con operaciones reportadas; producto inmobiliario, vivienda de interés público y vivienda de interés social. Cantón de destino de la operación; no identifica origen del comprador, solicitantes actuales, crédito BIESS ni el precio de la propiedad.",
+  "operation": "TIPO DE OPERACION = CREDITO; ESTADO DE LA OPERACION = ORIGINAL.",
+  "method": "Suma del número de operaciones y del monto otorgado. Media = total / operaciones. La mediana sólo se calcula cuando todos los grupos contienen una operación o cuando sólo hay dos operaciones, con montos en USD.",
+  "rows": [
+    {
+      "province": "GUAYAS",
+      "canton": "DAULE",
+      "operations": 80,
+      "total_usd": 7770933.07,
+      "mean_usd": 97136.66,
+      "median_usd": null
+    },
+    {
+      "province": "GUAYAS",
+      "canton": "DURAN",
+      "operations": 7,
+      "total_usd": 810024.83,
+      "mean_usd": 115717.83,
+      "median_usd": 88427.5
+    },
+    {
+      "province": "GUAYAS",
+      "canton": "GENERAL ANTONIO ELIZALDE (BUCAY)",
+      "operations": 1,
+      "total_usd": 86535.44,
+      "mean_usd": 86535.44,
+      "median_usd": 86535.44
+    },
+    {
+      "province": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "operations": 1667,
+      "total_usd": 192302345.28,
+      "mean_usd": 115358.34,
+      "median_usd": null
+    },
+    {
+      "province": "GUAYAS",
+      "canton": "MILAGRO",
+      "operations": 23,
+      "total_usd": 1624284.73,
+      "mean_usd": 70621.08,
+      "median_usd": null
+    },
+    {
+      "province": "GUAYAS",
+      "canton": "PLAYAS",
+      "operations": 1,
+      "total_usd": 60181.47,
+      "mean_usd": 60181.47,
+      "median_usd": 60181.47
+    },
+    {
+      "province": "GUAYAS",
+      "canton": "SAMBORONDON",
+      "operations": 98,
+      "total_usd": 14556280.45,
+      "mean_usd": 148533.47,
+      "median_usd": null
+    },
+    {
+      "province": "SANTA ELENA",
+      "canton": "LA LIBERTAD",
+      "operations": 9,
+      "total_usd": 907100.0,
+      "mean_usd": 100788.89,
+      "median_usd": 69900.0
+    },
+    {
+      "province": "SANTA ELENA",
+      "canton": "SALINAS",
+      "operations": 2,
+      "total_usd": 157947.87,
+      "mean_usd": 78973.94,
+      "median_usd": 78973.94
+    },
+    {
+      "province": "SANTA ELENA",
+      "canton": "SANTA ELENA",
+      "operations": 10,
+      "total_usd": 390675.0,
+      "mean_usd": 39067.5,
+      "median_usd": null
+    }
+  ]
+}
