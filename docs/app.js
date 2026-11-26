@@ -247,10 +247,14 @@ async function main(){
  $('rows').onclick=e=>{const b=e.target.closest('button[data-code]');if(b){setSelection(b.dataset.code,true);$('explorar').scrollIntoView({block:'start'});}};
  $('search').oninput=table;$('sort').onchange=table;$('edit').onclick=()=>settings();$('close').onclick=close;$('cancel-pick').onclick=cancelPick;$('finance-open').onclick=scenario;$('import-open').onclick=()=>imports();$('csv-out').onclick=exportData;
  infrastructure=await initInfrastructure({
-   map, state:()=>({theme:$('layer').value,province:$('province').value,code:selected,features,project,projectInCoverage:!!dest}),
+   map, land:context.features.filter(f=>f.properties.kind==='land'), state:()=>({theme:$('layer').value,province:$('province').value,code:selected,features,project,projectInCoverage:!!dest}),
    changeTheme:theme=>{$('layer').value=theme;colorize();},isPicking:()=>picking,fitRegion,selectCanton:code=>setSelection(code),download
  }).catch(error=>{console.warn('Capas de infraestructura:',error);$('infra-status').textContent='No se pudo iniciar el análisis. Recarga para reintentar.';return null;});
- if(infrastructure)colorize();
+ if(infrastructure){
+   const requested=new URL(location.href).searchParams.get('capa');
+   if(['access','suitability'].includes(requested) && !$('layer').querySelector('[value="'+requested+'"]').disabled)$('layer').value=requested;
+   colorize();
+ }
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&picking){e.preventDefault();cancelPick();}});
 }
 main().catch(e=>{console.error(e);$('map').textContent='No se pudo cargar la cartografía. Recarga la página para reintentar.';});

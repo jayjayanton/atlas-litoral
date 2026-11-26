@@ -21,3 +21,9 @@ dialog{color:var(--ink);width:min(560px,calc(100% - 24px));max-height:90dvh;bord
 .saved-building-marker {width:17px; height:17px; border:2px solid #fff; border-radius:3px; background:#265b77; box-shadow:0 0 0 1px #20485d; display:block}
 #building-details {margin:14px 0}
 #building-details summary {font-size:14px; font-weight:600}
+
+.score-scale {display:inline-flex; flex-direction:column; width:142px; gap:2px}
+.score-scale i {display:block; height:9px; border-radius:3px}
+.score-scale span {display:flex; justify-content:space-between; font-size:11px}
+.score-scale b {font-weight:500}
+.score-note {font-size:11px; color:var(--dim); align-self:center}

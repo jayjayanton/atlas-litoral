@@ -1,3 +1,4 @@
+import {createScoreSurface,surfaceLegend} from './score-surface.js';
 import {initSuitability} from './suitability.js';
 import {initSchoolFees} from './school-fees.js';
 import {accessibility,defaults,nearestFacility,nearestRoad,ownership,roadLines} from './access-model.js';
@@ -8,15 +9,13 @@ const fmt=(n,d=1)=>new Intl.NumberFormat('es-EC',{maximumFractionDigits:d}).form
 const escape=text=>String(text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const symbols={school:['#6562b2','Escuela'],public:['#0d7195','Hospital público'],private:['#bd455e','Hospital privado'],unknown:['#5f6668','Hospital sin sector registrado']};
 const hospitalSources={'MSP / IEDG':'MSP / IEDG · julio de 2026','SNGR':'SNGR · registro 2023','SNGR / ACHPE':'SNGR · registro 2023 / ACHPE · consulta nov. 2026'};
-const bins=['#e7ecdf','#bcd4b8','#86bca3','#429e89','#096b62'];
 const clusterColors={hot:'#b84729',cold:'#326b9a',none:'#e1e5df',unknown:'#f3f1ec'};
 const clusterText={hot:'Foco de valores altos',cold:'Foco de valores bajos',none:'Sin agrupación significativa',unknown:'Sin datos suficientes'};
 const isHot=theme=>theme==='hot-school'||theme==='hot-hospital';
 const appThemes=t=>isHot(t)||t==='suitability'||t==='access'||t==='fees'||t==='regional-fees';
-const dotColor=s=>s==null?'#c9ccca':bins[Math.min(4,Math.floor(Math.min(100,Math.max(0,s))/20))];
 const km=n=>n==null?'Sin dato':n<.05?'menos de 50 m':n<1?'≈ '+fmt(Math.round(n*100)*10,0)+' m':'≈ '+fmt(n,1)+' km';
 
-export async function initInfrastructure({map,state,changeTheme,isPicking,fitRegion,selectCanton,download}){
+export async function initInfrastructure({map,land,state,changeTheme,isPicking,fitRegion,selectCanton,download}){
   const catalog=['schools','hospitals','roads','grid','hotspots','sources','school-fees','density'];
   const values=await Promise.all(catalog.map(async k=>{
     try{
@@ -35,11 +34,12 @@ export async function initInfrastructure({map,state,changeTheme,isPicking,fitReg
   const points=[...(schools??[]).map(p=>({...p,kind:'school'})),...(hospitals??[]).map(p=>({...p,kind:ownership(p.sector)}))];
   const positions=grid?Object.fromEntries(grid.columns.map((c,i)=>[c,i])):{};
   let modelVersion=0,layerKey='',renderFrame,roadLayer;
-  for(const [p,z] of [['infra-grid',408],['infra-roads',412],['infra-points',460]]){
+  for(const [p,z] of [['infra-roads',412],['infra-points',460]]){
     const pane=map.createPane(p);pane.style.zIndex=z;
     if(p!=='infra-points')pane.style.pointerEvents='none';
   }
-  const pointGroup=L.layerGroup().addTo(map),gridGroup=L.layerGroup().addTo(map),gridCanvas=L.canvas({pane:'infra-grid',padding:.3});
+  const pointGroup=L.layerGroup().addTo(map);
+  const surface=grid?createScoreSurface(map,land,state().features,grid):null;
   if(roads){
     roadLayer=L.geoJSON(roads,{pane:'infra-roads',interactive:false,renderer:L.canvas({pane:'infra-roads',padding:.2}),style:f=>{
       const major=/motorway|trunk|primary/i.test(f.properties.class??'');
@@ -136,17 +136,14 @@ export async function initInfrastructure({map,state,changeTheme,isPicking,fitReg
   function drawGrid(theme,province){
     const key=[theme,province,modelVersion].join('|');
     if(key===layerKey)return;
-    layerKey=key;gridGroup.clearLayers();
-    if(theme!=='access'||!grid||!validCriteria)return;
+    layerKey=key;
+    if(theme!=='access'||!grid||!validCriteria){surface?.clear('access');return;}
     const allowed=new Set(state().features.filter(f=>!province||f.properties.province===province).map(f=>f.properties.code));
-    for(const row of grid.cells){
-      if(!allowed.has(row[positions.code]))continue;
-      const score=accessibility(cellDistances(row),criteria);
-      L.circle([row[positions.lat],row[positions.lon]],{radius:1050,pane:'infra-grid',renderer:gridCanvas,interactive:false,stroke:false,fill:true,fillColor:dotColor(score),fillOpacity:.9}).addTo(gridGroup);
-    }
+    const scores=grid.cells.map(row=>allowed.has(row[positions.code])?accessibility(cellDistances(row),criteria):null);
+    surface.draw('access',scores,allowed);
   }
   function inspect(ll){
-    if(state().theme==='suitability'){suitability?.inspect(ll);return;}
+    if(state().theme==='suitability'){if(surface?.covers(ll))suitability?.inspect(ll);return;}
     if(state().theme!=='access'){
       if($('ol-roads').checked&&map.getZoom()>=10){
         const near=nearestRoad(ll.lat,ll.lng,allRoadLines);
@@ -155,16 +152,16 @@ export async function initInfrastructure({map,state,changeTheme,isPicking,fitReg
       }
       return;
     }
-    if(!grid||!validCriteria)return;
+    if(!grid||!validCriteria||!surface.covers(ll))return;
     let best=null,min=Infinity;
     for(const row of grid.cells){
       if(state().province&&state().features.find(f=>f.properties.code===row[positions.code])?.properties.province!==state().province)continue;
       const lon=row[positions.lon],lat=row[positions.lat];if(Math.abs(lon-ll.lng)>.03||Math.abs(lat-ll.lat)>.03)continue;
       const d=distanceKm(ll.lat,ll.lng,[lon,lat]);if(d<min){min=d;best=row;}
     }
-    if(!best||min>1.5)return;
+    if(!best||min>grid.spacingKm*.72)return;
     const ds=cellDistances(best),score=accessibility(ds,criteria);
-    L.popup().setLatLng([best[positions.lat],best[positions.lon]]).setContent('<b>Aptitud de la celda · '+(score==null?'Sin dato':fmt(score,0)+'/100')+'</b><br>Escuela: '+km(ds.school)+'<br>Hospital: '+km(ds.hospital)+'<br>Vía principal: '+km(ds.road)).openOn(map);
+    L.popup().setLatLng([best[positions.lat],best[positions.lon]]).setContent('<b>Muestra cercana de la malla · '+(score==null?'Sin dato':fmt(score,0)+'/100')+'</b><br>Escuela: '+km(ds.school)+'<br>Hospital: '+km(ds.hospital)+'<br>Vía principal: '+km(ds.road)).openOn(map);
   }
   function hotspotData(code,kind){return hotspots?.cantons[code]?.[kind];}
   function updateHot(){
@@ -192,8 +189,9 @@ export async function initInfrastructure({map,state,changeTheme,isPicking,fitReg
     if(!appThemes(theme))return false;
     if(theme==='fees'||theme==='regional-fees'){fees?.legend(theme);return true;}
     if(theme==='suitability'){suitability?.legend();return true;}
-    const hot=isHot(theme),items=hot?Object.entries(clusterColors).map(([k,c])=>[c,clusterText[k]]):bins.map((c,i)=>[c,i===4?'80–100':(20*i)+'–<'+(20*(i+1))]);
-    $('legend-title').textContent=hot?'Focos · '+(theme==='hot-school'?'escuelas':'hospitales'):'Aptitud de proximidad · 0–100';
+    if(theme==='access'){surfaceLegend('Aptitud de proximidad · 0–100');return true;}
+    const items=Object.entries(clusterColors).map(([k,c])=>[c,clusterText[k]]);
+    $('legend-title').textContent='Focos cantonales · '+(theme==='hot-school'?'escuelas':'hospitales');
     $('legend').innerHTML=items.map(([c,s])=>'<span class="key"><i class="sw" style="background:'+c+'"></i>'+s+'</span>').join('');
     return true;
   }
@@ -218,7 +216,7 @@ export async function initInfrastructure({map,state,changeTheme,isPicking,fitReg
   if(hospitalScope){const note=document.createElement('p');note.className='mini';note.textContent='Focos hospitalarios: '+hospitalScope;document.querySelector('.hotspot-info').append(note);}
   fees=initSchoolFees({schools,data:feeData,map,state,changeTheme,selectCanton,fitRegion,download});
   try{
-    suitability=initSuitability({map,state,changeTheme,selectCanton,grid,density,schools,hospitals,download,
+    suitability=initSuitability({map,state,changeTheme,selectCanton,grid,density,schools,hospitals,download,surface,
       roadDistance:p=>nearestRoad(p.lat,p.lon,allRoadLines)?.km??null});
   }catch(error){console.warn('Aptitud ponderada:',error);$('suit-status').textContent='No se pudo iniciar el análisis de densidad.';}
   updateCriteria();queuePoints();

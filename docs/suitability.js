@@ -1,3 +1,4 @@
+import {surfaceLegend} from './score-surface.js';
 import {countInRadius,buildDensityGrid,isValidWeights,presets,suitabilityScore} from './suitability-model.js';
 import {distanceKm} from './model.js';
 
@@ -10,9 +11,8 @@ const show=n=>Number.isFinite(n)?number.format(n):'Sin dato';
 const showScore=n=>Number.isFinite(n)?scoreFormat.format(n):'—';
 const densityDisplay=(n,area)=>Number.isFinite(n)?show(n/area):'Sin dato';
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const colorScale=['#e9eee7','#bdd5bf','#83b69c','#43927d','#095f54'];
 
-export function initSuitability({map,state,changeTheme,selectCanton,grid,density,schools,hospitals,roadDistance,download}){
+export function initSuitability({map,state,changeTheme,selectCanton,grid,density,schools,hospitals,roadDistance,download,surface}){
   if(!grid||!density){$('suit-status').textContent='No se pudo cargar la malla de aptitud.';return null;}
   const {cells,maxima}=buildDensityGrid(grid,density);
   const regions=new Map(state().features.map(f=>[f.properties.code,f]));
@@ -26,9 +26,6 @@ export function initSuitability({map,state,changeTheme,selectCanton,grid,density
 
   $('suit-weights').innerHTML=labels.map((label,i)=>'<div class="suit-weight"><label for="suit-w-'+i+'">'+label+'</label><input type="range" min="0" max="100" step="1" id="suit-slide-'+i+'" aria-label="Deslizador de '+label+'"><input type="number" min="0" max="100" step="1" id="suit-w-'+i+'" aria-label="Peso de '+label+'"><output id="suit-share-'+i+'" aria-label="Peso normalizado de '+label+'"></output></div>').join('');
   const roadsAtPin=new Map(),countsAtPin=new Map();
-  const pane=map.createPane('suitability-grid');pane.style.zIndex=409;pane.style.pointerEvents='none';
-  const canvas=L.canvas({pane:'suitability-grid',padding:.2});
-  const layer=L.layerGroup().addTo(map);
   let areaProvince=null,seriesKey=null,mapKey=null,projectKey=null,ranking=[],pendingFrame=0;
   let radius,scope,roadLimit,ri,hcol,valid,area;
 
@@ -58,11 +55,11 @@ export function initSuitability({map,state,changeTheme,selectCanton,grid,density
   function buildRanking(province){
     if(!valid)return [];
     const result=[];
-    for(const c of cells){
+    for(const [index,c] of cells.entries()){
       if(zone.value&&c.code!==zone.value)continue;
       if(province&&regions.get(c.code).properties.province!==province)continue;
       const s=c.counts[ri][col.school],h=c.counts[ri][hcol],value=score(s,h,c.roadKm);
-      if(value!==null)result.push({cell:c,s,h,value});
+      if(value!==null)result.push({cell:c,index,s,h,value});
     }
     return result.sort((a,b)=>b.value-a.value||a.cell.code.localeCompare(b.cell.code)||a.cell.lat-b.cell.lat||a.cell.lon-b.cell.lon);
   }
@@ -89,12 +86,10 @@ export function initSuitability({map,state,changeTheme,selectCanton,grid,density
     }).join('')||'<tr><td colspan="5">Sin resultados para la selección.</td></tr>';
   }
   function draw(){
-    layer.clearLayers();
-    if(!valid||state().theme!=='suitability')return;
-    for(const {cell:c,value} of ranking){
-      const index=Math.min(4,Math.floor(value/20));
-      L.circle([c.lat,c.lon],{radius:1180,pane:'suitability-grid',renderer:canvas,interactive:false,stroke:false,fillColor:colorScale[index],fillOpacity:.92}).addTo(layer);
-    }
+    if(!valid||state().theme!=='suitability'){surface.clear('suitability');return;}
+    const scores=new Array(cells.length),codes=new Set();
+    for(const r of ranking){scores[r.index]=r.value;codes.add(r.cell.code);}
+    surface.draw('suitability',scores,codes);
   }
   function refresh(){
     const {province,theme,project}=state();
@@ -110,21 +105,20 @@ export function initSuitability({map,state,changeTheme,selectCanton,grid,density
   }
   function showPoint(r){
     const c=r.cell;
-    L.popup().setLatLng([c.lat,c.lon]).setContent('<b>'+escape(regions.get(c.code).properties.name)+' · '+showScore(r.value)+'/100</b><br>Radio de '+radius+' km<br>Escuelas: '+r.s+' ('+densityDisplay(r.s,area)+'/km²)<br>Hospitales: '+r.h+' ('+densityDisplay(r.h,area)+'/km²)<br>Vía principal: '+show(c.roadKm)+' km').openOn(map);
+    L.popup().setLatLng([c.lat,c.lon]).setContent('<b>'+escape(regions.get(c.code).properties.name)+' · muestra de la malla · '+showScore(r.value)+'/100</b><br>Radio de '+radius+' km<br>Escuelas: '+r.s+' ('+densityDisplay(r.s,area)+'/km²)<br>Hospitales: '+r.h+' ('+densityDisplay(r.h,area)+'/km²)<br>Vía principal: '+show(c.roadKm)+' km').openOn(map);
   }
   function inspect(ll){
     if(!valid)return;
-    let near=null,nearest=1.2;
+    let near=null,nearest=grid.spacingKm*.72;
     for(const r of ranking){
-      if(Math.abs(r.cell.lat-ll.lat)>.015||Math.abs(r.cell.lon-ll.lng)>.015)continue;
+      if(Math.abs(r.cell.lat-ll.lat)>.03||Math.abs(r.cell.lon-ll.lng)>.03)continue;
       const d=distanceKm(ll.lat,ll.lng,[r.cell.lon,r.cell.lat]);
       if(d<=nearest){nearest=d;near=r;}
     }
     if(near)showPoint(near);
   }
   function legend(){
-    $('legend-title').textContent='Aptitud ponderada · 0–100';
-    $('legend').innerHTML=colorScale.map((c,i)=>'<span class="key"><i class="sw" style="background:'+c+'"></i>'+(i===4?'80–100':20*i+'–<'+20*(i+1))+'</span>').join('');
+    surfaceLegend('Aptitud ponderada · 0–100');
   }
   function update(){
     if(pendingFrame){cancelAnimationFrame(pendingFrame);pendingFrame=0;}
