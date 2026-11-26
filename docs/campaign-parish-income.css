@@ -8,11 +8,12 @@
 .parish-income-panel[open] > summary { border-bottom:1px solid #e2d9ce; }
 .parish-income-body { padding:0 16px 14px; }
 #parish-income-origin { margin:12px 0; line-height:1.45; }
-.parish-income-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr)); gap:10px; }
+.parish-income-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,205px),1fr)); gap:10px; }
 .parish-income-filters label { display:block; font-weight:650; font-size:.85rem; }
 .parish-income-filters small { font-weight:400; color:var(--dim); }
 .parish-income-filters select,.parish-income-filters input { display:block; width:100%; min-width:0; margin-top:4px; }
 #parish-income-status { margin:12px 0; }
+#parish-share-query, #parish-use-campaign-point { margin-bottom:12px; }
 #parish-income-results:not([hidden]) { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr)); gap:14px; align-items:start; }
 #parish-income-list { list-style:none; margin:0; padding:0; display:grid; gap:5px; }
 #parish-income-list button {
@@ -39,3 +40,13 @@
   .parish-income-filters select,.parish-income-filters input { font-size:16px; }
 }
 #parish-income-map .parish-income-number { border:1px solid #765468; border-radius:50%; background:#fff9fa; padding:0 4px; color:#4d2e42; font:700 11px/17px system-ui; box-shadow:none; }
+.parish-query-method { margin-bottom:12px; }
+.parish-income-filters label[hidden], .parish-income-figure span[hidden] { display:none; }
+#parish-score-reference:not([hidden]) {
+  display:grid; grid-template-columns:1fr auto; align-items:center; gap:2px 12px;
+  padding:10px 12px; margin-top:12px; border:1px solid #a5bdb9; background:#eef4f2; border-radius:5px;
+}
+#parish-score-reference small, #parish-score-reference span { grid-column:1/-1; color:#385957; font-size:.8rem; }
+#parish-score-reference b { color:#234f53; font-variant-numeric:tabular-nums; }
+.parish-reference-key { display:inline-block; width:15px; height:9px; margin-right:5px; border:2px dashed #234f53; background:#c8ddda; }
+#parish-income-list .parish-score-difference { font-weight:630; color:#523447; }

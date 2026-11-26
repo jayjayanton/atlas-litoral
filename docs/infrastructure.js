@@ -20,7 +20,7 @@ const isHot=theme=>theme==='hot-school'||theme==='hot-hospital';
 const appThemes=t=>isHot(t)||t==='suitability'||t==='access'||t==='site'||t==='fees'||t==='regional-fees';
 const km=n=>n==null?'Sin dato':n<.05?'menos de 50 m':n<1?'≈ '+fmt(Math.round(n*100)*10,0)+' m':'≈ '+fmt(n,1)+' km';
 
-export async function initInfrastructure({map,land,state,changeTheme,isPicking,fitRegion,selectCanton,download}){
+export async function initInfrastructure({map,land,state,changeTheme,isPicking,fitRegion,selectCanton,download,onScenarioChange}){
   async function loadLayer(name){
     const file=name==='roads'?'roads.geojson':name+'.json';
     const response=await fetch('./data/infra/'+file);
@@ -300,8 +300,8 @@ export async function initInfrastructure({map,land,state,changeTheme,isPicking,f
   if(hospitalScope){const note=document.createElement('p');note.className='mini';note.textContent='Focos hospitalarios: '+hospitalScope;document.querySelector('.hotspot-info').append(note);}
   fees=initSchoolFees({schools,data:feeData,map,state,changeTheme,selectCanton,fitRegion,download});
   try{
-    suitability=initSuitability({map,state,changeTheme,selectCanton,scale,loadRegional,schools,hospitals,siteAmenities,download,pinDistances});
-  }catch(error){console.warn('Aptitud ponderada:',error);$('suit-status').textContent='No se pudo iniciar el análisis de densidad.';}
+    suitability=initSuitability({map,state,changeTheme,selectCanton,scale,loadRegional,schools,hospitals,siteAmenities,download,pinDistances,onScenarioChange});
+  }catch(error){onScenarioChange?.(null);console.warn('Aptitud ponderada:',error);$('suit-status').textContent='No se pudo iniciar el análisis de densidad.';}
   updateCriteria();queuePoints();
   return {refresh,fill,legend,inspect,supports:appThemes,schools,hospitals};
 }

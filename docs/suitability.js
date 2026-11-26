@@ -37,9 +37,25 @@ function readScenario() {
   return {...previous, weights:[...base, optional.shopping ? 20 : 0, optional.city ? 20 : 0, 0]};
 }
 
-export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRegional,schools,hospitals,pinDistances,download}) {
+function scenarioFromQuery(params) {
+  const model = params.get('modelo');
+  let weights;
+  if (Object.hasOwn(presets, model)) weights = presets[model];
+  else if (model === 'custom') {
+    const fields = (params.get('pesos') || '').split(',');
+    if (fields.some(field => field.trim() === '')) return null;
+    weights = fields.map(Number);
+  }
+  if (!validArray(weights, criterionKeys.length) || !weights.some(w => w > 0)) return null;
+  const radius = Number(params.get('radio')), scope = params.get('red'), limit = Number(params.get('via'));
+  return {weights,radius:[2,5,10].includes(radius)?radius:5,scope:['all','public','private'].includes(scope)?scope:'all',
+    limit:Number.isFinite(limit) && limit >= .1 && limit <= 200 ? limit : 3};
+}
+
+export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRegional,schools,hospitals,pinDistances,download,onScenarioChange}) {
   if (!scale) {
     $('suit-status').textContent = 'No se pudo cargar la escala regional de aptitud.';
+    onScenarioChange?.(null);
     return null;
   }
   const {maxima} = scale, siteView = initSiteView(map);
@@ -47,7 +63,17 @@ export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRe
   const col = Object.fromEntries(scale.columns.map((key,i) => [key,i]));
   const scopeSelect = $('suit-scope'), radiusSelect = $('suit-radius'), limitInput = $('suit-road-limit');
   const zone = $('suit-area'), preset = $('suit-preset');
-  const store = readScenario();
+  const comparisonPreset = $('parish-suit-preset');
+  const comparisonRadius = $('parish-suit-radius'), comparisonScope = $('parish-suit-scope');
+  const comparisonLimit = $('parish-suit-road-limit');
+  for (const [control,original] of [[comparisonPreset,preset],[comparisonRadius,radiusSelect],[comparisonScope,scopeSelect]]) {
+    control.replaceChildren(...Array.from(original.options, option => option.cloneNode(true)));
+  }
+  comparisonPreset.disabled = false;
+  const url = new URL(window.location.href);
+  const linked = url.hash==='#ingresos-parroquiales' && ['puntaje','similares'].includes(url.searchParams.get('comparar'))
+    ? scenarioFromQuery(url.searchParams) : null;
+  const store = linked || readScenario();
   const weights = [...store.weights];
   const lastPositive = weights.map((weight,i) => {
     const saved = store.lastPositive?.[i];
@@ -62,7 +88,7 @@ export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRe
   let radius, scope, roadLimit, ri, hcol, shares, valid, area;
   const countsAtPin = new Map();
 
-  const weightControls = ['suit','site'].map(prefix => {
+  const weightControls = ['suit','site','parish-suit'].map(prefix => {
     $(prefix+'-weights').innerHTML = labels.map((label,i) => {
       const key = criterionKeys[i], base = prefix+'-';
       const siteAttribute = prefix==='site' ? ' data-site-criterion="'+key+'"' : '';
@@ -100,7 +126,7 @@ export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRe
     }
   }
 
-  function readControls() {
+  function readControls(savePreferences) {
     radius = Number(radiusSelect.value);
     scope = scopeSelect.value;
     roadLimit = limitInput.valueAsNumber;
@@ -120,8 +146,13 @@ export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRe
       field.setAttribute('aria-invalid', String(!inRange(weights[i])));
     });
     preset.value = Object.keys(presets).find(key => presets[key].every((v,i) => weights[i] === v)) || 'custom';
+    comparisonPreset.value = preset.value;
+    comparisonScope.value = scopeSelect.value;
+    comparisonRadius.value = radiusSelect.value;
+    if (comparisonLimit.value !== limitInput.value) comparisonLimit.value = limitInput.value;
+    onScenarioChange?.({weights:[...weights],radius,scope,limit:roadLimit,valid,message,preset:preset.value});
     $('suit-message').textContent = $('site-weight-message').textContent = message;
-    if (weights.every(inRange) && validRoad) {
+    if (savePreferences && weights.every(inRange) && validRoad) {
       try { localStorage.setItem(storageKey, JSON.stringify({weights, lastPositive, scope, radius, limit:roadLimit})); }
       catch {}
     }
@@ -288,9 +319,9 @@ export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRe
       cells ? 'Sin resultados para la selección.' : 'Cargando la malla regional…';
   }
 
-  function update() {
+  function update(savePreferences=true) {
     if (pendingFrame) { cancelAnimationFrame(pendingFrame); pendingFrame = 0; }
-    readControls(); map.closePopup(); refresh();
+    readControls(savePreferences); map.closePopup(); refresh();
   }
   function updateOnFrame() {
     if (!pendingFrame) pendingFrame = requestAnimationFrame(() => { pendingFrame = 0; update(); });
@@ -307,7 +338,20 @@ export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRe
     values.forEach((value,i) => changeWeight(i,value));
     update();
   };
-  scopeSelect.onchange = radiusSelect.onchange = zone.onchange = update;
+  comparisonPreset.onchange = () => {
+    if (comparisonPreset.value === 'custom') {
+      $('parish-suit-adjust').open = true;
+      $('parish-suit-slide-0').focus();
+    } else {
+      preset.value = comparisonPreset.value;
+      preset.onchange();
+    }
+  };
+  comparisonRadius.onchange = () => { radiusSelect.value = comparisonRadius.value; update(); };
+  comparisonScope.onchange = () => { scopeSelect.value = comparisonScope.value; update(); };
+  comparisonLimit.oninput = () => { limitInput.value = comparisonLimit.value; update(); };
+  scopeSelect.onchange = radiusSelect.onchange = update;
+  zone.onchange = () => update(false);
   limitInput.oninput = update;
   $('suit-map').onclick = () => {
     changeTheme('suitability');
@@ -339,6 +383,6 @@ export function initSuitability({map,state,changeTheme,selectCanton,scale,loadRe
   $('suit-opt').disabled = false;
   $('suit-body').hidden = false;
   $('suit-status').textContent = '';
-  readControls(); refresh();
+  readControls(!linked); refresh();
   return {refresh,legend,inspect,siteLegend:siteView.legend};
 }

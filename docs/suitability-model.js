@@ -78,13 +78,13 @@ export function buildDensityGrid(grid,density,amenities){
   return {cells,maxima};
 }
 
-function densityFactor(count, maximum) {
+export function densityFactor(count, maximum) {
   if (!Number.isFinite(count) || count < 0 || !Number.isFinite(maximum) || maximum < 0) return null;
   if (maximum === 0) return count === 0 ? 0 : null;
   return Math.min(1, count / maximum);
 }
 
-function proximity(distance, limit) {
+export function proximity(distance, limit) {
   if (!Number.isFinite(distance) || distance < 0 || !Number.isFinite(limit) || limit <= 0) return null;
   return Math.max(0, 1 - distance / limit);
 }

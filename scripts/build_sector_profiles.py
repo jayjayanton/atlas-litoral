@@ -61,8 +61,8 @@ def missing_ages(counts, households):
     return {k: v for k, v in differences.items() if v}
 
 
-def survey_groups(households, people):
-    # Keep the same provincial income reference throughout each province.
+def survey_samples(households, people):
+    """Join each surveyed household to its representative and group by province and age."""
     with open(people, encoding='utf-8-sig', newline='') as f:
         heads = {}
         for r in csv.DictReader(f):
@@ -83,8 +83,12 @@ def survey_groups(households, people):
             if w <= 0 or y < 0 or not 0 <= a <= 120:
                 raise ValueError('Invalid survey record')
             samples[p][bisect.bisect_right(AGES, a)].append((y, w))
+    return samples
+
+
+def survey_groups(households, people):
     result = {}
-    for p, groups in samples.items():
+    for p, groups in survey_samples(households, people).items():
         result[p] = []
         for group in groups:
             total = sum(w for y, w in group)

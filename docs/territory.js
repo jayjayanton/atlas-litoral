@@ -11,7 +11,7 @@ const total = counts => counts.reduce((a,b) => a+b, 0);
 const ageLabels = ['0–24 años','25–45 años','46–59 años','60 años o más'];
 const ageBands = ages => ages && [ages.slice(0,25), ages.slice(25,46), ages.slice(46,60), ages.slice(60)].map(total);
 
-export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,ages,cantonCode,setCanton,fitRegion,updateLegend,share,alignSector,onLevelChoice}){
+export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,ages,cantonCode,setCanton,fitRegion,updateLegend,share,alignSector,onLevelChoice,onCompareParish}){
   const level=$('geo-level'), parish=$('parish-select'), zones=$('geo-zone'), ids=$('geo-sector');
   const buttons=[...document.querySelectorAll('[data-level]')];
   const zoneCodes=Object.keys(index?.zones||{}).sort();
@@ -120,6 +120,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
     $('geo-facts').hidden=!current||current.level==='canton';
     $('canton-facts').hidden=!!pointName||empty||!$('geo-facts').hidden;
     $('geo-share').hidden=$('geo-zoom').hidden=!current;
+    $('geo-compare-parish').hidden=current?.level!=='parish'||!onCompareParish;
     $('geo-boundary-key').hidden=!current;
     if(current)$('geo-boundary-key').textContent='Área seleccionada';
     const hint=noMatch&&kind==='canton'?'Selecciona un cantón para ver su ficha.':'Toca '+articles[kind]+' para ver su ficha.';
@@ -329,6 +330,7 @@ export function initTerritory({map,cantons,parishes,parishCatalog,sectors,index,
   buttons.forEach(b=>b.onclick=()=>{level.value=b.dataset.level;level.onchange();});
   zones.onchange=()=>prepareZone(zones.value);
   ids.onchange=()=>ids.value?open('sector',ids.value,true,parish.value.startsWith('gye-')?parish.value:''):browse('sector');
+  $('geo-compare-parish').onclick=()=>{if(current?.level==='parish')onCompareParish?.(current.code);};
   $('geo-zoom').onclick=()=>fit(shape);
   $('geo-share').onclick=()=>{
     if(!current)return;

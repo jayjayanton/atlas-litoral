@@ -8,6 +8,7 @@
 import argparse
 import json
 import mimetypes
+import re
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
@@ -277,6 +278,176 @@ def check_campaign_parishes(page, base):
     expect(buttons.first).to_contain_text("0 km")
 
 
+def check_campaign_scores(page, base):
+    choose = page.locator("#building-select")
+    choose.select_option("velin-tower")
+    page.locator("#plan-selected-project").click()
+    panel = page.locator("#ingresos-parroquiales")
+    if not panel.evaluate("el => el.open"):
+        panel.locator("summary").first.click()
+    mode = page.locator("#parish-query-mode")
+    group = page.locator("#parish-income-group")
+    band = page.locator("#parish-income-band")
+    minimum = page.locator("#parish-score-min")
+    reference = page.locator("#parish-score-reference")
+    results = page.locator("#parish-income-results")
+    buttons = page.locator("#parish-income-list button")
+    names = buttons.locator("strong")
+    status = page.locator("#parish-income-status")
+
+    # Mean scores were checked directly against the original 500 m grid cells.
+    group.select_option("urban")
+    mode.select_option("similar")
+    band.select_option("")
+    expect(reference).to_contain_text(re.compile("Tarqui", re.IGNORECASE))
+    expect(reference).to_contain_text("42,16")
+    expect(names).to_have_text([
+        "1. La Libertad", "2. Pascuales", "3. Salinas", "4. Ximena", "5. José Luis Tamayo"
+    ])
+    expect(buttons.first.locator(".parish-result-score")).to_contain_text("37,5")
+    expect(buttons.first.locator(".parish-score-difference")).to_be_visible()
+    buttons.first.click()
+    expect(buttons.first).to_have_attribute("aria-pressed", "true")
+
+    # A minimum score and household income filter operate together on all areas.
+    mode.select_option("minimum")
+    minimum.fill("80")
+    band.select_option("4")
+    share = page.locator("#parish-income-min")
+    share.fill("")
+    expect(names).to_have_text(["1. Urdaneta", "2. Sucre", "3. García Moreno", "4. Letamendi"])
+    share.fill("7")
+    expect(names).to_have_text(["1. Urdaneta", "2. García Moreno"])
+    minimum.fill("101")
+    expect(minimum).to_have_attribute("aria-invalid", "true")
+    expect(results).to_be_hidden()
+    minimum.fill("100")
+    expect(minimum).to_have_attribute("aria-invalid", "false")
+    expect(results).to_be_hidden()
+    expect(status).to_contain_text(re.compile("ningun|ningún", re.IGNORECASE))
+    minimum.fill("80")
+    expect(buttons).to_have_count(2)
+
+    # Custom dollar bands and the integral score scale have separate limits.
+    band.select_option("range")
+    lower = page.locator("#parish-income-lower")
+    upper = page.locator("#parish-income-upper")
+    lower.fill("1800")
+    upper.fill("2200")
+    share.fill("")
+    expect(buttons).to_have_count(4)
+    upper.fill("1700")
+    expect(results).to_be_hidden()
+    upper.fill("2200")
+    expect(results).to_be_visible()
+
+    # The campaign follows changes in Aptitud's shared model at the same point.
+    mode.select_option("similar")
+    band.select_option("")
+    page.locator("#parish-suit-preset").select_option("tourism")
+    expect(page.locator("#suit-preset")).to_have_value("tourism")
+    page.locator('#tool-menu a[href="#aptitud"]').click()
+    page.locator("#suit-radius").select_option("10")
+    expect(page.locator("#parish-suit-radius")).to_have_value("10")
+    expect(reference).to_contain_text("77,61")
+    expect(names.first).to_contain_text("Febres Cordero")
+    page.locator("#suit-radius").select_option("2")
+    expect(reference).to_contain_text("20,26")
+    page.locator("#suit-preset").select_option("balanced")
+    page.locator("#suit-radius").select_option("5")
+    expect(reference).to_contain_text("42,16")
+    group.select_option("census")
+    expect(reference).to_contain_text(re.compile("Guayaquil", re.IGNORECASE))
+    assert all("Tarqui" not in name for name in names.all_text_contents())
+
+    # A small urban parish with no grid centers cannot supply a zero-score target.
+    choose.select_option("roca")
+    page.locator("#plan-selected-project").click()
+    group.select_option("urban")
+    mode.select_option("similar")
+    expect(reference).to_contain_text(re.compile("Roca", re.IGNORECASE))
+    expect(results).to_be_hidden()
+    page.locator("#parish-score-source").select_option("gye-TARQUI")
+    expect(reference).to_contain_text("42,16")
+    expect(buttons).to_have_count(5)
+    page.locator("#selection-clear").click()
+    page.locator("#parish-score-source").select_option("")
+    expect(results).to_be_hidden()
+    page.locator("#parish-score-source").select_option("gye-TARQUI")
+    expect(reference).to_contain_text("42,16")
+    expect(buttons).to_have_count(5)
+    mode.select_option("minimum")
+    minimum.fill("80")
+    band.select_option("")
+    expect(buttons).to_have_count(4)
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+
+    # A shared scenario overrides the view but preserves the viewer's saved settings.
+    preset = page.locator("#parish-suit-preset")
+    radius = page.locator("#parish-suit-radius")
+    page.locator("#parish-suit-adjust > summary").click()
+    preset.select_option("tourism")
+    radius.select_option("2")
+    stored_scenario = "JSON.parse(localStorage.getItem('atlasLitoral.suitability.v2'))"
+    before_link = page.evaluate(stored_scenario)
+    assert before_link["radius"] == 2
+    page.goto(base + "?comparar=puntaje&modelo=balanced&division=urban&minPuntaje=80"
+              "&desde=1800&hasta=2200&porcentaje=4#ingresos-parroquiales", wait_until="domcontentloaded")
+    expect(mode).to_have_value("minimum")
+    expect(preset).to_have_value("balanced")
+    expect(radius).to_have_value("5")
+    expect(group).to_have_value("urban")
+    expect(minimum).to_have_value("80")
+    expect(band).to_have_value("range")
+    expect(lower).to_have_value("1800")
+    expect(upper).to_have_value("2200")
+    expect(share).to_have_value("4")
+    expect(names).to_have_text(["1. Urdaneta", "2. Sucre", "3. García Moreno", "4. Letamendi"])
+    expect(buttons.first).to_contain_text("253 de 6.030")
+    share.fill("4.19")
+    expect(names).to_have_text(["1. Urdaneta", "2. García Moreno"])
+    assert page.evaluate(stored_scenario) == before_link
+    page.locator("#parish-suit-adjust > summary").click()
+    radius.select_option("10")
+    page.wait_for_function(stored_scenario + ".radius === 10")
+    assert page.evaluate(stored_scenario)["weights"] != before_link["weights"]
+    page.locator("#parish-suit-w-0").fill("75")
+    expect(preset).to_have_value("custom")
+    minimum.fill("0")
+    share.fill("3.75")
+    expect(buttons).to_have_count(5)
+    expected_names = names.all_inner_texts()
+    page.locator("#parish-share-query").click()
+    copied = page.locator("#share-url").input_value()
+    has_clipboard = page.evaluate("window.isSecureContext")
+    if has_clipboard:
+        page.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=page.evaluate("location.origin"))
+    page.locator("#copy-building").click()
+    expect(page.locator("#copy-status")).to_contain_text(re.compile("copiado|seleccionado"))
+    if has_clipboard:
+        assert page.evaluate("navigator.clipboard.readText()") == copied
+    query = parse_qs(urlsplit(copied).query)
+    assert query["modelo"] == ["custom"] and query["radio"] == ["10"]
+    assert query["pesos"][0].split(",")[0] == "75"
+    assert query["desde"] == ["1800"] and query["hasta"] == ["2200"]
+    assert query["porcentaje"] == ["3.75"]
+    page.goto(copied, wait_until="domcontentloaded")
+    expect(preset).to_have_value("custom")
+    expect(radius).to_have_value("10")
+    expect(names).to_have_text(expected_names)
+    page.goto(base + "?comparar=similares#ingresos-parroquiales", wait_until="domcontentloaded")
+    expect(mode).to_have_value("similar")
+    expect(page.locator("#parish-score-source")).to_be_visible()
+
+    # The map's parish card can supply a different reference from the current project.
+    page.goto(base + "?area=240154#explorar", wait_until="domcontentloaded")
+    page.locator("#geo-compare-parish").click()
+    expect(mode).to_have_value("similar")
+    expect(page.locator("#parish-score-source")).to_have_value("240154")
+    expect(reference).to_contain_text("Manglaralto")
+    expect(buttons).to_have_count(5)
+
+
 def run(url, executable):
     base = (url or LOCAL_URL).rstrip("/") + "/"
 
@@ -349,9 +520,12 @@ def run(url, executable):
             check_subdivisions(page, touch)
             assert not errors, errors
             page.context.close()
-            page = open_atlas([VELIN_GUIDE], width, touch)
+            page = open_atlas([VELIN_GUIDE, {
+                "id": "roca", "name": "Punto en Roca", "lat": -2.186945, "lon": -79.88573
+            }], width, touch)
             check_sector_scope(page, base, touch)
             check_campaign_parishes(page, base)
+            check_campaign_scores(page, base)
             assert not errors, errors
             page.context.close()
         browser.close()
@@ -363,4 +537,4 @@ if __name__ == "__main__":
     parser.add_argument("--chromium", help="Use an installed Chromium executable")
     args = parser.parse_args()
     run(args.url, args.chromium)
-    print("Project selection, campaigns, subdivisions and single-sector census counts passed.")
+    print("Project selection, campaigns, subdivisions, single-sector counts and parish queries passed.")

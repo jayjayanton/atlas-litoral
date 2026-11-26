@@ -754,3 +754,10 @@ input[type=checkbox],input[type=radio] { accent-color:var(--wine); }
 }
 
 #sector-parish-income:not([hidden]) { display:inline-block; margin-top:6px; padding-block:5px; font-size:.85rem; font-weight:600; }
+
+#parish-score-settings { margin:0 0 14px; padding:12px; border:1px solid var(--outline); border-radius:5px; background:#fff; }
+#parish-score-settings > label { max-width:26rem; }
+#parish-suit-adjust { margin-top:9px; }
+#parish-suit-adjust > summary { color:var(--wine); cursor:pointer; font-size:.9rem; font-weight:600; }
+#parish-suit-adjust .mini { margin:.75em 0; }
+.parish-score-link:not([hidden]) { display:inline-block; margin:0 16px 12px; font-weight:650; }

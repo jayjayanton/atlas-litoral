@@ -368,9 +368,9 @@ function activateBuilding(building,writeItem=false,replacesId) {
 function shareBuilding() {
  shareMapLink(buildingURL(location.href,project),'Compartir ubicación','El enlace abre el mapa en las coordenadas de '+project.name+'.');
 }
-function shareMapLink(url,title,description){
+function shareMapLink(url,title,description,label='Enlace del mapa'){
  dialog(title,'<p>'+esc(description)+'</p>'+
-   field('share-url','Enlace del mapa',url.href,'type="url" readonly')+
+   field('share-url',label,url.href,'type="url" readonly')+
    '<div class="actions"><button class="button primary" id="copy-building">Copiar enlace</button></div><p id="copy-status" role="status"></p>');
  $('copy-building').onclick=async()=>{
    try {await navigator.clipboard.writeText(url.href);$('copy-status').textContent='Enlace copiado.';}
@@ -576,6 +576,7 @@ async function main(){
  }
  if(!navigation){render();mapNotice('Puedes consultar cantones. Reintenta para cargar los demás niveles.');return;}
  territory=navigation.initTerritory({map,cantons:new Map(features.map(f=>[f.properties.code,f])),parishes,parishCatalog,sectors,index:sectorIndex,ages:censusAges?.agesByDpa,
+   onCompareParish:campaignTools?code=>campaign?.compareParish(code):null,
    onLevelChoice:(kind,focusedProject)=>{
      mapChoiceRevision++;
      if(markingPoint)setMarkingPoint(false);
@@ -610,6 +611,7 @@ async function main(){
      return urban?'Parroquia urbana '+urban.properties.name:parishIndex.get(parishCode)?.name || '';
    },
    matchesForProject:campaignMatches,
+   shareQuery:url=>shareMapLink(url,'Compartir consulta parroquial','El enlace conserva los filtros, la prioridad de aptitud y el punto de referencia de esta consulta.','Enlace de la consulta'),
    showOrigins:building=>{
      if(project!==building)activateBuilding(building);
      if($('province').value){$('province').value='';$('province').onchange();}
@@ -739,8 +741,9 @@ async function main(){
  if(!shared && initialTheme==='ages')demographics?.startLink();
  infrastructure=await import('./infrastructure.js').then(({initInfrastructure})=>initInfrastructure({
    map, land:context.features.filter(f=>f.properties.kind==='land'), state:()=>({theme:$('layer').value,province:$('province').value,code:selected,features,project,projectInCoverage:!!dest,site:project,siteCanton:dest}),
+   onScenarioChange:scenario=>campaign?.setScoreScenario(scenario),
    changeTheme:theme=>{$('layer').value=theme;colorize();},isPicking:()=>picking,fitRegion,selectCanton:code=>setSelection(code),download
- })).catch(error=>{console.warn('Capas de infraestructura:',error);$('hot-region').textContent=$('infra-status').textContent='No se pudo iniciar el análisis. Recarga para reintentar.';return null;});
+ })).catch(error=>{campaign?.setScoreScenario(null);console.warn('Capas de infraestructura:',error);$('hot-region').textContent=$('infra-status').textContent='No se pudo iniciar el análisis. Recarga para reintentar.';return null;});
  campaign?.setHospitals(infrastructure?.hospitals);
  if(infrastructure){
    sectors?.setFacilities(infrastructure.schools,infrastructure.hospitals);

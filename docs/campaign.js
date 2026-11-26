@@ -35,12 +35,12 @@ const metric = 'Gasto publicitario en USD dividido por visitas agendadas en el m
 const locationType = project => project.reference ? 'Acceso aproximado de referencia' : project.temporary ? 'Punto marcado en el mapa' : 'Punto registrado';
 const countLabel = (value, singular, plural) => number.format(value) + ' ' + (value === 1 ? singular : plural);
 
-export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,pickOnMap,previewRadius,updatePlanMap,matchesForProject,localityFor,showOrigins,download}) {
+export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,pickOnMap,previewRadius,updatePlanMap,matchesForProject,localityFor,showOrigins,download,shareQuery}) {
   const building=$('campaign-building'), radius=$('campaign-radius'), cohort=$('campaign-age');
   const mode=$('campaign-mode'), rank=$('campaign-rank'), status=$('campaign-status'), limit=$('campaign-limit');
   const codeInput=$('campaign-code'), adRadius=$('campaign-ad-radius');
   const outcomes = initCampaignOutcomes($('campaign-outcomes'));
-  const parishIncome=initCampaignParishIncome({cantons,parishes,sectorIndex});
+  const parishIncome=initCampaignParishIncome({cantons,parishes,sectorIndex,shareQuery});
   const names=new Map([...cantons,...(parishes||[])].map(f=>[f.properties.code,f.properties.name]));
   const areaName=code=>names.get(code.slice(0,6)) || names.get(code.slice(0,4)) || code.slice(0,4);
   const locality=row=>localityFor?.(row) || areaName(row.code);
@@ -321,5 +321,5 @@ export function initCampaign({state,cantons,parishes,sectorIndex,selectBuilding,
   $('campaign-export').onclick=writeExport;
   $('campaign-all-origins').onclick=()=>showOrigins(exportPlan.project);
   refresh();
-  return {refresh,useSector,showParishIncomeBand:parishIncome.showBand,useProject(){mode.value='near';refresh();},setHospitals(items){facilitiesReady=true;hospitals=items;refresh();}};
+  return {refresh,useSector,compareParish:parishIncome.compareParish,setScoreScenario:parishIncome.setScoreScenario,showParishIncomeBand:parishIncome.showBand,useProject(){mode.value='near';refresh();},setHospitals(items){facilitiesReady=true;hospitals=items;refresh();}};
 }

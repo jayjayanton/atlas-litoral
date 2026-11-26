@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import {gunzipSync} from 'node:zlib';
-import {nearbyParishIncome} from '../docs/parish-income.js';
+import {nearbyParishIncome, queryCampaignParishes} from '../docs/parish-income.js';
 import {groupMunicipalParishes} from '../docs/parishes.js';
 
 const point = {lat:0, lon:0};
@@ -116,4 +116,36 @@ test('all 65 census parishes reconcile with mapped and pooled private households
   assert.equal((first.share*100).toFixed(2),'6.82');
   assert.equal(second.code,'090750');
   assert.equal(second.distanceKm.toFixed(2),'11.42');
+});
+
+test('similarity searches the complete catalog and excludes only the reference', () => {
+  const areas=Array.from({length:8},(_,i)=>parish('0901'+String(50+i),i===0?-.005:i*.1));
+  const values=[80,21,37,60,94,74,82,80.05];
+  const scores=new Map(areas.map(({properties:p},i)=>[p.code,{score:values[i],cells:5,validCells:5}]));
+  const result=queryCampaignParishes({point,method:'similar',parishes:areas,scores});
+  assert.equal(result.reference.code,'090150');
+  assert.equal(result.matchedCount,7);
+  assert.deepEqual(result.rows.map(r=>r.code),['090157','090156','090155','090154','090153']);
+  assert.equal(result.rows[1].difference,2);
+  const manual=queryCampaignParishes({method:'similar',referenceCode:'090156',parishes:areas,scores});
+  assert.equal(manual.reference.code,'090156');
+  assert.equal(manual.rows[0].code,'090157');
+  assert.equal(manual.rows[0].distanceKm,null);
+  scores.delete('090156');
+  const missing=queryCampaignParishes({method:'similar',referenceCode:'090156',parishes:areas,scores});
+  assert.equal(missing.reference.score,null);
+  assert.deepEqual(missing.rows,[]);
+});
+
+test('regional score thresholds support exact endpoints, income intersections and stable ties', () => {
+  const areas=[parish('090150',-.005),parish('090151',.3),parish('090152',.1),parish('090153',.9)];
+  const scores=new Map(areas.map(({properties:p},i)=>[p.code,{score:[79.999,80,80,100][i],cells:7,validCells:7}]));
+  const run=(args={})=>queryCampaignParishes({method:'minimum',minScore:80,parishes:areas,scores,...args});
+  assert.deepEqual(run().rows.map(r=>r.code),['090153','090151','090152']);
+  assert.deepEqual(run({point}).rows.map(r=>r.code),['090153','090152','090151']);
+  assert.deepEqual(run({minScore:100}).rows.map(r=>r.code),['090153']);
+  assert.deepEqual(run({minScore:101}).rows,[]);
+  const households={'090151':[0,0,30,0,0],'090152':[0,40,0,0,0]};
+  assert.deepEqual(run({band:0,minShare:.3,households,provinces:refs}).rows.map(r=>r.code),['090151']);
+  assert.equal(run({band:0,minShare:.3,minScore:100,households,provinces:refs}).maxScore,80);
 });

@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#34212e"><meta name="description" content="Compara sectores censales cerca de tu proyecto en Guayas y Santa Elena y elige dónde probar una campaña inmobiliaria."><title>Atlas Litoral · Planificación de campañas inmobiliarias</title><link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./style.css?v=01a700f02a8e"><link rel="stylesheet" href="./project-selection.css?v=6c0bf7c925a7"><script defer src="./vendor/leaflet.js"></script><style>.map-canvas{position:relative}#map-preview[hidden]{display:none}#map-preview{position:absolute;inset:0;z-index:495;display:grid;place-items:center;overflow:hidden;background:#e2ebe5;pointer-events:none}
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#34212e"><meta name="description" content="Compara sectores censales cerca de tu proyecto en Guayas y Santa Elena y elige dónde probar una campaña inmobiliaria."><title>Atlas Litoral · Planificación de campañas inmobiliarias</title><link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./style.css?v=68407066a526"><link rel="stylesheet" href="./project-selection.css?v=6c0bf7c925a7"><script defer src="./vendor/leaflet.js"></script><style>.map-canvas{position:relative}#map-preview[hidden]{display:none}#map-preview{position:absolute;inset:0;z-index:495;display:grid;place-items:center;overflow:hidden;background:#e2ebe5;pointer-events:none}
 #map-preview img{width:100%;height:100%;min-height:0;object-fit:contain}
 #map-preview span{position:absolute;bottom:10px;left:10px;padding:4px 8px;border-radius:4px;background:#fffffff0;color:#24484d;font-size:12px}
-</style><link rel="stylesheet" href="./campaign-parish-income.css?v=3bb1c38fa2f8"><script type="importmap">{"imports":{"./access-model.js":"./access-model.js?v=0d26bf0d093c","./app.js":"./app.js?v=d1d9cff213d7","./basemaps.js":"./basemaps.js?v=f6730e4de25a","./building-search.js":"./building-search.js?v=f7c5400bb174","./buildings.js":"./buildings.js?v=dfbbae50db0a","./campaign-map.js":"./campaign-map.js?v=736c7fe3164c","./campaign-model.js":"./campaign-model.js?v=b00b8d9a98b4","./campaign-outcomes.js":"./campaign-outcomes.js?v=4f8df545dcd8","./campaign-parish-income.js":"./campaign-parish-income.js?v=4bfd75535bff","./campaign.js":"./campaign.js?v=f5642740e076","./compressed-json.js":"./compressed-json.js?v=ebc8b9c2a627","./credit-map.js":"./credit-map.js?v=4b80fa04531c","./credit-model.js":"./credit-model.js?v=3eea3e7c20eb","./demographics.js":"./demographics.js?v=db0765052a83","./earnings.js":"./earnings.js?v=36c0e0d2552c","./explorer-ui.js":"./explorer-ui.js?v=02d986157c4c","./income-map.js":"./income-map.js?v=5e308330fdcc","./infrastructure.js":"./infrastructure.js?v=c3f9a52cbb78","./model.js":"./model.js?v=56b3640001bc","./parish-income.js":"./parish-income.js?v=5a6e124148f3","./parishes.js":"./parishes.js?v=df1da6bff5cf","./project-selection.js":"./project-selection.js?v=90ad7e692fc4","./school-fees.js":"./school-fees.js?v=badcbca5b104","./score-surface.js":"./score-surface.js?v=b9ce45494c9b","./sector-profiles.js":"./sector-profiles.js?v=8a1f656e3089","./site-view.js":"./site-view.js?v=aaceb0290858","./suitability-model.js":"./suitability-model.js?v=278f1db60391","./suitability.js":"./suitability.js?v=467f7a31b80d","./territory.js":"./territory.js?v=8b18e183c124"}}</script></head>
+</style><link rel="stylesheet" href="./campaign-parish-income.css?v=ea80320cf11b"><script type="importmap">{"imports":{"./access-model.js":"./access-model.js?v=0d26bf0d093c","./app.js":"./app.js?v=d73e1b2abe7b","./basemaps.js":"./basemaps.js?v=f6730e4de25a","./building-search.js":"./building-search.js?v=f7c5400bb174","./buildings.js":"./buildings.js?v=dfbbae50db0a","./campaign-map.js":"./campaign-map.js?v=736c7fe3164c","./campaign-model.js":"./campaign-model.js?v=b00b8d9a98b4","./campaign-outcomes.js":"./campaign-outcomes.js?v=4f8df545dcd8","./campaign-parish-income.js":"./campaign-parish-income.js?v=18a3b4a49cb5","./campaign.js":"./campaign.js?v=56ad07ff229c","./compressed-json.js":"./compressed-json.js?v=ebc8b9c2a627","./credit-map.js":"./credit-map.js?v=4b80fa04531c","./credit-model.js":"./credit-model.js?v=3eea3e7c20eb","./demographics.js":"./demographics.js?v=db0765052a83","./earnings.js":"./earnings.js?v=36c0e0d2552c","./explorer-ui.js":"./explorer-ui.js?v=02d986157c4c","./income-map.js":"./income-map.js?v=5e308330fdcc","./income-range.js":"./income-range.js?v=48c49cd461e4","./infrastructure.js":"./infrastructure.js?v=71d1424581db","./model.js":"./model.js?v=56b3640001bc","./parish-income.js":"./parish-income.js?v=a5c22b25d2e9","./parish-suitability.js":"./parish-suitability.js?v=ed9cd4d4d43f","./parishes.js":"./parishes.js?v=df1da6bff5cf","./project-selection.js":"./project-selection.js?v=90ad7e692fc4","./school-fees.js":"./school-fees.js?v=badcbca5b104","./score-surface.js":"./score-surface.js?v=b9ce45494c9b","./sector-profiles.js":"./sector-profiles.js?v=8a1f656e3089","./site-view.js":"./site-view.js?v=aaceb0290858","./suitability-model.js":"./suitability-model.js?v=13273ffd1d8e","./suitability.js":"./suitability.js?v=5c486e636077","./territory.js":"./territory.js?v=5b2f207ec39f"}}</script></head>
 <body>
 <header class="mast">
   <div class="mast-in">
@@ -87,7 +87,8 @@
 <aside class="detail" id="ficha" aria-label="Ficha del área">
 <div id="geo-facts" hidden><div class="detail-top"><span id="geo-kind" class="eyebrow"></span><h2 id="geo-name"></h2><div class="detail-prov" id="geo-path"></div></div>
 <div class="keymetric geo-metrics"><div><span>Población censada</span><strong id="geo-pop"></strong></div>
-<div id="geo-households" hidden><span>Hogares</span><strong id="geo-homes"></strong></div><small id="geo-source"></small></div></div>
+<div id="geo-households" hidden><span>Hogares</span><strong id="geo-homes"></strong></div><small id="geo-source"></small></div>
+<a class="parish-score-link" id="geo-compare-parish" href="#ingresos-parroquiales" hidden>Ver cinco parroquias con aptitud similar</a></div>
 <section id="sector-income-card" class="profile-block household-estimate" aria-labelledby="sector-income-title" hidden>
 <h3 id="sector-income-title">Ingresos estimados de los hogares</h3><p class="mini" id="sector-income-base"></p>
 <table class="sector-income-table"><thead><tr><th scope="col">Ingreso mensual (USD)</th><th scope="col">Hogares (%)</th></tr></thead><tbody id="sector-income-ranges"></tbody></table>
@@ -141,20 +142,42 @@
 <p id="campaign-status" role="status">Cargando los conteos de residentes…</p><button id="campaign-retry" class="linkbutton" hidden>Reintentar carga</button></div>
 <div class="campaign-main">
 <details id="ingresos-parroquiales" class="parish-income-panel">
-<summary>Comparar ingresos de parroquias cercanas</summary>
+<summary>Comparar parroquias por cercanía, aptitud e ingresos</summary>
 <div class="parish-income-body">
 <p id="parish-income-origin">Elige un proyecto o un sector para comparar sus parroquias cercanas.</p>
+<button id="parish-use-campaign-point" type="button" class="linkbutton" hidden>Usar el punto actual de campaña</button>
+<div class="parish-income-filters parish-query-method">
+<label>Cómo buscar<select id="parish-query-mode"><option value="nearby">Más cercanas al punto</option><option value="similar">Puntaje similar</option><option value="minimum">Puntaje mínimo</option></select></label>
+<label id="parish-score-source-field" hidden>Parroquia de referencia<select id="parish-score-source"><option value="">Usar la parroquia del punto</option></select></label>
+<label id="parish-score-min-field" hidden>Puntaje mínimo (0–100)<input id="parish-score-min" type="number" inputmode="decimal" min="0" max="100" step="any" value="80" required aria-describedby="parish-income-status"></label>
+</div>
+<div id="parish-score-settings" hidden>
+<label class="suit-field" for="parish-suit-preset">Qué priorizar en el puntaje<select id="parish-suit-preset" disabled></select></label>
+<details id="parish-suit-adjust"><summary>Ajustar pesos y distancias</summary>
+<p class="mini">El porcentaje junto a cada barra indica cuánto aporta ese criterio. Estos ajustes también se usan en Aptitud del sitio.</p>
+<div class="suit-weights" id="parish-suit-weights"></div>
+<div class="suit-settings">
+<label class="suit-field">Radio de servicios y lugares<select id="parish-suit-radius"></select></label>
+<label class="suit-field">Red hospitalaria<select id="parish-suit-scope"></select></label>
+<label class="suit-field">Distancia máxima a vías (km)<input type="number" min="0.1" max="200" step="any" id="parish-suit-road-limit"></label>
+</div></details></div>
 <div class="parish-income-filters">
 <label>Ingreso mensual del hogar<select id="parish-income-band" disabled></select></label>
-<label>Mínimo en el tramo (%) <small>Opcional</small><input id="parish-income-min" type="number" inputmode="decimal" min="0" max="100" step="any" placeholder="Sin mínimo" aria-describedby="parish-income-status"></label>
+<label id="parish-income-lower-field" hidden>Desde USD<input id="parish-income-lower" type="number" inputmode="numeric" min="0" max="99900" step="100" value="1800" aria-describedby="parish-custom-hint"></label>
+<label id="parish-income-upper-field" hidden>Hasta antes de USD<input id="parish-income-upper" type="number" inputmode="numeric" min="100" max="100000" step="100" value="2200" aria-describedby="parish-custom-hint"></label>
+<label id="parish-income-min-field">Mínimo en el tramo (%) <small>Opcional</small><input id="parish-income-min" type="number" inputmode="decimal" min="0" max="100" step="any" placeholder="Sin mínimo" aria-describedby="parish-income-status"></label>
 <label>División de Guayaquil<select id="parish-income-group"><option value="urban">Parroquias urbanas</option><option value="census">Cabecera cantonal del INEC</option></select></label>
 </div>
+<p id="parish-custom-hint" class="mini" hidden>Ingreso mensual del hogar en pasos de $100. El límite inferior está incluido.</p>
+<div id="parish-score-reference" hidden></div>
 <p id="parish-income-status" class="mini" role="status"></p><button id="parish-income-retry" type="button" class="linkbutton" hidden>Reintentar</button>
+<button id="parish-share-query" type="button" class="linkbutton" hidden disabled>Compartir consulta</button>
 <div id="parish-income-results" hidden>
 <ol id="parish-income-list" aria-label="Parroquias por distancia al punto de campaña"></ol>
-<figure class="parish-income-figure"><div id="parish-income-map" role="region" aria-label="Mapa de las parroquias y del punto de campaña"></div><figcaption><span><i class="parish-origin-key" aria-hidden="true"></i>Punto de campaña</span><span><i class="parish-area-key" aria-hidden="true"></i>Parroquias de la lista</span><button id="parish-income-reset" type="button" class="linkbutton" hidden>Ver todas</button></figcaption></figure>
+<figure class="parish-income-figure"><div id="parish-income-map" role="region" aria-label="Mapa de las parroquias y del punto de campaña"></div><figcaption><span id="parish-origin-legend"><i class="parish-origin-key" aria-hidden="true"></i>Punto de campaña</span><span id="parish-ref-legend" hidden><i class="parish-reference-key" aria-hidden="true"></i>Referencia</span><span><i class="parish-area-key" aria-hidden="true"></i>Parroquias de la lista</span><button id="parish-income-reset" type="button" class="linkbutton" hidden>Ver todas</button></figcaption></figure>
 </div>
-<details class="parish-income-method"><summary>Cómo se estiman los ingresos y las distancias</summary>
+<details class="parish-income-method"><summary>Cómo se calculan la aptitud, los ingresos y las distancias</summary>
+<p>El puntaje de aptitud va de 0 a 100 y promedia los puntajes de las celdas de 500 m con datos dentro de cada parroquia. Usa los criterios y pesos de Aptitud. Los ingresos describen los hogares y se aplican como filtro adicional. Las comparaciones usan los valores antes de redondearlos.</p>
 <p>La base de cada parroquia son los hogares censados con edad conocida de la persona que los representa. Se aplica a cada grupo de edad la distribución de ingreso mensual de su provincia. El porcentaje y el número aproximado de hogares en el tramo son estimaciones. Fuentes: INEC, Censo 2022 y ENIGHUR 2024–2025.</p>
 <p>Se consideran las parroquias rurales y cabeceras cantonales de Guayas y Santa Elena. La distancia es cero si el punto cae dentro de la parroquia. Para las demás se mide en línea recta al límite más cercano. El radio de la prueba de sectores se configura por separado.</p>
 <p id="parish-income-urban-note" hidden>En las parroquias urbanas de Guayaquil se asigna cada sector censal completo según dónde cae su punto interior en los límites municipales. Los hogares de sectores sin ubicación asignable quedan fuera del cálculo urbano.</p>
@@ -349,4 +372,4 @@
 <section class="sources" id="datos"><details><summary>Fuentes, cobertura y metodología</summary><div id="source-items"></div></details></section>
 <div class="footer"><b>Atlas Litoral</b><span>Guayas y Santa Elena · Ecuador</span></div></main>
 <dialog id="modal"><div class="dialog-head"><h2 id="modal-title"></h2><button id="close" class="close" aria-label="Cerrar">×</button></div><div id="modal-body"></div></dialog><div id="toast" role="status"></div>
-<script src="./app.js?v=d1d9cff213d7" type="module" onerror="document.getElementById('map-load-notice').hidden=false;document.getElementById('map-load-message').textContent='No se pudo abrir el mapa interactivo. Se muestra la vista regional.'"></script></body></html>
+<script src="./app.js?v=d73e1b2abe7b" type="module" onerror="document.getElementById('map-load-notice').hidden=false;document.getElementById('map-load-message').textContent='No se pudo abrir el mapa interactivo. Se muestra la vista regional.'"></script></body></html>
